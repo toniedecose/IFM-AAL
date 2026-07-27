@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Cost Engineer By Tonie De CoSe - Owning & Operating Cost Analyzer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Recolor the Tailwind palette to match the Infrastructure Engineering
+        // Workspace launcher's design system (index.html): light surfaces,
+        // primary blue #0F4C81 and accent green #18A957. Utility class names
+        // in the markup below are kept as-is; only the underlying hex values
+        // are swapped, plus the app's custom "industrial" brand tokens.
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    },
+                    colors: {
+                        industrial: {
+                            50: '#F8FAFC',
+                            100: '#F1F5F9',
+                            800: '#FFFFFF',
+                            900: '#F5F7FA',   // page background (index --bg-workspace)
+                            amber: '#0F4C81', // brand accent -> primary blue (index --color-primary)
+                            emerald: '#18A957'
+                        },
+                        slate: {
+                            100: '#1F2937', // text-main
+                            300: '#374151', // secondary text
+                            400: '#6B7280', // text-muted (matches index)
+                            500: '#9CA3AF', // text-light (matches index)
+                            700: '#D1D5DB', // border-strong (matches index)
+                            800: '#E5E7EB', // border-subtle / hover tint (matches index)
+                            900: '#F8FAFC', // input / well background (matches index --bg-input)
+                            950: '#FFFFFF'  // card background (matches index --bg-card)
+                        },
+                        blue: {
+                            400: '#0F4C81',
+                            500: '#0C3E6A'
+                        },
+                        emerald: {
+                            400: '#18A957',
+                            500: '#148F49'
+                        },
+                        amber: {
+                            400: '#B45309'
+                        },
+                        yellow: {
+                            500: '#CA8A04'
+                        },
+                        purple: {
+                            400: '#7C3AED'
+                        },
+                        red: {
+                            400: '#DC2626',
+                            500: '#DC2626',
+                            600: '#B91C1C'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for seamless premium look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0F4C81;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #0F4C81 !important;
+            box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-industrial-900 text-slate-100 font-sans min-h-screen">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-industrial-amber text-slate-950 p-2 rounded-lg font-bold flex items-center justify-center">
+                    <i class="fa-solid fa-helmet-safety text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-wider text-slate-100">FLEET COST ENGINEER</h1>
+                    <p class="text-xs text-slate-400">By Tonie De CoSe (Komatsu & Multi-Brand Standard Expert)</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Active Model: Komatsu, Bomag & Isuzu Fleet Standard</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        
+        <!-- PROFILE INTRODUCTION BRIEF -->
+        <div class="bg-gradient-to-r from-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-5 mb-6 shadow-xl flex flex-col md:flex-row items-center gap-5">
+            <div class="text-center md:text-left space-y-2">
+                <div class="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                    <span class="bg-industrial-amber/10 text-industrial-amber text-xs font-bold px-2.5 py-1 rounded border border-industrial-amber/20">Komatsu & General Fleet Edition</span>
+                    <span class="bg-blue-500/10 text-blue-400 text-xs font-bold px-2.5 py-1 rounded border border-blue-500/20">Komatsu / Bomag / Isuzu Standard</span>
+                </div>
+                <h2 class="text-xl font-bold text-slate-100">Kalkulator Life Cycle Cost (LCC) & Biaya Per Jam Armada Alat Berat</h2>
+                <p class="text-sm text-slate-400 max-w-4xl">
+                    Sistem ini telah disesuaikan dengan daftar armada Anda (Komatsu PC200/PC70/PC45, Dozer D31/D68, Isuzu NMR, Motor Grader GD511/535, dan Compactor Bomag). Pilih preset di bawah untuk memuat angka estimasi standar industri Indonesia, atau ubah parameter sesuai realita operasi lapangan Anda.
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- LEFT COLUMN: INPUT CONTROLS (5 COLS) -->
+            <div class="lg:col-span-5 space-y-6">
+                
+                <!-- TEMPLATE LOADER SECTION -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-industrial-amber"></i>
+                        Pilih Preset Unit Armada Anda
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-3">Klik salah satu unit di bawah untuk mengisi data otomatis sesuai standar Komatsu/Isuzu/Bomag:</p>
+                    
+                    <!-- CATEGORIES GRID -->
+                    <div class="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                        <!-- EXCAVATORS -->
+                        <div>
+                            <span class="text-[10px] font-extrabold text-industrial-amber uppercase tracking-wider block mb-1">Excavators (Komatsu)</span>
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <button onclick="loadTemplate('pc200', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-truck-monster text-sm text-industrial-amber"></i>
+                                    PC 200 (20T)
+                                </button>
+                                <button onclick="loadTemplate('pc70', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-truck-monster text-sm text-industrial-amber"></i>
+                                    PC 70 (7T)
+                                </button>
+                                <button onclick="loadTemplate('pc45', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-truck-monster text-sm text-industrial-amber"></i>
+                                    PC 45 Mini
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- DOZERS & GRADERS -->
+                        <div>
+                            <span class="text-[10px] font-extrabold text-blue-400 uppercase tracking-wider block mb-1">Dozers & Graders (Komatsu)</span>
+                            <div class="grid grid-cols-3 gap-1.5">
+                                <button onclick="loadTemplate('d31', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-tractor text-sm text-blue-400"></i>
+                                    Dozer D31
+                                </button>
+                                <button onclick="loadTemplate('d68', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-tractor text-sm text-blue-400"></i>
+                                    Dozer D68
+                                </button>
+                                <button onclick="loadTemplate('gd511', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-road text-sm text-amber-400"></i>
+                                    Grader GD511/535
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- COMPACTORS & TRUCKS -->
+                        <div>
+                            <span class="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider block mb-1">Compactor & Dump Truck</span>
+                            <div class="grid grid-cols-2 gap-1.5">
+                                <button onclick="loadTemplate('bw211', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-compact-disc text-sm text-emerald-400"></i>
+                                    Bomag BW 211/219
+                                </button>
+                                <button onclick="loadTemplate('isuzu_nmr', this)" class="template-btn bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-slate-100 p-2 rounded-lg border border-slate-800 text-[11px] font-semibold flex flex-col items-center gap-1 transition">
+                                    <i class="fa-solid fa-truck-flatbed text-sm text-purple-400"></i>
+                                    Isuzu Elf NMR DT
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORM INPUTS -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-6">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-industrial-amber"></i>
+                            Parameter Kalkulasi
+                        </h3>
+                        <button onclick="resetInputs()" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> Reset
+                        </button>
+                    </div>
+
+                    <!-- TABS FOR INPUT GROUPS -->
+                    <div class="flex border-b border-slate-800 gap-2 overflow-x-auto pb-1" id="inputTabs">
+                        <button onclick="switchTab('tab-owning')" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-t-lg bg-slate-800 text-slate-100 border-t-2 border-industrial-amber" id="btn-tab-owning">
+                            Owning
+                        </button>
+                        <button onclick="switchTab('tab-operating')" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-t-lg hover:bg-slate-900 text-slate-400" id="btn-tab-operating">
+                            Operating
+                        </button>
+                        <button onclick="switchTab('tab-operational')" class="tab-btn px-3 py-1.5 text-xs font-semibold rounded-t-lg hover:bg-slate-900 text-slate-400" id="btn-tab-operational">
+                            Utilisasi & RAM
+                        </button>
+                    </div>
+
+                    <!-- TAB 1: OWNING PARAMETERS -->
+                    <div id="tab-owning" class="tab-content space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Nama / Model Alat</label>
+                            <input type="text" id="asset_name" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="Komatsu Excavator PC200-8">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Harga Beli Baru (Rp)</label>
+                                <input type="number" id="purchase_price" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="1850000000" oninput="calculateAll()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Nilai Residu (%)</label>
+                                <input type="number" id="residual_percent" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="20" min="0" max="100" oninput="calculateAll()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Umur Ekonomis (Tahun)</label>
+                                <input type="number" id="economic_life" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="5" oninput="calculateAll()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Bunga Modal / Interest (%/Thn)</label>
+                                <input type="number" id="interest_rate" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="10" oninput="calculateAll()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Asuransi (%/Thn)</label>
+                                <input type="number" id="insurance_rate" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-100" value="1.5" step="0.1" oninput="calculateAll()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Pajak / STNK (%/Thn)</label>
+                                <input type="number" id="tax_rate" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-100" value="1.0" step="0.1" oninput="calculateAll()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Storage Cost (%/Thn)</label>
+                                <input type="number" id="storage_rate" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-2 text-xs text-slate-100" value="0.5" step="0.1" oninput="calculateAll()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: OPERATING PARAMETERS -->
+                    <div id="tab-operating" class="tab-content space-y-4 hidden">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Konsumsi Solar (Ltr/Jam)</label>
+                                <input type="number" id="fuel_cons" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="17" step="0.1" oninput="calculateAll()">
+                                <p class="text-[10px] text-slate-500 mt-1">Standar L/Jam (Khusus DT: 4.5 Km/L ≈ 4.5 L/Jam)</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Harga Solar / Ltr (Rp)</label>
+                                <input type="number" id="fuel_price" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="15500" oninput="calculateAll()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Oli, Grease & Filter (Rp/Jam)</label>
+                                <input type="number" id="lubricants_cost" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="13500" oninput="calculateAll()">
+                                <p class="text-[10px] text-slate-500 mt-1">Filter Komatsu Original & Pelumas</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Biaya Perbaikan / Repair (Rp/Jam)</label>
+                                <input type="number" id="repair_cost" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="36000" oninput="calculateAll()">
+                                <p class="text-[10px] text-slate-500 mt-1">Pemeliharaan & Spare Parts</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 border-t border-slate-800 pt-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Biaya Ban (Rp/Set)</label>
+                                <input type="number" id="tyre_cost" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="0" oninput="calculateAll()">
+                                <p class="text-[10px] text-slate-500 mt-1">Isi jika unit bertipe ban</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Umur Pakai Ban (Jam)</label>
+                                <input type="number" id="tyre_life" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="2500" oninput="calculateAll()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 border-t border-slate-800 pt-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Biaya Undercarriage (Rp/Set)</label>
+                                <input type="number" id="uc_cost" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="130000000" oninput="calculateAll()">
+                                <p class="text-[10px] text-slate-500 mt-1">Isi jika unit bertipe rantai track</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Umur Track/UC (Jam)</label>
+                                <input type="number" id="uc_life" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="6000" oninput="calculateAll()">
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-800 pt-3">
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Gaji & Tunjangan Operator (Rp/Bulan)</label>
+                            <input type="number" id="operator_salary" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="7500000" oninput="calculateAll()">
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: OPERATIONAL & RAM -->
+                    <div id="tab-operational" class="tab-content space-y-4 hidden">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Rencana Jam Kerja/Tahun</label>
+                                <input type="number" id="annual_hours" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="2000" oninput="calculateAll()">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Jam Kerja per Hari</label>
+                                <input type="number" id="daily_hours" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-100" value="8" oninput="calculateAll()">
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wide">RAM Parameters & Bottom Line Impact</h4>
+                            
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">MTBF (Jam Kerja Kerusakan)</label>
+                                    <input type="number" id="mtbf" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100" value="250" oninput="calculateAll()">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">MTTR (Jam Perbaikan Alat)</label>
+                                    <input type="number" id="mttr" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100" value="10" oninput="calculateAll()">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Lost Opportunity Cost / Downtime Rate (Rp/Jam)</label>
+                                <input type="number" id="opportunity_cost" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1.5 text-xs text-slate-100" value="250000" oninput="calculateAll()">
+                                <p class="text-[9px] text-slate-500 mt-0.5">Kerugian akibat unit mogok / idle di lapangan</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900 p-3 rounded-lg border border-slate-800">
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wide mb-2">Sewa Alternatif (Untuk Analisis Rent vs Buy)</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Tarif Sewa Pasaran (Rp/Jam)</label>
+                                    <input type="number" id="rental_rate_hour" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100" value="285000" oninput="calculateAll()">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Biaya Mobilisasi (Rp/Tahun)</label>
+                                    <input type="number" id="rental_mobi" class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-xs text-slate-100" value="15000000" oninput="calculateAll()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QUICK SUMMARY METRICS CARD -->
+                <div class="bg-gradient-to-br from-slate-950 to-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg text-center space-y-2">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Hasil Biaya O&O Alat</span>
+                    <div class="text-3xl font-extrabold text-industrial-amber" id="summary_total_hourly_cost">Rp 0</div>
+                    <span class="text-xs text-slate-400 block">Biaya Gabungan Per Jam Kerja</span>
+                    <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800">
+                        <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">Per Hari</span>
+                            <span class="text-xs font-bold text-slate-100" id="summary_total_daily">Rp 0</span>
+                        </div>
+                        <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">Per Bulan</span>
+                            <span class="text-xs font-bold text-slate-100" id="summary_total_monthly">Rp 0</span>
+                        </div>
+                        <div class="bg-slate-900/50 p-2 rounded border border-slate-800">
+                            <span class="text-[10px] text-slate-500 block">Per Tahun</span>
+                            <span class="text-xs font-bold text-slate-100" id="summary_total_yearly">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: DETAILED ANALYSIS & CHARTS (7 COLS) -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- TOP BANNER & MAIN STATS -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Mechanical Avail (MA)</span>
+                        <span class="text-lg font-extrabold text-blue-400" id="stat_ma">0.0%</span>
+                        <span class="text-[9px] text-slate-500 mt-1">Kesiapan mekanis unit</span>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Downtime Per Tahun</span>
+                        <span class="text-lg font-extrabold text-red-400" id="stat_downtime_hours">0 Jam</span>
+                        <span class="text-[9px] text-slate-500 mt-1">Estimasi jam perbaikan</span>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Downtime Cost Impact</span>
+                        <span class="text-lg font-extrabold text-yellow-500" id="stat_downtime_cost">Rp 0</span>
+                        <span class="text-[9px] text-slate-500 mt-1">Loss akibat alat rusak</span>
+                    </div>
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Total Life Cycle Cost</span>
+                        <span class="text-lg font-extrabold text-emerald-400" id="stat_lcc">Rp 0</span>
+                        <span class="text-[9px] text-slate-500 mt-1">Selama umur ekonomis</span>
+                    </div>
+                </div>
+
+                <!-- ACCORDION TABLES SECTION -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-6">
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2 flex justify-between items-center">
+                            <span>1. RINCIAN BIAYA KEPEMILIKAN (OWNING COST)</span>
+                            <span class="text-xs text-slate-400 capitalize" id="lbl_owning_method">Komatsu/Cat Straight-Line Standard</span>
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                        <th class="py-2.5 px-3">Elemen Biaya Owning</th>
+                                        <th class="py-2.5 px-3 text-right">Per Tahun</th>
+                                        <th class="py-2.5 px-3 text-right">Per Bulan</th>
+                                        <th class="py-2.5 px-3 text-right">Per Hari</th>
+                                        <th class="py-2.5 px-3 text-right">Per Jam Kerja</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800">
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Depresiasi (Penyusutan Nilai Unit)</td>
+                                        <td class="py-2 px-3 text-right" id="dep_yr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="dep_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="dep_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right text-industrial-amber font-semibold" id="dep_hr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Bunga Modal (Interest) <span class="text-[10px] text-slate-500" id="lbl_interest_pct">(0%)</span></td>
+                                        <td class="py-2 px-3 text-right" id="int_yr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="int_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="int_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="int_hr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Asuransi Proteksi Unit <span class="text-[10px] text-slate-500" id="lbl_insurance_pct">(0%)</span></td>
+                                        <td class="py-2 px-3 text-right" id="ins_yr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="ins_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="ins_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="ins_hr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Pajak Alat / STNK <span class="text-[10px] text-slate-500" id="lbl_tax_pct">(0%)</span></td>
+                                        <td class="py-2 px-3 text-right" id="tax_yr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="tax_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="tax_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="tax_hr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Storage / Mess Workshop <span class="text-[10px] text-slate-500" id="lbl_storage_pct">(0%)</span></td>
+                                        <td class="py-2 px-3 text-right" id="sto_yr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="sto_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="sto_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="sto_hr">Rp 0</td>
+                                    </tr>
+                                    <tr class="bg-slate-900/50 font-bold text-slate-100 border-t border-slate-700">
+                                        <td class="py-2.5 px-3">TOTAL OWNING COST</td>
+                                        <td class="py-2.5 px-3 text-right" id="tot_own_yr">Rp 0</td>
+                                        <td class="py-2.5 px-3 text-right" id="tot_own_mo">Rp 0</td>
+                                        <td class="py-2.5 px-3 text-right" id="tot_own_dy">Rp 0</td>
+                                        <td class="py-2.5 px-3 text-right text-industrial-amber" id="tot_own_hr">Rp 0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2">
+                            2. RINCIAN BIAYA OPERASIONAL (OPERATING COST)
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs text-slate-300">
+                                <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                    <tr>
+                                        <th class="py-2.5 px-3">Elemen Biaya Operating</th>
+                                        <th class="py-2.5 px-3 text-right">Per Jam</th>
+                                        <th class="py-2.5 px-3 text-right">Per Hari</th>
+                                        <th class="py-2.5 px-3 text-right">Per Bulan</th>
+                                        <th class="py-2.5 px-3 text-right">Per Tahun</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-800">
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Bahan Bakar Solar</td>
+                                        <td class="py-2 px-3 text-right" id="op_fuel_hr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_fuel_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_fuel_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_fuel_yr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Oli, Grease & Filter Suku Cadang</td>
+                                        <td class="py-2 px-3 text-right" id="op_lub_hr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_lub_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_lub_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_lub_yr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Maintenance & Spare Part Perbaikan</td>
+                                        <td class="py-2 px-3 text-right" id="op_rep_hr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_rep_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_rep_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_rep_yr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Konsumsi Ban (Tyres)</td>
+                                        <td class="py-2 px-3 text-right" id="op_tyre_hr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_tyre_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_tyre_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_tyre_yr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Keausan Undercarriage (Rantai/Track)</td>
+                                        <td class="py-2 px-3 text-right" id="op_uc_hr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_uc_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_uc_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_uc_yr">Rp 0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="py-2 px-3 font-medium">Upah & Tunjangan Operator/Driver</td>
+                                        <td class="py-2 px-3 text-right" id="op_opr_hr">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_opr_dy">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_opr_mo">Rp 0</td>
+                                        <td class="py-2 px-3 text-right" id="op_opr_yr">Rp 0</td>
+                                    </tr>
+                                    <tr class="bg-slate-900/50 font-bold text-slate-100 border-t border-slate-700">
+                                        <td class="py-2.5 px-3">TOTAL OPERATING COST</td>
+                                        <td class="py-2.5 px-3 text-right text-industrial-amber" id="tot_op_hr">Rp 0</td>
+                                        <td class="py-2.5 px-3 text-right" id="tot_op_dy">Rp 0</td>
+                                        <td class="py-2.5 px-3 text-right" id="tot_op_mo">Rp 0</td>
+                                        <td class="py-2.5 px-3 text-right" id="tot_op_yr">Rp 0</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHARTS PANEL -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- COST PIE CHART -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                        <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-pie text-industrial-amber"></i>
+                            Komposisi Struktur Biaya
+                        </h3>
+                        <div class="relative h-64 flex justify-center items-center">
+                            <canvas id="costStructureChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- LCC ACCUMULATIVE LINE CHART -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                        <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                            <i class="fa-solid fa-chart-line text-industrial-amber"></i>
+                            Proyeksi Akumulasi LCC (Tahun)
+                        </h3>
+                        <div class="relative h-64">
+                            <canvas id="lccTimelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RENT VS BUY ANALYSIS SECTION -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-3 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-scale-balanced text-industrial-amber"></i>
+                            Analisis Opsi: Beli Sendiri vs Sewa (Rental)
+                        </span>
+                        <span id="rental_indicator" class="text-xs font-bold px-2 py-0.5 rounded">Calculated</span>
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Perbandingan antara efisiensi memiliki unit sendiri dibanding menyewa dari luar berdasarkan target jam kerja tahunan.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div class="space-y-3 text-xs">
+                            <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                                <span class="text-slate-400">Total Biaya Milik Sendiri (Per Tahun):</span>
+                                <span class="font-bold text-slate-100" id="rvb_own_yr">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                                <span class="text-slate-400">Total Biaya Sewa Pasaran (Per Tahun):</span>
+                                <span class="font-bold text-slate-100" id="rvb_rent_yr">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between border-b border-slate-800 pb-1.5 font-bold">
+                                <span class="text-slate-300">Selisih Penghematan Bersih:</span>
+                                <span class="text-emerald-400" id="rvb_saving">Rp 0</span>
+                            </div>
+                            <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 text-[11px] leading-relaxed text-slate-300" id="rvb_verdict">
+                                Memuat rekomendasi sewa vs beli...
+                            </div>
+                        </div>
+                        <div class="h-44 relative">
+                            <canvas id="rentVsBuyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SENSITIVITY ANALYSIS -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
+                    <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-industrial-amber"></i>
+                        3. ANALISIS SENSITIVITAS RISIKO OPERASIONAL
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Pemetaan dampak kenaikan solar, penurunan jam kerja, atau fluktuasi sparepart terhadap total biaya kerja per jam alat.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                                <tr>
+                                    <th class="py-2 px-3">Skenario Deviasi</th>
+                                    <th class="py-2 px-3 text-right">Biaya/Jam Normal</th>
+                                    <th class="py-2 px-3 text-right">Biaya/Jam Skenario</th>
+                                    <th class="py-2 px-3 text-right">Kenaikan (%)</th>
+                                    <th class="py-2 px-3 text-center">Tingkat Risiko</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                <tr>
+                                    <td class="py-2.5 px-3 font-medium">Bahan Bakar Solar Naik 10%</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-400" id="sens_base1">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-100 font-semibold" id="sens_scen1">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-red-400 font-bold" id="sens_pct1">+0.0%</td>
+                                    <td class="py-2.5 px-3 text-center"><span class="bg-yellow-500/10 text-yellow-500 px-2.5 py-0.5 rounded text-[10px] font-bold border border-yellow-500/20">Moderat</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3 font-medium">Jam Kerja / Utilisasi Turun 20%</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-400" id="sens_base2">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-100 font-semibold" id="sens_scen2">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-red-500 font-bold" id="sens_pct2">+0.0%</td>
+                                    <td class="py-2.5 px-3 text-center"><span class="bg-red-500/10 text-red-400 px-2.5 py-0.5 rounded text-[10px] font-bold border border-red-500/20">Tinggi</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3 font-medium">Biaya Perbaikan/Parts Naik 20%</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-400" id="sens_base3">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-100 font-semibold" id="sens_scen3">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-red-400 font-bold" id="sens_pct3">+0.0%</td>
+                                    <td class="py-2.5 px-3 text-center"><span class="bg-blue-500/10 text-blue-400 px-2.5 py-0.5 rounded text-[10px] font-bold border border-blue-500/20">Rendah</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3 font-medium">Harga Investasi Alat Naik 10%</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-400" id="sens_base4">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-100 font-semibold" id="sens_scen4">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-red-400 font-bold" id="sens_pct4">+0.0%</td>
+                                    <td class="py-2.5 px-3 text-center"><span class="bg-yellow-500/10 text-yellow-500 px-2.5 py-0.5 rounded text-[10px] font-bold border border-yellow-500/20">Moderat</span></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-3 font-medium">Worst Case (Solar +10% & Jam Kerja -20%)</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-400" id="sens_base5">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-slate-100 font-bold" id="sens_scen5">Rp 0</td>
+                                    <td class="py-2.5 px-3 text-right text-red-600 font-bold" id="sens_pct5">+0.0%</td>
+                                    <td class="py-2.5 px-3 text-center"><span class="bg-red-600/20 text-red-500 px-2.5 py-0.5 rounded text-[10px] font-bold border border-red-500/30">Kritis</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RECOMMENDATIONS ENGINE (FLEET ADVISOR) -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-lg border-l-4 border-l-industrial-amber space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-industrial-amber/10 text-industrial-amber p-2 rounded-lg">
+                            <i class="fa-solid fa-brain text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider">REKOMENDASI AI FLEET ENGINEER</h3>
+                            <p class="text-xs text-slate-400">Keputusan Strategis Pengelolaan Armada Alat Berat</p>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-3 text-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-400">REKOMENDASI FLEET:</span>
+                            <span id="final_rec_verdict" class="text-xs font-black uppercase px-3 py-1 rounded bg-industrial-amber text-slate-950">Evaluating...</span>
+                        </div>
+                        <div id="final_rec_desc" class="text-xs text-slate-300 leading-relaxed space-y-2">
+                            <!-- Populated Dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap justify-between gap-3 text-xs text-slate-400">
+                        <div class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield text-emerald-500"></i>
+                            <span>Komatsu & ISO 55000 Asset Management Standard</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-invoice-dollar text-industrial-amber"></i>
+                            <span>Akurasi estimasi finansial berbasis data riil</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800 bg-slate-950 mt-12 py-6 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <p>&copy; 2026 Fleet Cost Engineer By Tonie De CoSe. Dirancang untuk Komatsu, Bomag, Isuzu, dan standar armada industri.</p>
+            </div>
+            <div class="flex space-x-4">
+                <a href="#" class="hover:text-slate-100 transition">Komatsu Cost Handbook Standard</a>
+                <span>&bull;</span>
+                <a href="#" class="hover:text-slate-100 transition">Life Cycle Cost Framework</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INTERACTIVE ENGINE SCRIPTS -->
+    <script>
+        // Global Chart Instance variables to enable update/destroy lifecycle
+        let costStructureChart = null;
+        let lccTimelineChart = null;
+        let rentVsBuyChart = null;
+
+        // Expanded Baseline Templates Data for User's Fleet
+        const templates = {
+            pc200: {
+                name: "Komatsu Excavator PC200-8 (20 Ton Class)",
+                purchase_price: 1850000000,
+                residual_percent: 20,
+                economic_life: 5,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.2,
+                storage_rate: 0.5,
+                fuel_cons: 17,
+                fuel_price: 15500,
+                lubricants_cost: 13500,
+                repair_cost: 36000,
+                tyre_cost: 0,
+                tyre_life: 1000,
+                uc_cost: 130000000,
+                uc_life: 6000,
+                operator_salary: 7500000,
+                annual_hours: 2000,
+                daily_hours: 8,
+                mtbf: 250,
+                mttr: 10,
+                opportunity_cost: 250000,
+                rental_rate_hour: 285000,
+                rental_mobi: 15000000
+            },
+            pc70: {
+                name: "Komatsu Excavator PC70-8 (7 Ton Class)",
+                purchase_price: 850000000,
+                residual_percent: 25,
+                economic_life: 5,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.0,
+                storage_rate: 0.4,
+                fuel_cons: 6, // Standar BBM disesuaikan: 6 L/Jam
+                fuel_price: 15500,
+                lubricants_cost: 7500,
+                repair_cost: 19000,
+                tyre_cost: 0,
+                tyre_life: 1000,
+                uc_cost: 65000000,
+                uc_life: 5500,
+                operator_salary: 6000000,
+                annual_hours: 1800,
+                daily_hours: 8,
+                mtbf: 280,
+                mttr: 8,
+                opportunity_cost: 150000,
+                rental_rate_hour: 175000,
+                rental_mobi: 8000000
+            },
+            pc45: {
+                name: "Komatsu Mini Excavator PC45MR (4.5 Ton Class)",
+                purchase_price: 580000000,
+                residual_percent: 25,
+                economic_life: 4,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.0,
+                storage_rate: 0.3,
+                fuel_cons: 5,
+                fuel_price: 15500,
+                lubricants_cost: 5000,
+                repair_cost: 14000,
+                tyre_cost: 0,
+                tyre_life: 1000,
+                uc_cost: 45000000,
+                uc_life: 4000,
+                operator_salary: 5500000,
+                annual_hours: 1600,
+                daily_hours: 8,
+                mtbf: 300,
+                mttr: 6,
+                opportunity_cost: 100000,
+                rental_rate_hour: 135000,
+                rental_mobi: 5000000
+            },
+            d31: {
+                name: "Komatsu Bulldozer D31P/E (Small Dozer)",
+                purchase_price: 980000000,
+                residual_percent: 20,
+                economic_life: 5,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.2,
+                storage_rate: 0.5,
+                fuel_cons: 7, // Standar BBM disesuaikan: 7 L/Jam
+                fuel_price: 15500,
+                lubricants_cost: 9500,
+                repair_cost: 25000,
+                tyre_cost: 0,
+                tyre_life: 1000,
+                uc_cost: 85000000,
+                uc_life: 5000,
+                operator_salary: 6500000,
+                annual_hours: 1800,
+                daily_hours: 8,
+                mtbf: 240,
+                mttr: 10,
+                opportunity_cost: 180000,
+                rental_rate_hour: 210000,
+                rental_mobi: 10000000
+            },
+            d68: {
+                name: "Komatsu Dozer D68 ESS / D65 Class",
+                purchase_price: 3200000000,
+                residual_percent: 18,
+                economic_life: 6,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.3,
+                storage_rate: 0.6,
+                fuel_cons: 25,
+                fuel_price: 15500,
+                lubricants_cost: 21000,
+                repair_cost: 62000,
+                tyre_cost: 0,
+                tyre_life: 1000,
+                uc_cost: 210000000,
+                uc_life: 5000,
+                operator_salary: 8000000,
+                annual_hours: 2000,
+                daily_hours: 8,
+                mtbf: 210,
+                mttr: 12,
+                opportunity_cost: 400000,
+                rental_rate_hour: 480000,
+                rental_mobi: 25000000
+            },
+            isuzu_nmr: {
+                name: "Dump Truck Isuzu Elf NMR 71 HD (6-Wheel)",
+                purchase_price: 480000000,
+                residual_percent: 25,
+                economic_life: 4,
+                interest_rate: 10,
+                insurance_rate: 2.0,
+                tax_rate: 1.8,
+                storage_rate: 0.3,
+                fuel_cons: 4.5, // Standar BBM disesuaikan: 4.5 Km/Liter (setara ~4.5 L/Jam kerja)
+                fuel_price: 15500,
+                lubricants_cost: 4000,
+                repair_cost: 11000,
+                tyre_cost: 16000000,
+                tyre_life: 2500,
+                uc_cost: 0,
+                uc_life: 1000,
+                operator_salary: 5000000,
+                annual_hours: 2200,
+                daily_hours: 10,
+                mtbf: 350,
+                mttr: 6,
+                opportunity_cost: 90000,
+                rental_rate_hour: 85000,
+                rental_mobi: 2000000
+            },
+            gd511: {
+                name: "Komatsu Motor Grader GD511A / GD535",
+                purchase_price: 2250000000,
+                residual_percent: 20,
+                economic_life: 6,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.2,
+                storage_rate: 0.5,
+                fuel_cons: 10, // Standar BBM disesuaikan: 10 L/Jam
+                fuel_price: 15500,
+                lubricants_cost: 12000,
+                repair_cost: 32000,
+                tyre_cost: 38000000,
+                tyre_life: 3000,
+                uc_cost: 0,
+                uc_life: 1000,
+                operator_salary: 7000000,
+                annual_hours: 1800,
+                daily_hours: 8,
+                mtbf: 260,
+                mttr: 9,
+                opportunity_cost: 220000,
+                rental_rate_hour: 290000,
+                rental_mobi: 12000000
+            },
+            bw211: {
+                name: "Bomag Compactor / Vibro BW 211 D-4 / BW 219",
+                purchase_price: 1450000000,
+                residual_percent: 22,
+                economic_life: 5,
+                interest_rate: 10,
+                insurance_rate: 1.5,
+                tax_rate: 1.1,
+                storage_rate: 0.4,
+                fuel_cons: 13,
+                fuel_price: 15500,
+                lubricants_cost: 9000,
+                repair_cost: 24000,
+                tyre_cost: 22000000,
+                tyre_life: 3500,
+                uc_cost: 0,
+                uc_life: 1000,
+                operator_salary: 6000000,
+                annual_hours: 1600,
+                daily_hours: 8,
+                mtbf: 290,
+                mttr: 8,
+                opportunity_cost: 180000,
+                rental_rate_hour: 220000,
+                rental_mobi: 10000000
+            }
+        };
+
+        // UI Tabs switching logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'text-slate-100', 'border-t-2', 'border-industrial-amber');
+                btn.classList.add('hover:bg-slate-900', 'text-slate-400');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+            const targetBtn = document.getElementById('btn-' + tabId);
+            targetBtn.classList.add('bg-slate-800', 'text-slate-100', 'border-t-2', 'border-industrial-amber');
+            targetBtn.classList.remove('hover:bg-slate-900', 'text-slate-400');
+        }
+
+        // Loader to set template
+        function loadTemplate(key, element) {
+            const data = templates[key];
+            if (!data) return;
+
+            document.getElementById('asset_name').value = data.name;
+            document.getElementById('purchase_price').value = data.purchase_price;
+            document.getElementById('residual_percent').value = data.residual_percent;
+            document.getElementById('economic_life').value = data.economic_life;
+            document.getElementById('interest_rate').value = data.interest_rate;
+            document.getElementById('insurance_rate').value = data.insurance_rate;
+            document.getElementById('tax_rate').value = data.tax_rate;
+            document.getElementById('storage_rate').value = data.storage_rate;
+            document.getElementById('fuel_cons').value = data.fuel_cons;
+            document.getElementById('fuel_price').value = data.fuel_price;
+            document.getElementById('lubricants_cost').value = data.lubricants_cost;
+            document.getElementById('repair_cost').value = data.repair_cost;
+            document.getElementById('tyre_cost').value = data.tyre_cost;
+            document.getElementById('tyre_life').value = data.tyre_life;
+            document.getElementById('uc_cost').value = data.uc_cost;
+            document.getElementById('uc_life').value = data.uc_life;
+            document.getElementById('operator_salary').value = data.operator_salary;
+            document.getElementById('annual_hours').value = data.annual_hours;
+            document.getElementById('daily_hours').value = data.daily_hours;
+            document.getElementById('mtbf').value = data.mtbf;
+            document.getElementById('mttr').value = data.mttr;
+            document.getElementById('opportunity_cost').value = data.opportunity_cost;
+            document.getElementById('rental_rate_hour').value = data.rental_rate_hour;
+            document.getElementById('rental_mobi').value = data.rental_mobi;
+
+            // Visual styling feedback on active button
+            document.querySelectorAll('.template-btn').forEach(btn => btn.classList.remove('border-industrial-amber', 'bg-slate-800'));
+            
+            if (element) {
+                element.classList.add('border-industrial-amber', 'bg-slate-800');
+            } else {
+                const buttons = document.querySelectorAll('.template-btn');
+                buttons.forEach(btn => {
+                    const onclickAttr = btn.getAttribute('onclick');
+                    if (onclickAttr && onclickAttr.includes(`'${key}'`)) {
+                        btn.classList.add('border-industrial-amber', 'bg-slate-800');
+                    }
+                });
+            }
+
+            calculateAll();
+        }
+
+        function resetInputs() {
+            loadTemplate('pc200');
+        }
+
+        // Helper formatting functions
+        function formatRupiah(num) {
+            return "Rp " + Math.round(num).toLocaleString('id-ID');
+        }
+
+        // MAIN CALCULATION KERNEL
+        function calculateAll() {
+            // Inputs Extraction
+            const purchase_price = parseFloat(document.getElementById('purchase_price').value) || 0;
+            const residual_percent = parseFloat(document.getElementById('residual_percent').value) || 0;
+            const economic_life = parseFloat(document.getElementById('economic_life').value) || 1;
+            const interest_rate = parseFloat(document.getElementById('interest_rate').value) || 0;
+            const insurance_rate = parseFloat(document.getElementById('insurance_rate').value) || 0;
+            const tax_rate = parseFloat(document.getElementById('tax_rate').value) || 0;
+            const storage_rate = parseFloat(document.getElementById('storage_rate').value) || 0;
+
+            const fuel_cons = parseFloat(document.getElementById('fuel_cons').value) || 0;
+            const fuel_price = parseFloat(document.getElementById('fuel_price').value) || 0;
+            const lubricants_cost = parseFloat(document.getElementById('lubricants_cost').value) || 0;
+            const repair_cost = parseFloat(document.getElementById('repair_cost').value) || 0;
+            const tyre_cost = parseFloat(document.getElementById('tyre_cost').value) || 0;
+            const tyre_life = parseFloat(document.getElementById('tyre_life').value) || 1;
+            const uc_cost = parseFloat(document.getElementById('uc_cost').value) || 0;
+            const uc_life = parseFloat(document.getElementById('uc_life').value) || 1;
+            const operator_salary = parseFloat(document.getElementById('operator_salary').value) || 0;
+
+            const annual_hours = parseFloat(document.getElementById('annual_hours').value) || 1;
+            const daily_hours = parseFloat(document.getElementById('daily_hours').value) || 8;
+            
+            const mtbf = parseFloat(document.getElementById('mtbf').value) || 1;
+            const mttr = parseFloat(document.getElementById('mttr').value) || 1;
+            const opportunity_cost = parseFloat(document.getElementById('opportunity_cost').value) || 0;
+
+            const rental_rate_hour = parseFloat(document.getElementById('rental_rate_hour').value) || 0;
+            const rental_mobi = parseFloat(document.getElementById('rental_mobi').value) || 0;
+
+            // Constant operational conversion parameters
+            const days_in_year = 300; 
+            const hours_per_month = annual_hours / 12;
+
+            // --- 1. OWNING COSTS CALCULATIONS (KOMATSU/CAT METHOD) ---
+            const residual_value = purchase_price * (residual_percent / 100);
+            
+            // Straight-line Depreciation per Year
+            const yearly_depreciation = (purchase_price - residual_value) / economic_life;
+            const hourly_depreciation = yearly_depreciation / annual_hours;
+
+            // Average Investment Value (AIV) Formula for Interest, Insurance, Tax
+            // AIV = (Price * (N + 1) + Residual * (N - 1)) / (2 * N)
+            const aiv = ((purchase_price * (economic_life + 1)) + (residual_value * (economic_life - 1))) / (2 * economic_life);
+
+            // Annual Owning elements
+            const yearly_interest = aiv * (interest_rate / 100);
+            const yearly_insurance = aiv * (insurance_rate / 100);
+            const yearly_tax = aiv * (tax_rate / 100);
+            const yearly_storage = purchase_price * (storage_rate / 100);
+
+            const total_yearly_owning = yearly_depreciation + yearly_interest + yearly_insurance + yearly_tax + yearly_storage;
+
+            // Hourly Owning costs
+            const hourly_interest = yearly_interest / annual_hours;
+            const hourly_insurance = yearly_insurance / annual_hours;
+            const hourly_tax = yearly_tax / annual_hours;
+            const hourly_storage = yearly_storage / annual_hours;
+            const total_hourly_owning = total_yearly_owning / annual_hours;
+
+            // Display Owning Cost Table
+            document.getElementById('lbl_interest_pct').innerText = `(${interest_rate}%)`;
+            document.getElementById('lbl_insurance_pct').innerText = `(${insurance_rate}%)`;
+            document.getElementById('lbl_tax_pct').innerText = `(${tax_rate}%)`;
+            document.getElementById('lbl_storage_pct').innerText = `(${storage_rate}%)`;
+
+            document.getElementById('dep_yr').innerText = formatRupiah(yearly_depreciation);
+            document.getElementById('dep_mo').innerText = formatRupiah(yearly_depreciation / 12);
+            document.getElementById('dep_dy').innerText = formatRupiah(yearly_depreciation / days_in_year);
+            document.getElementById('dep_hr').innerText = formatRupiah(hourly_depreciation);
+
+            document.getElementById('int_yr').innerText = formatRupiah(yearly_interest);
+            document.getElementById('int_mo').innerText = formatRupiah(yearly_interest / 12);
+            document.getElementById('int_dy').innerText = formatRupiah(yearly_interest / days_in_year);
+            document.getElementById('int_hr').innerText = formatRupiah(hourly_interest);
+
+            document.getElementById('ins_yr').innerText = formatRupiah(yearly_insurance);
+            document.getElementById('ins_mo').innerText = formatRupiah(yearly_insurance / 12);
+            document.getElementById('ins_dy').innerText = formatRupiah(yearly_insurance / days_in_year);
+            document.getElementById('ins_hr').innerText = formatRupiah(hourly_insurance);
+
+            document.getElementById('tax_yr').innerText = formatRupiah(yearly_tax);
+            document.getElementById('tax_mo').innerText = formatRupiah(yearly_tax / 12);
+            document.getElementById('tax_dy').innerText = formatRupiah(yearly_tax / days_in_year);
+            document.getElementById('tax_hr').innerText = formatRupiah(hourly_tax);
+
+            document.getElementById('sto_yr').innerText = formatRupiah(yearly_storage);
+            document.getElementById('sto_mo').innerText = formatRupiah(yearly_storage / 12);
+            document.getElementById('sto_dy').innerText = formatRupiah(yearly_storage / days_in_year);
+            document.getElementById('sto_hr').innerText = formatRupiah(hourly_storage);
+
+            document.getElementById('tot_own_yr').innerText = formatRupiah(total_yearly_owning);
+            document.getElementById('tot_own_mo').innerText = formatRupiah(total_yearly_owning / 12);
+            document.getElementById('tot_own_dy').innerText = formatRupiah(total_yearly_owning / days_in_year);
+            document.getElementById('tot_own_hr').innerText = formatRupiah(total_hourly_owning);
+
+            // --- 2. OPERATING COSTS CALCULATIONS ---
+            const hourly_fuel = fuel_cons * fuel_price;
+            const hourly_lubricants = lubricants_cost;
+            const hourly_repair = repair_cost;
+            
+            // Tyre wear cost hourly: Cost per set / life span in hours
+            const hourly_tyre = tyre_cost > 0 ? (tyre_cost / tyre_life) : 0;
+            // Undercarriage wear cost hourly: Cost per track set / track life span
+            const hourly_uc = uc_cost > 0 ? (uc_cost / uc_life) : 0;
+
+            // Operator Hourly = Monthly Salary * 12 / Annual working hours
+            const hourly_operator = (operator_salary * 12) / annual_hours;
+
+            const total_hourly_operating = hourly_fuel + hourly_lubricants + hourly_repair + hourly_tyre + hourly_uc + hourly_operator;
+            const total_daily_operating = total_hourly_operating * daily_hours;
+            const total_monthly_operating = total_hourly_operating * hours_per_month;
+            const total_yearly_operating = total_hourly_operating * annual_hours;
+
+            // Display Operating Cost Table
+            document.getElementById('op_fuel_hr').innerText = formatRupiah(hourly_fuel);
+            document.getElementById('op_fuel_dy').innerText = formatRupiah(hourly_fuel * daily_hours);
+            document.getElementById('op_fuel_mo').innerText = formatRupiah(hourly_fuel * hours_per_month);
+            document.getElementById('op_fuel_yr').innerText = formatRupiah(hourly_fuel * annual_hours);
+
+            document.getElementById('op_lub_hr').innerText = formatRupiah(hourly_lubricants);
+            document.getElementById('op_lub_dy').innerText = formatRupiah(hourly_lubricants * daily_hours);
+            document.getElementById('op_lub_mo').innerText = formatRupiah(hourly_lubricants * hours_per_month);
+            document.getElementById('op_lub_yr').innerText = formatRupiah(hourly_lubricants * annual_hours);
+
+            document.getElementById('op_rep_hr').innerText = formatRupiah(hourly_repair);
+            document.getElementById('op_rep_dy').innerText = formatRupiah(hourly_repair * daily_hours);
+            document.getElementById('op_rep_mo').innerText = formatRupiah(hourly_repair * hours_per_month);
+            document.getElementById('op_rep_yr').innerText = formatRupiah(hourly_repair * annual_hours);
+
+            document.getElementById('op_tyre_hr').innerText = formatRupiah(hourly_tyre);
+            document.getElementById('op_tyre_dy').innerText = formatRupiah(hourly_tyre * daily_hours);
+            document.getElementById('op_tyre_mo').innerText = formatRupiah(hourly_tyre * hours_per_month);
+            document.getElementById('op_tyre_yr').innerText = formatRupiah(hourly_tyre * annual_hours);
+
+            document.getElementById('op_uc_hr').innerText = formatRupiah(hourly_uc);
+            document.getElementById('op_uc_dy').innerText = formatRupiah(hourly_uc * daily_hours);
+            document.getElementById('op_uc_mo').innerText = formatRupiah(hourly_uc * hours_per_month);
+            document.getElementById('op_uc_yr').innerText = formatRupiah(hourly_uc * annual_hours);
+
+            document.getElementById('op_opr_hr').innerText = formatRupiah(hourly_operator);
+            document.getElementById('op_opr_dy').innerText = formatRupiah(hourly_operator * daily_hours);
+            document.getElementById('op_opr_mo').innerText = formatRupiah(hourly_operator * hours_per_month);
+            document.getElementById('op_opr_yr').innerText = formatRupiah(hourly_operator * annual_hours);
+
+            document.getElementById('tot_op_hr').innerText = formatRupiah(total_hourly_operating);
+            document.getElementById('tot_op_dy').innerText = formatRupiah(total_daily_operating);
+            document.getElementById('tot_op_mo').innerText = formatRupiah(total_monthly_operating);
+            document.getElementById('tot_op_yr').innerText = formatRupiah(total_yearly_operating);
+
+            // --- 3. COMBINED TOTAL O&O COSTS ---
+            const combined_hourly = total_hourly_owning + total_hourly_operating;
+            const combined_daily = combined_hourly * daily_hours;
+            const combined_monthly = combined_hourly * hours_per_month;
+            const combined_yearly = total_yearly_owning + total_yearly_operating;
+
+            document.getElementById('summary_total_hourly_cost').innerText = formatRupiah(combined_hourly) + " / Jam";
+            document.getElementById('summary_total_daily').innerText = formatRupiah(combined_daily);
+            document.getElementById('summary_total_monthly').innerText = formatRupiah(combined_monthly);
+            document.getElementById('summary_total_yearly').innerText = formatRupiah(combined_yearly);
+
+            // --- 4. RELIABILITY, AVAILABILITY, MAINTAINABILITY (RAM) ANALYTICS ---
+            // Mechanical Availability (MA) = MTBF / (MTBF + MTTR)
+            const mechanical_availability = (mtbf / (mtbf + mttr)) * 100;
+            
+            // Expected downtime hours per year = Total planned work hours * (1 - MA%)
+            const annual_downtime_hours = annual_hours * (1 - (mechanical_availability / 100));
+            // Lost opportunity cost = Downtime hours * Downtime rate
+            const annual_downtime_opportunity_loss = annual_downtime_hours * opportunity_cost;
+
+            document.getElementById('stat_ma').innerText = mechanical_availability.toFixed(1) + "%";
+            document.getElementById('stat_downtime_hours').innerText = Math.round(annual_downtime_hours) + " Jam";
+            document.getElementById('stat_downtime_cost').innerText = formatRupiah(annual_downtime_opportunity_loss);
+
+            // --- 5. LIFE CYCLE COST (LCC) ---
+            const total_lcc = (total_yearly_owning * economic_life) + (total_yearly_operating * economic_life);
+            document.getElementById('stat_lcc').innerText = formatRupiah(total_lcc);
+
+            // --- 6. RENT VS BUY CRITICAL ANALYSIS ---
+            const annual_rent_cost = (rental_rate_hour * annual_hours) + rental_mobi;
+            const annual_own_cost = combined_yearly;
+
+            document.getElementById('rvb_own_yr').innerText = formatRupiah(annual_own_cost);
+            document.getElementById('rvb_rent_yr').innerText = formatRupiah(annual_rent_cost);
+
+            let rent_vs_buy_verdict = "";
+            let difference_cost = Math.abs(annual_own_cost - annual_rent_cost);
+            document.getElementById('rvb_saving').innerText = formatRupiah(difference_cost);
+
+            const annual_fixed_owning = total_yearly_owning; 
+            const hourly_var_operating = total_hourly_operating; 
+            
+            let break_even_hours = 0;
+            if (rental_rate_hour > hourly_var_operating) {
+                break_even_hours = (annual_fixed_owning - rental_mobi) / (rental_rate_hour - hourly_var_operating);
+            }
+
+            const rentalIndicator = document.getElementById('rental_indicator');
+
+            if (annual_own_cost < annual_rent_cost) {
+                rentalIndicator.className = "text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                rentalIndicator.innerText = "Membeli Lebih Murah";
+                rent_vs_buy_verdict = `<strong>Verdik: Opsi KEPEMILIKAN (Beli) Lebih Ekonomis.</strong> Anda menghemat ${formatRupiah(difference_cost)} per tahun dibanding menyewa. Titik impas (Break-Even) utilisasi adalah <strong>${Math.round(break_even_hours)} Jam kerja/tahun</strong>. Karena target kerja Anda (${annual_hours} Jam) melampaui titik impas, membeli aset ini sangat menguntungkan.`;
+            } else {
+                rentalIndicator.className = "text-xs font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20";
+                rentalIndicator.innerText = "Sewa Lebih Murah";
+                rent_vs_buy_verdict = `<strong>Verdik: Opsi SEWA (Rental) Lebih Ekonomis.</strong> Menyewa dari vendor menghemat pengeluaran ${formatRupiah(difference_cost)} per tahun. Karena target kerja Anda (${annual_hours} Jam) berada di bawah titik impas <strong>${Math.round(break_even_hours)} Jam/tahun</strong>, membeli unit berisiko tinggi terhadap beban fixed cost.`;
+            }
+            document.getElementById('rvb_verdict').innerHTML = rent_vs_buy_verdict;
+
+            // --- 7. SENSITIVITY TABLE CALCULATIONS ---
+            // S1: Fuel Price +10%
+            const op_fuel_s1 = (fuel_cons * (fuel_price * 1.10));
+            const hourly_op_s1 = op_fuel_s1 + hourly_lubricants + hourly_repair + hourly_tyre + hourly_uc + hourly_operator;
+            const comb_hr_s1 = total_hourly_owning + hourly_op_s1;
+            document.getElementById('sens_base1').innerText = formatRupiah(combined_hourly);
+            document.getElementById('sens_scen1').innerText = formatRupiah(comb_hr_s1);
+            document.getElementById('sens_pct1').innerText = "+" + (((comb_hr_s1 - combined_hourly) / combined_hourly) * 100).toFixed(1) + "%";
+
+            // S2: Annual Hours -20%
+            const annual_hours_s2 = annual_hours * 0.8;
+            const hourly_dep_s2 = yearly_depreciation / annual_hours_s2;
+            const hourly_int_s2 = yearly_interest / annual_hours_s2;
+            const hourly_ins_s2 = yearly_insurance / annual_hours_s2;
+            const hourly_tax_s2 = yearly_tax / annual_hours_s2;
+            const hourly_sto_s2 = yearly_storage / annual_hours_s2;
+            const own_hr_s2 = hourly_dep_s2 + hourly_int_s2 + hourly_ins_s2 + hourly_tax_s2 + hourly_sto_s2;
+            const hourly_opr_s2 = (operator_salary * 12) / annual_hours_s2;
+            const op_hr_s2 = hourly_fuel + hourly_lubricants + hourly_repair + hourly_tyre + hourly_uc + hourly_opr_s2;
+            const comb_hr_s2 = own_hr_s2 + op_hr_s2;
+            document.getElementById('sens_base2').innerText = formatRupiah(combined_hourly);
+            document.getElementById('sens_scen2').innerText = formatRupiah(comb_hr_s2);
+            document.getElementById('sens_pct2').innerText = "+" + (((comb_hr_s2 - combined_hourly) / combined_hourly) * 100).toFixed(1) + "%";
+
+            // S3: Repair Cost +20%
+            const op_rep_s3 = hourly_repair * 1.2;
+            const op_hr_s3 = hourly_fuel + hourly_lubricants + op_rep_s3 + hourly_tyre + hourly_uc + hourly_operator;
+            const comb_hr_s3 = total_hourly_owning + op_hr_s3;
+            document.getElementById('sens_base3').innerText = formatRupiah(combined_hourly);
+            document.getElementById('sens_scen3').innerText = formatRupiah(comb_hr_s3);
+            document.getElementById('sens_pct3').innerText = "+" + (((comb_hr_s3 - combined_hourly) / combined_hourly) * 100).toFixed(1) + "%";
+
+            // S4: Purchase Price +10%
+            const purchase_s4 = purchase_price * 1.1;
+            const residual_s4 = purchase_s4 * (residual_percent / 100);
+            const dep_s4 = (purchase_s4 - residual_s4) / economic_life;
+            const aiv_s4 = ((purchase_s4 * (economic_life + 1)) + (residual_s4 * (economic_life - 1))) / (2 * economic_life);
+            const interest_s4 = aiv_s4 * (interest_rate / 100);
+            const insurance_s4 = aiv_s4 * (insurance_rate / 100);
+            const tax_s4 = aiv_s4 * (tax_rate / 100);
+            const storage_s4 = purchase_s4 * (storage_rate / 100);
+            const own_annual_s4 = dep_s4 + interest_s4 + insurance_s4 + tax_s4 + storage_s4;
+            const comb_hr_s4 = (own_annual_s4 / annual_hours) + total_hourly_operating;
+            document.getElementById('sens_base4').innerText = formatRupiah(combined_hourly);
+            document.getElementById('sens_scen4').innerText = formatRupiah(comb_hr_s4);
+            document.getElementById('sens_pct4').innerText = "+" + (((comb_hr_s4 - combined_hourly) / combined_hourly) * 100).toFixed(1) + "%";
+
+            // S5: Worst Case Combination
+            const comb_hr_s5 = own_hr_s2 + (op_fuel_s1 + hourly_lubricants + hourly_repair + hourly_tyre + hourly_uc + hourly_opr_s2);
+            document.getElementById('sens_base5').innerText = formatRupiah(combined_hourly);
+            document.getElementById('sens_scen5').innerText = formatRupiah(comb_hr_s5);
+            document.getElementById('sens_pct5').innerText = "+" + (((comb_hr_s5 - combined_hourly) / combined_hourly) * 100).toFixed(1) + "%";
+
+            // --- 8. PROFESSIONAL FLEET ADVISORY DECISION ENGINE ---
+            let rec_verdict = "";
+            let rec_badge_class = "";
+            let rec_description = "";
+
+            if (mechanical_availability < 75) {
+                rec_verdict = "REMAJA / REJUVENATE (SANGAT DIREKOMENDASIKAN)";
+                rec_badge_class = "bg-red-500 text-white";
+                rec_description = `<p class="mb-2"><strong>Analisis Mechanical Availability (MA):</strong> Kesiapan alat saat ini berada di bawah standar kritis (${mechanical_availability.toFixed(1)}%), memicu potensi breakdown sebanyak <strong>${Math.round(annual_downtime_hours)} jam/tahun</strong>.</p>
+                <p class="mb-2"><strong>Dampak Finansial:</strong> Kerugian downtime/lost opportunity mencapai <strong>${formatRupiah(annual_downtime_opportunity_loss)}</strong>/tahun.</p>
+                <p><strong>Rekomendasi:</strong> Pertimbangkan tukar-tambah (rejuvenation) unit baru atau lakukan major overhaul pada komponen utama.</p>`;
+            } else if (annual_own_cost > annual_rent_cost) {
+                rec_verdict = "SEWA RENTAL LEBIH EFISIEN";
+                rec_badge_class = "bg-blue-500 text-white";
+                rec_description = `<p class="mb-2"><strong>Analisis Utilisasi:</strong> Beban fixed cost kepemilikan cukup tinggi dibanding target jam kerja (${annual_hours} jam/tahun).</p>
+                <p class="mb-2"><strong>Rekomendasi Fleet:</strong> Opsi menyewa dari vendor menghemat modal kerja (working capital) hingga <strong>${formatRupiah(difference_cost)}</strong> per tahun.</p>`;
+            } else {
+                rec_verdict = "SANGAT LAYAK DIPERTAHANKAN / DIBELI";
+                rec_badge_class = "bg-emerald-500 text-slate-950";
+                rec_description = `<p class="mb-2"><strong>Analisis Kinerja Finansial:</strong> Unit beroperasi sangat efisien dengan kesiapan mekanik <strong>${mechanical_availability.toFixed(1)}%</strong> dan jam kerja melampaui Break-Even Point.</p>
+                <p class="mb-2"><strong>Keuntungan Operasional:</strong> Memiliki sendiri unit ini menghemat <strong>${formatRupiah(difference_cost)}</strong>/tahun dibanding menyewa.</p>
+                <p><strong>Rekomendasi:</strong> Lanjutkan program preventive maintenance (PM) terjadwal dan rutin ganti pelumas/filter tepat waktu.</p>`;
+            }
+
+            const recVerdictEl = document.getElementById('final_rec_verdict');
+            recVerdictEl.innerText = rec_verdict;
+            recVerdictEl.className = "text-xs font-black uppercase px-3 py-1 rounded " + rec_badge_class;
+            document.getElementById('final_rec_desc').innerHTML = rec_description;
+
+            // --- 9. CHARTS RENDERING & DYNAMIC UPDATING ---
+            updateCharts(total_hourly_owning, total_hourly_operating, economic_life, total_yearly_owning, total_yearly_operating, annual_hours, rental_rate_hour, rental_mobi);
+        }
+
+        function updateCharts(owning_cost_hr, operating_cost_hr, economic_life, own_yr, op_yr, annual_hours, rental_rate_hour, rental_mobi) {
+            // A. CHART 1: COST PIE/DOUGHNUT STRUCTURE
+            const ctxCost = document.getElementById('costStructureChart').getContext('2d');
+            if (costStructureChart) {
+                costStructureChart.destroy();
+            }
+
+            const fuel = parseFloat(document.getElementById('fuel_cons').value) * parseFloat(document.getElementById('fuel_price').value);
+            const repair = parseFloat(document.getElementById('repair_cost').value);
+            const lubricants = parseFloat(document.getElementById('lubricants_cost').value);
+            const operator = (parseFloat(document.getElementById('operator_salary').value) * 12) / annual_hours;
+            const depreciation = parseFloat(document.getElementById('dep_hr').innerText.replace(/[^0-9,-]/g, '')) || 0;
+            const otherOwning = owning_cost_hr - depreciation;
+
+            costStructureChart = new Chart(ctxCost, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Depresiasi', 'Owning Lain', 'Bahan Bakar', 'Perbaikan', 'Pelumas/Filter', 'Operator'],
+                    datasets: [{
+                        data: [depreciation, otherOwning, fuel, repair, lubricants, operator],
+                        backgroundColor: [
+                            '#0F4C81', // Primary Blue
+                            '#5B8CB3', // Lighter Blue
+                            '#18A957', // Accent Green
+                            '#D97706', // Amber
+                            '#7C3AED', // Violet
+                            '#DB2777'  // Pink
+                        ],
+                        borderWidth: 1,
+                        borderColor: '#FFFFFF'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#6B7280',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // B. CHART 2: LIFE CYCLE COST TIMELINE
+            const ctxLCC = document.getElementById('lccTimelineChart').getContext('2d');
+            if (lccTimelineChart) {
+                lccTimelineChart.destroy();
+            }
+
+            const labelsLCC = [];
+            const dataCumulativeOwn = [];
+            const dataCumulativeOp = [];
+            const dataCumulativeTotal = [];
+
+            let cumOwn = 0;
+            let cumOp = 0;
+
+            for (let yr = 1; yr <= economic_life; yr++) {
+                labelsLCC.push("Thn " + yr);
+                cumOwn += own_yr;
+                cumOp += op_yr;
+                dataCumulativeOwn.push(cumOwn / 1e6);
+                dataCumulativeOp.push(cumOp / 1e6);
+                dataCumulativeTotal.push((cumOwn + cumOp) / 1e6);
+            }
+
+            lccTimelineChart = new Chart(ctxLCC, {
+                type: 'line',
+                data: {
+                    labels: labelsLCC,
+                    datasets: [
+                        {
+                            label: 'Akumulasi Total LCC (Juta Rp)',
+                            data: dataCumulativeTotal,
+                            borderColor: '#18A957',
+                            backgroundColor: 'rgba(24, 169, 87, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Akumulasi Biaya Kepemilikan',
+                            data: dataCumulativeOwn,
+                            borderColor: '#D97706',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            fill: false
+                        },
+                        {
+                            label: 'Akumulasi Biaya Operasional',
+                            data: dataCumulativeOp,
+                            borderColor: '#0F4C81',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+                        y: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#6B7280', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // C. CHART 3: RENT VS BUY BREAK-EVEN CURVE
+            const ctxRvB = document.getElementById('rentVsBuyChart').getContext('2d');
+            if (rentVsBuyChart) {
+                rentVsBuyChart.destroy();
+            }
+
+            const plotPointsHours = [0, 1000, 2000, 3000, 4000];
+            const ownLineData = [];
+            const rentLineData = [];
+
+            plotPointsHours.forEach(hr => {
+                const yearly_fixed = own_yr;
+                const var_operating = (operating_cost_hr * hr);
+                ownLineData.push((yearly_fixed + var_operating) / 1e6);
+
+                rentLineData.push(((rental_rate_hour * hr) + rental_mobi) / 1e6);
+            });
+
+            rentVsBuyChart = new Chart(ctxRvB, {
+                type: 'line',
+                data: {
+                    labels: plotPointsHours.map(h => h + " Jm"),
+                    datasets: [
+                        {
+                            label: 'Biaya Milik Sendiri (Juta Rp)',
+                            data: ownLineData,
+                            borderColor: '#D97706',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'Biaya Sewa / Rental',
+                            data: rentLineData,
+                            borderColor: '#0F4C81',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+                        y: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#6B7280', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = function() {
+            loadTemplate('pc200');
+        };
+    </script>
+</body>
+</html>
