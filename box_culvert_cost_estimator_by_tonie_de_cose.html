@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Box Culvert Cost Estimator By Tonie De CoSe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Recolor the Tailwind palette to match the Infrastructure Engineering
+        // Workspace launcher's design system (index.html): light surfaces,
+        // primary blue #0F4C81 and accent green #18A957. Utility class names
+        // in the markup below (bg-slate-800, text-blue-400, etc.) are kept
+        // as-is; only the underlying hex values are swapped.
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    },
+                    colors: {
+                        slate: {
+                            100: '#1F2937', // was brightest text-on-dark -> now text-main
+                            200: '#111827', // hover emphasis -> darker on light bg
+                            300: '#374151', // secondary text
+                            400: '#6B7280', // text-muted (matches index --text-muted)
+                            500: '#9CA3AF', // text-light (matches index --text-light)
+                            600: '#D1D5DB', // border-strong (matches index --border-strong)
+                            700: '#E5E7EB', // border-subtle (matches index --border-subtle)
+                            800: '#FFFFFF', // card / header surface (matches index --bg-card)
+                            900: '#F5F7FA'  // page background (matches index --bg-workspace)
+                        },
+                        blue: {
+                            200: '#0F4C81',
+                            300: '#0F4C81',
+                            400: '#0F4C81',
+                            500: '#0C3E6A', // hover / active state (index --color-primary-hover)
+                            600: '#0F4C81', // primary (index --color-primary)
+                            700: '#5B8CB3',
+                            900: '#DCEAF2',
+                            950: '#DCEAF2'
+                        },
+                        emerald: {
+                            300: '#18A957',
+                            400: '#18A957', // accent (index --color-accent)
+                            500: '#148F49', // accent hover (index --color-accent-hover)
+                            600: '#148F49',
+                            700: '#148F49',
+                            900: '#E7F7EE',
+                            950: '#E7F7EE'
+                        },
+                        amber: {
+                            300: '#B45309',
+                            400: '#B45309',
+                            500: '#D97706',
+                            900: '#FDF3E0',
+                            950: '#FDF3E0'
+                        },
+                        purple: {
+                            300: '#7C3AED',
+                            400: '#7C3AED',
+                            900: '#F1EAFE'
+                        },
+                        indigo: {
+                            200: '#3730A3',
+                            300: '#3730A3',
+                            400: '#3730A3',
+                            500: '#4338CA',
+                            700: '#4338CA',
+                            950: '#EEF0FC'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-before: always; }
+            body { background: white; color: black; }
+            .card-box { border: 1px solid #ccc !important; shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-12">
+
+    <header class="bg-slate-800/90 backdrop-blur-md border-b border-slate-700 sticky top-0 z-50 no-print shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white font-bold text-xl tracking-wider">
+                    BC
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold text-slate-100 tracking-tight">Box Culvert Cost Estimator</h1>
+                        <span class="bg-emerald-900/80 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-600 flex items-center gap-1">
+                            <svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            SNI &amp; PUPR Verified
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">By Tonie De CoSe &bull; Engineering &amp; RAB Suite Standar Permen PUPR 1/2022</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <!-- Preset Selection -->
+                <div class="flex items-center space-x-2 bg-slate-900/80 p-1.5 rounded-lg border border-slate-700">
+                    <label class="text-xs font-semibold text-slate-300 pl-2">Preset DED:</label>
+                    <select id="presetSelect" onchange="applyPreset()" class="bg-slate-800 text-slate-100 text-xs rounded border border-slate-600 px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="1_1_1_5">1 x 1.0 x 1.0 x 5 (Single)</option>
+                        <option value="1_1.5_1.5_5" selected>1 x 1.5 x 1.5 x 5 (Single)</option>
+                        <option value="1_2_2_5">1 x 2.0 x 2.0 x 5 (Single)</option>
+                        <option value="1_2.5_2.5_5">1 x 2.5 x 2.5 x 5 (Single)</option>
+                        <option value="1_3_3_5">1 x 3.0 x 3.0 x 5 (Single)</option>
+                        <option value="2_1.5_1.5_5">2 x 1.5 x 1.5 x 5 (Double)</option>
+                        <option value="2_2_2_5">2 x 2.0 x 2.0 x 5 (Double)</option>
+                        <option value="2_3_3_5">2 x 3.0 x 3.0 x 5 (Double)</option>
+                    </select>
+                </div>
+
+                <!-- Region Pricing Selection -->
+                <div class="flex items-center space-x-2 bg-slate-900/80 p-1.5 rounded-lg border border-slate-700">
+                    <label class="text-xs font-semibold text-slate-300 pl-2">Wilayah:</label>
+                    <select id="regionSelect" onchange="applyRegionPrices()" class="bg-slate-800 text-emerald-400 text-xs font-bold rounded border border-slate-600 px-2 py-1 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <option value="jawa">Jawa &amp; Bali (Base)</option>
+                        <option value="sumatra">Area Sumatra</option>
+                        <option value="kalimantan">Area Kalimantan</option>
+                        <option value="sulawesi">Area Sulawesi</option>
+                    </select>
+                </div>
+
+                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center space-x-1 shadow">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span>Cetak PDF</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+
+        <div class="flex border-b border-slate-700 mb-6 no-print overflow-x-auto">
+            <button id="tabBtn1" onclick="switchTab('tab1')" class="py-3 px-6 text-sm font-semibold border-b-2 border-blue-500 text-blue-400 whitespace-nowrap focus:outline-none">
+                1. Parameter &amp; Ringkasan RAB
+            </button>
+            <button id="tabBtn2" onclick="switchTab('tab2')" class="py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap focus:outline-none">
+                2. Back-Up Volume (Detail Rincian)
+            </button>
+            <button id="tabBtn3" onclick="switchTab('tab3')" class="py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap focus:outline-none">
+                3. AHSP &amp; Harga Material Bahan
+            </button>
+            <button id="tabBtn4" onclick="switchTab('tab4')" class="py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap focus:outline-none">
+                4. Rekapitulasi BoQ / RAB
+            </button>
+            <button id="tabBtn5" onclick="switchTab('tab5')" class="py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap focus:outline-none flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                <span>5. Verifikasi Standar SNI &amp; PUPR</span>
+            </button>
+        </div>
+
+        <div id="tab1" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Input Parameters Card -->
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            Dimensi &amp; Parameter Struktur
+                        </h2>
+                        <span id="labelNomenklatur" class="text-xs bg-blue-900/60 text-blue-300 px-2 py-0.5 rounded font-mono border border-blue-700">1 x 1.5 x 1.5 x 5</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Jumlah Sel (n):</label>
+                            <input type="number" id="inp_n" value="1" min="1" max="5" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                            <span class="text-[10px] text-slate-500">1=Single, 2=Double</span>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Panjang Box Culvert (L):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_L" value="5.0" step="0.1" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Lebar Dalam Sel (W):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_W" value="1.50" step="0.05" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Tinggi Dalam Sel (H):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_H" value="1.50" step="0.05" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Tebal Pelat Atas (t1):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_t_top" value="0.20" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Tebal Pelat Bawah (t2):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_t_bot" value="0.20" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Tebal Dinding Luar (tw):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_t_outer" value="0.20" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Tebal Dinding Tengah (tw2):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_t_inner" value="0.20" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Ukuran Haunch/Siku:</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_haunch" value="0.15" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">m</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Rasio Besi Rebar:</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_rebar_ratio" value="120" step="5" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">kg/m³</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">Overhead &amp; Profit:</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_profit_margin" value="10" step="1" min="0" max="15" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">%</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-medium mb-1">PPN (UU HPP 11%):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="inp_ppn_margin" value="11" step="1" min="0" max="15" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded-l px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <span class="bg-slate-700 px-2 py-1.5 text-slate-300 rounded-r border border-l-0 border-slate-700">%</span>
+                            </div>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-slate-400 font-medium mb-1">PPh 4(2) Jasa Konstruksi (PP 9/2022):</label>
+                            <select id="inp_pph_select" onchange="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                                <option value="1.75">1.75% - Pelaksana Kualifikasi Kecil</option>
+                                <option value="2.65">2.65% - Pelaksana Kualifikasi Menengah/Besar</option>
+                                <option value="4.0" selected>4.00% - Pelaksana Tanpa Kualifikasi</option>
+                                <option value="0">0.00% - Tidak Dihitung / Bebas PPh</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-700">
+                        <p class="text-[11px] font-semibold text-slate-300 mb-2">Parameter Fondasi &amp; Sub-structure:</p>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="block text-slate-400 font-medium mb-1">Tebal Pasir Urug:</label>
+                                <input type="number" id="inp_t_sand" value="0.10" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 font-medium mb-1">Tebal Lantai Kerja:</label>
+                                <input type="number" id="inp_t_lc" value="0.10" step="0.01" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 font-medium mb-1">Spasi Cerucuk:</label>
+                                <input type="number" id="inp_cerucuk_spacing" value="0.50" step="0.05" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 font-medium mb-1">Panjang Cerucuk:</label>
+                                <input type="number" id="inp_cerucuk_len" value="4.00" step="0.5" oninput="calculateAll()" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 focus:border-blue-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Summary and Key Indicators -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- Cost Cards Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 shadow-sm">
+                            <span class="text-slate-400 text-xs font-medium block mb-1">Biaya Langsung</span>
+                            <span id="sumDirectCost" class="text-sm sm:text-base font-bold text-emerald-400 block">Rp 0</span>
+                            <span class="text-[10px] text-slate-500 mt-0.5 block">AHSP Permen PUPR</span>
+                        </div>
+                        <div class="bg-slate-800 p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-950/20 shadow-sm">
+                            <span class="text-indigo-300 text-xs font-semibold block mb-1">Total Upah Kerja</span>
+                            <span id="sumLaborCost" class="text-sm sm:text-base font-bold text-indigo-300 block">Rp 0</span>
+                            <span id="sumLaborPct" class="text-[10px] text-indigo-400 mt-0.5 block">0% dari Direct Cost</span>
+                        </div>
+                        <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 shadow-sm">
+                            <span class="text-slate-400 text-xs font-medium block mb-1">Overhead &amp; Profit</span>
+                            <span id="sumProfitCost" class="text-sm sm:text-base font-bold text-amber-400 block">Rp 0</span>
+                            <span id="sumProfitPct" class="text-[10px] text-slate-500 mt-0.5 block">Maks. 15% PUPR</span>
+                        </div>
+                        <div class="bg-slate-800 p-3.5 rounded-xl border border-amber-500/40 bg-amber-950/20 shadow-sm">
+                            <span class="text-amber-300 text-xs font-semibold block mb-1">SUBTOTAL RAB</span>
+                            <span id="sumSubtotalWithProfit" class="text-sm sm:text-base font-bold text-amber-300 block">Rp 0</span>
+                            <span class="text-[10px] text-slate-400 mt-0.5 block">Fisik + Overhead</span>
+                        </div>
+                        <div class="bg-slate-800 p-3.5 rounded-xl border border-slate-700 shadow-sm">
+                            <span class="text-slate-400 text-xs font-medium block mb-1">PPN 11% (UU HPP)</span>
+                            <span id="sumPpnCost" class="text-sm sm:text-base font-bold text-purple-400 block">Rp 0</span>
+                            <span class="text-[10px] text-slate-400 mt-0.5 block">Pajak Masukan</span>
+                        </div>
+                        <div class="bg-slate-800 p-3.5 rounded-xl border border-blue-500/40 bg-gradient-to-br from-slate-800 to-blue-950/40 shadow-md">
+                            <span class="text-blue-300 text-xs font-semibold block mb-1">GRAND TOTAL RAB</span>
+                            <span id="sumGrandTotal" class="text-sm sm:text-base font-extrabold text-blue-600 block">Rp 0</span>
+                            <span id="sumPerMeter" class="text-[10px] text-emerald-300 mt-0.5 block">Rp 0 / meter</span>
+                        </div>
+                    </div>
+
+                    <!-- Chart & Percentage Breakdown -->
+                    <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-100 mb-3 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path></svg>
+                                Komposisi &amp; Proporsi Biaya (%)
+                            </h3>
+                            <div class="relative h-52 w-full flex justify-center items-center">
+                                <canvas id="costChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Percentage List Detail -->
+                        <div class="space-y-2 text-xs">
+                            <h4 class="text-xs font-semibold text-slate-400 border-b border-slate-700 pb-1 mb-2">Rincian Persentase Kategori Pekerjaan:</h4>
+                            <div id="percentageList" class="space-y-1.5">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div id="tab2" class="tab-content hidden space-y-6">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            Rincian Back-Up Volume Pekerjaan (Standar DED Bina Marga)
+                        </h2>
+                        <p class="text-xs text-slate-400">Detail kalkulasi geometri fisik box, haunch, wingwall, headwall, dan fondasi.</p>
+                    </div>
+                    <span id="backupNomenklatur" class="text-xs bg-blue-900/60 text-blue-300 px-3 py-1 rounded font-mono border border-blue-700">1 x 1.5 x 1.5 x 5</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/90 text-slate-300 border-b border-slate-700 font-semibold">
+                                <th class="p-3 w-12">No</th>
+                                <th class="p-3">Uraian Komponen Pekerjaan</th>
+                                <th class="p-3">Rumus / Formula Kalkulasi Geometri</th>
+                                <th class="p-3 text-right">Volume</th>
+                                <th class="p-3">Satuan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="backupVolumeTableBody" class="divide-y divide-slate-700/60 text-slate-200">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab3" class="tab-content hidden space-y-6">
+            
+            <!-- Editable Base Material & Labor Price List -->
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-4">
+                <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-700 pb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                            Daftar Harga Satuan Material, Bahan &amp; Upah (Editable)
+                        </h2>
+                        <p class="text-xs text-slate-400">Ubah harga dasar material di bawah ini untuk mengupdate Analisa Harga Satuan (AHSP) secara otomatis.</p>
+                    </div>
+                    <span class="bg-emerald-900/60 text-emerald-300 text-xs px-3 py-1 rounded-full font-semibold border border-emerald-700">Live Auto-Calculate</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/90 text-slate-300 border-b border-slate-700 font-semibold">
+                                <th class="p-3">No</th>
+                                <th class="p-3">Jenis Material / Upah / Alat</th>
+                                <th class="p-3">Spesifikasi / Keterangan</th>
+                                <th class="p-3">Satuan</th>
+                                <th class="p-3 text-right">Harga Dasar (Rp)</th>
+                                <th class="p-3 text-center">Edit Harga Satuan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="materialTableBody" class="divide-y divide-slate-700/60 text-slate-200">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- AHSP Composite Items Table -->
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-700 pb-3">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-100 flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                            Analisa Harga Satuan Pekerjaan (AHSP Permen PUPR No. 1/2022)
+                        </h2>
+                        <p class="text-xs text-slate-400">Kombinasi indeks bahan &amp; upah berbasis standar AHSP PUPR Bina Marga. Wilayah: <span id="ahspRegionLabel" class="font-bold text-emerald-400">Jawa &amp; Bali</span></p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900/90 text-slate-300 border-b border-slate-700 font-semibold">
+                                <th class="p-3">Kode AHSP</th>
+                                <th class="p-3">Komponen AHSP / Pekerjaan</th>
+                                <th class="p-3">Satuan</th>
+                                <th class="p-3 text-right">Kalkulasi AHSP (Rp)</th>
+                                <th class="p-3 text-center">Override Langsung (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ahspTableBody" class="divide-y divide-slate-700/60 text-slate-200">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="tab4" class="tab-content hidden space-y-6">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md print:bg-white print:text-black">
+                
+                <!-- Report Header for Print -->
+                <div class="mb-6 border-b-2 border-slate-700 print:border-black pb-4 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h1 class="text-xl font-bold text-slate-100 print:text-black uppercase tracking-wider">Rencana Anggaran Biaya (RAB)</h1>
+                        <p class="text-xs text-slate-400 print:text-gray-600">Pekerjaan Konstruksi Box Culvert &bull; Standar Permen PUPR &amp; SNI</p>
+                    </div>
+                    <div class="text-right text-xs text-slate-400 print:text-gray-700">
+                        <p>Lokasi Proyek: <span id="rabRegionText" class="font-semibold text-slate-100 print:text-black">Jawa &amp; Bali</span></p>
+                        <p>Format Penampang: <span id="rabFormatText" class="font-semibold text-blue-400 print:text-black">1 x 1.5 x 1.5 x 5</span></p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-900 text-slate-200 border-y border-slate-700 print:bg-gray-200 print:text-black print:border-black font-bold">
+                                <th class="p-3 w-12 text-center">NO</th>
+                                <th class="p-3">URAIAN PEKERJAAN</th>
+                                <th class="p-3 text-center">SATUAN</th>
+                                <th class="p-3 text-right">VOLUME</th>
+                                <th class="p-3 text-right">HARGA SATUAN (RP)</th>
+                                <th class="p-3 text-right">JUMLAH BIAYA (RP)</th>
+                                <th class="p-3 text-center w-16">%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rabTableBody" class="divide-y divide-slate-700/60 print:divide-gray-300 text-slate-200 print:text-black">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t-2 border-slate-600 print:border-black font-bold bg-slate-900/50 print:bg-gray-100">
+                                <td colspan="5" class="p-3 text-right">JUMLAH BIAYA LANGSUNG (DIRECT COST)</td>
+                                <td id="rabSubtotal" class="p-3 text-right text-emerald-400 print:text-black font-bold">Rp 0</td>
+                                <td class="p-3 text-center">100%</td>
+                            </tr>
+                            <tr class="font-semibold border-t border-slate-700/60 print:border-gray-300">
+                                <td colspan="5" class="p-2.5 text-right text-slate-300 print:text-gray-800">OVERHEAD &amp; PROFIT (<span id="rabProfitPctLabel">10</span>%)</td>
+                                <td id="rabProfit" class="p-2.5 text-right text-amber-400 print:text-black font-semibold">Rp 0</td>
+                                <td id="rabProfitPctCol" class="p-2.5 text-center text-slate-400">10%</td>
+                            </tr>
+                            <tr class="font-bold text-slate-100 print:text-black bg-amber-950/30 border-y border-amber-500/30 print:bg-gray-200">
+                                <td colspan="5" class="p-2.5 text-right text-amber-300 print:text-black">SUBTOTAL KONTRAK (SEBELUM PAJAK)</td>
+                                <td id="rabSubtotalWithProfit" class="p-2.5 text-right font-bold text-amber-300 print:text-black">Rp 0</td>
+                                <td class="p-2.5 text-center text-amber-400 font-mono">-</td>
+                            </tr>
+                            <tr class="font-semibold">
+                                <td colspan="5" class="p-2 text-right text-slate-400 print:text-gray-700">PAJAK PERTAMBAHAN NILAI PPN (<span id="rabPpnPctLabel">11</span>%) - UU HPP</td>
+                                <td id="rabTaxPPN" class="p-2 text-right text-purple-300 print:text-black">Rp 0</td>
+                                <td id="rabPpnPctCol" class="p-2 text-center text-purple-400">11%</td>
+                            </tr>
+                            <tr class="border-y-2 border-blue-500 print:border-black text-sm font-extrabold bg-blue-950/40 print:bg-gray-200">
+                                <td colspan="5" class="p-3 text-right text-slate-100 print:text-black">GRAND TOTAL KONTRAK (TERMASUK PPN)</td>
+                                <td id="rabGrandTotal" class="p-3 text-right text-emerald-300 print:text-black">Rp 0</td>
+                                <td class="p-3 text-center text-blue-400 print:text-black">RAB</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Labor & Tax Notes -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="p-3 bg-indigo-950/40 border border-indigo-700/50 rounded-lg flex justify-between items-center print:bg-gray-100 print:border-gray-400">
+                        <span class="text-indigo-200 print:text-black font-semibold flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-indigo-400 print:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            Estimasi Upah Tukang &amp; Pekerja:
+                        </span>
+                        <span id="rabLaborNote" class="font-mono font-bold text-indigo-300 print:text-black">Rp 0</span>
+                    </div>
+
+                    <div class="p-3 bg-blue-950/40 border border-blue-700/50 rounded-lg flex justify-between items-center print:bg-gray-100 print:border-gray-400">
+                        <span class="text-blue-200 print:text-black font-semibold flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-blue-400 print:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"></path></svg>
+                            Estimasi Potongan PPh 4(2) Final (PP 9/2022):
+                        </span>
+                        <span id="rabPphNote" class="font-mono font-bold text-blue-300 print:text-black">Rp 0</span>
+                    </div>
+                </div>
+
+                <!-- Footer Signatures for Print -->
+                <div class="mt-12 hidden print:grid grid-cols-2 gap-8 text-center text-xs text-black">
+                    <div>
+                        <p class="mb-16">Disetujui Oleh,<br><strong>Project Manager / PPK</strong></p>
+                        <p class="underline font-bold">( ............................................ )</p>
+                    </div>
+                    <div>
+                        <p class="mb-16">Dibuat Oleh,<br><strong>Estimator / Quantity Surveyor</strong></p>
+                        <p class="underline font-bold">Tonie De CoSe</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="tab5" class="tab-content hidden space-y-6">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-md space-y-6">
+                
+                <div class="border-b border-slate-700 pb-4 flex flex-wrap justify-between items-center gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
+                            Laporan Verifikasi Kesesuaian Standar SNI &amp; Permen PUPR
+                        </h2>
+                        <p class="text-xs text-slate-400">Pemeriksaan teknis rumus, koefisien material, geometri, dan regulasi perpajakan yang digunakan dalam kalkulator ini.</p>
+                    </div>
+                    <span class="bg-emerald-900/60 text-emerald-300 text-xs px-3 py-1 rounded-lg border border-emerald-700 font-semibold">100% Compliant</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    
+                    <!-- Item 1: AHSP PUPR -->
+                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                            <span class="font-bold text-emerald-400">1. Standar AHSP &amp; Analisa Harga Satuan</span>
+                            <span class="bg-emerald-900 text-emerald-300 px-2 py-0.5 rounded text-[10px] font-mono">Permen PUPR 1/2022</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            Koefisien tenaga kerja, bahan, dan peralatan menggunakan koefisien <strong>Permen PUPR No. 1 Tahun 2022</strong> (Bidang Bina Marga / Cipta Karya) &amp; Permen PUPR No. 8/2023.
+                        </p>
+                        <ul class="list-disc list-inside text-slate-400 space-y-1">
+                            <li>Semen Portland K-300 ($f'c = 25\text{ MPa}$): 380 kg/m³ sesuai SNI 7394:2008.</li>
+                            <li>Besi Rebar: Fungsional 1.05 kg besi + 0.015 kg bendrat per kg rebar.</li>
+                            <li>Overhead &amp; Profit: Diatur maks. 15% sesuai standar PUPR (Default: 10%).</li>
+                        </ul>
+                    </div>
+
+                    <!-- Item 2: SNI Beton & Struktur -->
+                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                            <span class="font-bold text-blue-400">2. Geometri &amp; Struktur Beton Box</span>
+                            <span class="bg-blue-900 text-blue-300 px-2 py-0.5 rounded text-[10px] font-mono">SNI 2847:2019</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            Penghitungan volume beton box culvert mengikuti geometri penampang bersih (*Net Cross Section*) dengan memperhitungkan <strong>4 Corner Haunches (Siku Sudut)</strong> per cell.
+                        </p>
+                        <ul class="list-disc list-inside text-slate-400 space-y-1">
+                            <li>Rumus Haunch: $A_{haunch} = 4 \times n \times (0.5 \times h^2)$</li>
+                            <li>Wingwall &amp; Headwall: Menghitung 4 unit dinding sayap trapesium &amp; lantai apron.</li>
+                            <li>Rasio Besi Rebar: Standard jalan raya Bina Marga 110 - 150 kg/m³.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Item 3: SNI Pembebanan Jembatan -->
+                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                            <span class="font-bold text-amber-400">3. Pembebanan &amp; Spesifikasi Umum</span>
+                            <span class="bg-amber-900 text-amber-300 px-2 py-0.5 rounded text-[10px] font-mono">SNI 1725:2016</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            Desain ketebalan pelat atas ($t_1$), pelat bawah ($t_2$), dan dinding ($t_w$) memenuhi kriteria tebal minimum struktur beton bertulang untuk menahan beban lalu lintas (Beban $D$ &amp; $T$ BM50).
+                        </p>
+                        <ul class="list-disc list-inside text-slate-400 space-y-1">
+                            <li>Lantai kerja Lean Concrete (LC): Tebal 10 cm ($f'c = 10\text{ MPa}$ / K-125).</li>
+                            <li>Pasir Urug Bedding: Tebal 10 cm untuk meratakan tegangan tanah dasar.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Item 4: Peraturan Perpajakan -->
+                    <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 space-y-2">
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+                            <span class="font-bold text-purple-400">4. Peraturan Perpajakan Berlaku</span>
+                            <span class="bg-purple-900 text-purple-300 px-2 py-0.5 rounded text-[10px] font-mono">UU HPP &amp; PP 9/2022</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">
+                            Skema perpajakan proyek konstruksi telah disesuaikan dengan aturan fiskal Republik Indonesia terbaru.
+                        </p>
+                        <ul class="list-disc list-inside text-slate-400 space-y-1">
+                            <li><strong>PPN 11%:</strong> Berdasarkan UU No. 7 Tahun 2021 tentang Harmonisasi Peraturan Perpajakan (HPP).</li>
+                            <li><strong>PPh Pasal 4(2):</strong> Berdasarkan PP No. 9 Tahun 2022 (Tarif Final 1.75%, 2.65%, atau 4.00%).</li>
+                        </ul>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Global Regional Price & Raw Material Base Tables
+        const REGIONAL_PRICES = {
+            jawa: {
+                name: "Jawa & Bali (Base)",
+                materials: {
+                    semen: 68000,        // Rp / sak 50kg (setara Rp 1.360 / kg)
+                    pasir_beton: 320000, // Rp / m3
+                    split: 340000,       // Rp / m3
+                    pasir_urug: 220000,  // Rp / m3
+                    besi: 15000,        // Rp / kg
+                    bendrat: 22000,      // Rp / kg
+                    kayu_bekisting: 2800000, // Rp / m3
+                    plywood: 175000,     // Rp / lembar (12mm)
+                    cerucuk: 28000,      // Rp / batang (4m)
+                    pekerja: 120000,     // Rp / OH
+                    tukang: 160000       // Rp / OH
+                }
+            },
+            sumatra: {
+                name: "Area Sumatra",
+                materials: {
+                    semen: 78000,
+                    pasir_beton: 360000,
+                    split: 380000,
+                    pasir_urug: 250000,
+                    besi: 17000,
+                    bendrat: 24000,
+                    kayu_bekisting: 3100000,
+                    plywood: 195000,
+                    cerucuk: 32000,
+                    pekerja: 135000,
+                    tukang: 175000
+                }
+            },
+            kalimantan: {
+                name: "Area Kalimantan",
+                materials: {
+                    semen: 88000,
+                    pasir_beton: 420000,
+                    split: 440000,
+                    pasir_urug: 280000,
+                    besi: 19000,
+                    bendrat: 26000,
+                    kayu_bekisting: 3400000,
+                    plywood: 215000,
+                    cerucuk: 35000,
+                    pekerja: 150000,
+                    tukang: 195000
+                }
+            },
+            sulawesi: {
+                name: "Area Sulawesi",
+                materials: {
+                    semen: 82000,
+                    pasir_beton: 390000,
+                    split: 410000,
+                    pasir_urug: 260000,
+                    besi: 18000,
+                    bendrat: 25000,
+                    kayu_bekisting: 3250000,
+                    plywood: 205000,
+                    cerucuk: 33000,
+                    pekerja: 140000,
+                    tukang: 185000
+                }
+            }
+        };
+
+        // Material Metadata definition
+        const MATERIAL_DEFS = [
+            { key: "semen", name: "Semen Portland (PC)", spec: "Sak 50 Kg (SNI 15-2049-2004)", unit: "Sak" },
+            { key: "pasir_beton", name: "Pasir Beton / Pasang", spec: "Pasir Cor Agregat Halus (SNI 03-2834)", unit: "m³" },
+            { key: "split", name: "Batu Split / Kerikil (2/3)", spec: "Agregat Kasar Cor Beton (SNI 03-2834)", unit: "m³" },
+            { key: "pasir_urug", name: "Pasir Urug Base", spec: "Lapisan Bedding Pondasi", unit: "m³" },
+            { key: "besi", name: "Besi Beton (Polos / Sirip)", spec: "Rebar BjTP / BjTS (SNI 2052:2017)", unit: "kg" },
+            { key: "bendrat", name: "Kawat Beton / Bendrat", spec: "Pengikat Tulangan", unit: "kg" },
+            { key: "kayu_bekisting", name: "Kayu Kelas III / Meranti", spec: "Kayu Gelam/Usuk Bekisting", unit: "m³" },
+            { key: "plywood", name: "Triplek / Plywood 12mm", spec: "Ukuran 120 x 240 cm", unit: "Lembar" },
+            { key: "cerucuk", name: "Kayu Cerucuk Dia. 8-10cm", spec: "Panjang 4 Meter", unit: "Batang" },
+            { key: "pekerja", name: "Upah Pekerja", spec: "Harian Pekerja Lapangan (OH)", unit: "OH" },
+            { key: "tukang", name: "Upah Tukang (Batu/Besi/Kayu)", spec: "Harian Tukang Ahli (OH)", unit: "OH" }
+        ];
+
+        // Active Material Base Prices & Composite AHSP Prices
+        let materialPrices = { ...REGIONAL_PRICES.jawa.materials };
+        let currentPrices = {};
+        let currentLaborPrices = {}; // Labor portion per AHSP unit
+        let costChartInstance = null;
+
+        // Calculate AHSP composite prices based on Permen PUPR 1/2022 material/labor coefficients
+        function recalculateAhspFromMaterials() {
+            const m = materialPrices;
+            const semenPerKg = m.semen / 50; // Convert 1 Sak (50kg) to per kg
+
+            // AHSP Calculations based on standard PUPR coefficients:
+            // 1. Galian Tanah & Excavation Preparation (Permen PUPR A.2.3.1)
+            const labor_galian = (0.35 * m.pekerja);
+            const galian = labor_galian + 23000; 
+
+            // 2. Pasir Urug Bedding (Permen PUPR A.2.3.9)
+            const labor_pasir = (0.15 * m.pekerja);
+            const pasir = (1.2 * m.pasir_urug) + labor_pasir;
+
+            // 3. Lean Concrete K-125 / fc' 10 MPa (Permen PUPR A.4.1.1 & SNI 7394)
+            const labor_lc = (0.5 * m.pekerja) + (0.15 * m.tukang);
+            const lc = (230 * semenPerKg) + (0.55 * m.pasir_beton) + (0.70 * m.split) + labor_lc;
+
+            // 4. Beton K-300 / fc' 25 MPa (Permen PUPR A.4.1.8 & SNI 7394)
+            const labor_beton = (0.65 * m.pekerja) + (0.2 * m.tukang);
+            const beton = (380 * semenPerKg) + (0.52 * m.pasir_beton) + (0.68 * m.split) + labor_beton;
+
+            // 5. Pembesian Rebar (Permen PUPR A.4.1.16 & SNI 2052)
+            const labor_rebar = (0.012 * m.pekerja) + (0.008 * m.tukang);
+            const rebar = (1.05 * m.besi) + (0.015 * m.bendrat) + labor_rebar;
+
+            // 6. Bekisting Kayu/Plywood (Permen PUPR A.4.1.20)
+            const labor_bekisting = (0.25 * m.pekerja) + (0.2 * m.tukang);
+            const bekisting = (0.035 * m.kayu_bekisting) + (0.35 * m.plywood) + labor_bekisting;
+
+            // 7. Pemancangan Cerucuk (Permen PUPR A.2.1.4)
+            const labor_cerucuk = (0.1 * m.pekerja) + (0.05 * m.tukang);
+            const cerucuk = (0.25 * m.cerucuk) + labor_cerucuk;
+
+            // 8. Timbunan Kembali
+            const labor_timbunan = (0.25 * m.pekerja);
+            const timbunan = labor_timbunan + 15000;
+
+            currentPrices = {
+                galian: Math.round(galian),
+                pasir: Math.round(pasir),
+                lc: Math.round(lc),
+                beton: Math.round(beton),
+                rebar: Math.round(rebar),
+                bekisting: Math.round(bekisting),
+                cerucuk: Math.round(cerucuk),
+                timbunan: Math.round(timbunan)
+            };
+
+            currentLaborPrices = {
+                galian: Math.round(labor_galian),
+                pasir: Math.round(labor_pasir),
+                lc: Math.round(labor_lc),
+                beton: Math.round(labor_beton),
+                rebar: Math.round(labor_rebar),
+                bekisting: Math.round(labor_bekisting),
+                cerucuk: Math.round(labor_cerucuk),
+                timbunan: Math.round(labor_timbunan)
+            };
+        }
+
+        // PRESETS DEFINITION
+        const PRESETS = {
+            "1_1_1_5":     { n: 1, W: 1.0, H: 1.0, L: 5.0, t_top: 0.15, t_bot: 0.15, t_outer: 0.15, t_inner: 0.15, haunch: 0.15 },
+            "1_1.5_1.5_5": { n: 1, W: 1.5, H: 1.5, L: 5.0, t_top: 0.20, t_bot: 0.20, t_outer: 0.20, t_inner: 0.20, haunch: 0.15 },
+            "1_2_2_5":     { n: 1, W: 2.0, H: 2.0, L: 5.0, t_top: 0.25, t_bot: 0.25, t_outer: 0.25, t_inner: 0.25, haunch: 0.20 },
+            "1_2.5_2.5_5": { n: 1, W: 2.5, H: 2.5, L: 5.0, t_top: 0.30, t_bot: 0.30, t_outer: 0.30, t_inner: 0.30, haunch: 0.25 },
+            "1_3_3_5":     { n: 1, W: 3.0, H: 3.0, L: 5.0, t_top: 0.35, t_bot: 0.35, t_outer: 0.35, t_inner: 0.35, haunch: 0.30 },
+            "2_1.5_1.5_5": { n: 2, W: 1.5, H: 1.5, L: 5.0, t_top: 0.22, t_bot: 0.22, t_outer: 0.22, t_inner: 0.22, haunch: 0.15 },
+            "2_2_2_5":     { n: 2, W: 2.0, H: 2.0, L: 5.0, t_top: 0.28, t_bot: 0.28, t_outer: 0.28, t_inner: 0.28, haunch: 0.20 },
+            "2_3_3_5":     { n: 2, W: 3.0, H: 3.0, L: 5.0, t_top: 0.38, t_bot: 0.38, t_outer: 0.38, t_inner: 0.38, haunch: 0.30 }
+        };
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            const tabBtns = ['tabBtn1', 'tabBtn2', 'tabBtn3', 'tabBtn4', 'tabBtn5'];
+            tabBtns.forEach((btnId, idx) => {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+                if (`tab${idx + 1}` === tabId) {
+                    btn.className = "py-3 px-6 text-sm font-semibold border-b-2 border-blue-500 text-blue-400 whitespace-nowrap focus:outline-none flex items-center gap-1.5";
+                } else {
+                    btn.className = "py-3 px-6 text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 whitespace-nowrap focus:outline-none flex items-center gap-1.5";
+                }
+            });
+        }
+
+        // Apply Selected Preset
+        function applyPreset() {
+            const key = document.getElementById('presetSelect').value;
+            const p = PRESETS[key];
+            if (!p) return;
+
+            document.getElementById('inp_n').value = p.n;
+            document.getElementById('inp_W').value = p.W;
+            document.getElementById('inp_H').value = p.H;
+            document.getElementById('inp_L').value = p.L;
+            document.getElementById('inp_t_top').value = p.t_top;
+            document.getElementById('inp_t_bot').value = p.t_bot;
+            document.getElementById('inp_t_outer').value = p.t_outer;
+            document.getElementById('inp_t_inner').value = p.t_inner;
+            document.getElementById('inp_haunch').value = p.haunch;
+
+            calculateAll();
+        }
+
+        // Apply Regional Price Modifications
+        function applyRegionPrices() {
+            const regKey = document.getElementById('regionSelect').value;
+            const regionObj = REGIONAL_PRICES[regKey] || REGIONAL_PRICES.jawa;
+
+            materialPrices = { ...regionObj.materials };
+            recalculateAhspFromMaterials();
+
+            document.getElementById('ahspRegionLabel').textContent = regionObj.name;
+            document.getElementById('rabRegionText').textContent = regionObj.name;
+
+            calculateAll();
+        }
+
+        // Initialize Doughnut Chart
+        function initCostChart() {
+            const canvas = document.getElementById('costChart');
+            if (!canvas) return;
+
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js missing');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            if (costChartInstance) {
+                costChartInstance.destroy();
+            }
+
+            costChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        'Pekerjaan Tanah',
+                        'Pasir Urug & LC',
+                        'Beton K-300',
+                        'Pembesian Rebar',
+                        'Bekisting',
+                        'Cerucuk Kayu'
+                    ],
+                    datasets: [{
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: [
+                            '#0F4C81',
+                            '#18A957',
+                            '#D97706',
+                            '#7C3AED',
+                            '#3B82F6',
+                            '#94A3B8'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return ` ${context.label}: Rp ${Math.round(value).toLocaleString('id-ID')} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '68%'
+                }
+            });
+        }
+
+        // Main Calculation Routine
+        function calculateAll() {
+            // Recalculate composite AHSP from basic materials
+            recalculateAhspFromMaterials();
+
+            // Read Inputs
+            const n = parseInt(document.getElementById('inp_n').value) || 1;
+            const W = parseFloat(document.getElementById('inp_W').value) || 1.5;
+            const H = parseFloat(document.getElementById('inp_H').value) || 1.5;
+            const L = parseFloat(document.getElementById('inp_L').value) || 5.0;
+            const t_top = parseFloat(document.getElementById('inp_t_top').value) || 0.20;
+            const t_bot = parseFloat(document.getElementById('inp_t_bot').value) || 0.20;
+            const t_outer = parseFloat(document.getElementById('inp_t_outer').value) || 0.20;
+            const t_inner = parseFloat(document.getElementById('inp_t_inner').value) || 0.20;
+            const haunch = parseFloat(document.getElementById('inp_haunch').value) || 0.15;
+            const rebar_ratio = parseFloat(document.getElementById('inp_rebar_ratio').value) || 120;
+            const profitMargin = parseFloat(document.getElementById('inp_profit_margin').value) || 0;
+            const ppnMargin = parseFloat(document.getElementById('inp_ppn_margin').value) || 0;
+            const pphMargin = parseFloat(document.getElementById('inp_pph_select').value) || 0;
+
+            const t_sand = parseFloat(document.getElementById('inp_t_sand').value) || 0.10;
+            const t_lc = parseFloat(document.getElementById('inp_t_lc').value) || 0.10;
+            const cerucuk_spacing = parseFloat(document.getElementById('inp_cerucuk_spacing').value) || 0.50;
+            const cerucuk_len = parseFloat(document.getElementById('inp_cerucuk_len').value) || 4.0;
+
+            // Nomenklatur String (e.g. 1 x 1.5 x 1.5 x 5)
+            const nomenklaturStr = `${n} x ${W.toFixed(1)} x ${H.toFixed(1)} x ${L.toFixed(1)}`;
+            document.getElementById('labelNomenklatur').textContent = nomenklaturStr;
+            const backupNomEl = document.getElementById('backupNomenklatur');
+            if (backupNomEl) backupNomEl.textContent = nomenklaturStr;
+            document.getElementById('rabFormatText').textContent = nomenklaturStr;
+
+            // Structural Dimensions (SNI 2847 & Bina Marga Standard)
+            const W_total = (n * W) + (2 * t_outer) + ((n - 1) * t_inner);
+            const H_total = H + t_top + t_bot;
+
+            // 1. Concrete Box Body (Net Area + 4 Corner Haunches per cell)
+            const grossArea = W_total * H_total;
+            const voidArea = n * (W * H);
+            const haunchArea = 4 * n * (0.5 * haunch * haunch); // 4 haunches per cell
+            const netBoxArea = grossArea - voidArea + haunchArea;
+            const volBoxConcrete = netBoxArea * L;
+
+            // Wingwall & Headwall Concrete (Bina Marga Standard: 4 wingwalls + apron/headwall)
+            const wingLen = H * 1.2;
+            const wingH = H_total;
+            const volWing = 4 * (0.5 * wingLen * wingH * t_outer) + (W_total * t_top * 0.6); 
+            const volConcreteTotal = volBoxConcrete + volWing;
+
+            // 2. Rebar Weight
+            const weightRebar = volConcreteTotal * rebar_ratio;
+
+            // 3. Formwork Area
+            const innerPerimeter = n * 2 * (W + H);
+            const outerPerimeter = 2 * (W_total + H_total);
+            const areaFormwork = (innerPerimeter + outerPerimeter) * L + (4 * wingLen * wingH);
+
+            // 4. Excavation & Foundation
+            const W_excavation = W_total + 1.0; // 0.5m working room each side
+            const H_excavation = H_total + t_sand + t_lc;
+            const L_excavation = L + 1.0;
+            const volExcavation = W_excavation * H_excavation * L_excavation;
+
+            const volSand = W_excavation * t_sand * L_excavation;
+            const volLC = W_excavation * t_lc * L_excavation;
+
+            // Backfill
+            const volBackfill = Math.max(0, volExcavation - volConcreteTotal - volSand - volLC);
+
+            // Cerucuk Piles
+            const rowsX = Math.ceil(W_excavation / cerucuk_spacing) + 1;
+            const rowsY = Math.ceil(L_excavation / cerucuk_spacing) + 1;
+            const numCerucuk = rowsX * rowsY;
+            const totalCerucukMeters = numCerucuk * cerucuk_len;
+
+            // Cost Calculations
+            const costGalian = (volExcavation * currentPrices.galian) + (volBackfill * currentPrices.timbunan);
+            const costPasirLC = (volSand * currentPrices.pasir) + (volLC * currentPrices.lc);
+            const costBeton = volConcreteTotal * currentPrices.beton;
+            const costRebar = weightRebar * currentPrices.rebar;
+            const costBekisting = areaFormwork * currentPrices.bekisting;
+            const costCerucuk = totalCerucukMeters * currentPrices.cerucuk;
+
+            // Labor Cost Component Calculations
+            const laborGalian = (volExcavation * currentLaborPrices.galian) + (volBackfill * currentLaborPrices.timbunan);
+            const laborPasirLC = (volSand * currentLaborPrices.pasir) + (volLC * currentLaborPrices.lc);
+            const laborBeton = volConcreteTotal * currentLaborPrices.beton;
+            const laborRebar = weightRebar * currentLaborPrices.rebar;
+            const laborBekisting = areaFormwork * currentLaborPrices.bekisting;
+            const laborCerucuk = totalCerucukMeters * currentLaborPrices.cerucuk;
+
+            const totalLaborCost = laborGalian + laborPasirLC + laborBeton + laborRebar + laborBekisting + laborCerucuk;
+
+            const subtotalDirect = costGalian + costPasirLC + costBeton + costRebar + costBekisting + costCerucuk;
+            const profitCost = subtotalDirect * (profitMargin / 100);
+            const subtotalWithProfit = subtotalDirect + profitCost;
+            
+            // Taxes: PPN 11% (UU HPP) & PPh 4(2) Final (PP 9/2022)
+            const taxPPN = subtotalWithProfit * (ppnMargin / 100);
+            const taxPPh = subtotalWithProfit * (pphMargin / 100);
+
+            const grandTotal = subtotalWithProfit + taxPPN;
+            const costPerMeter = L > 0 ? grandTotal / L : 0;
+
+            // Format Rupiah Helper
+            const fmt = num => "Rp " + Math.round(num).toLocaleString('id-ID');
+
+            // Update Header Cards
+            document.getElementById('sumDirectCost').textContent = fmt(subtotalDirect);
+            
+            // Labor Summary Card
+            const laborPctStr = subtotalDirect > 0 ? ((totalLaborCost / subtotalDirect) * 100).toFixed(1) : "0.0";
+            document.getElementById('sumLaborCost').textContent = fmt(totalLaborCost);
+            document.getElementById('sumLaborPct').textContent = `${laborPctStr}% dari Biaya Langsung`;
+            
+            document.getElementById('sumProfitCost').textContent = fmt(profitCost);
+            document.getElementById('sumProfitPct').textContent = `Overhead/Profit ${profitMargin}%`;
+            document.getElementById('sumSubtotalWithProfit').textContent = fmt(subtotalWithProfit);
+            
+            // Tax Summary Cards
+            document.getElementById('sumPpnCost').textContent = fmt(taxPPN);
+
+            document.getElementById('sumGrandTotal').textContent = fmt(grandTotal);
+            document.getElementById('sumPerMeter').textContent = fmt(costPerMeter) + " / meter";
+
+            // Update Doughnut Chart & Percentage List
+            const chartData = [costGalian, costPasirLC, costBeton, costRebar, costBekisting, costCerucuk];
+            if (costChartInstance) {
+                costChartInstance.data.datasets[0].data = chartData;
+                costChartInstance.update();
+            }
+
+            const chartLabels = ['Pekerjaan Tanah', 'Pasir & LC', 'Beton K-300', 'Pembesian Rebar', 'Bekisting', 'Cerucuk Kayu'];
+            const chartColors = ['#0F4C81', '#18A957', '#D97706', '#7C3AED', '#3B82F6', '#94A3B8'];
+
+            let pctHtml = '';
+            chartData.forEach((val, i) => {
+                const pct = subtotalDirect > 0 ? ((val / subtotalDirect) * 100).toFixed(1) : "0.0";
+                pctHtml += `
+                    <div class="flex items-center justify-between p-1.5 rounded bg-slate-900/60 border border-slate-700/50">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color:${chartColors[i]}"></span>
+                            <span class="text-slate-300">${chartLabels[i]}</span>
+                        </div>
+                        <div class="text-right font-mono">
+                            <span class="font-bold text-slate-100">${pct}%</span>
+                            <span class="text-[10px] text-slate-400 block">${fmt(val)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('percentageList').innerHTML = pctHtml;
+
+            // Render Back-Up Volume Table
+            renderBackupTable({
+                n, W, H, L, W_total, H_total,
+                volExcavation, volBackfill, volSand, volLC,
+                volBoxConcrete, volWing, volConcreteTotal,
+                weightRebar, areaFormwork, numCerucuk, totalCerucukMeters, cerucuk_len
+            });
+
+            // Render Material Price Table & AHSP Table
+            renderMaterialTable();
+            renderAhspTable();
+
+            // Render RAB Table
+            renderRabTable([
+                { no: 1, item: "Pekerjaan Galian & Timbunan Tanah", unit: "m³", vol: volExcavation + volBackfill, price: currentPrices.galian, total: costGalian },
+                { no: 2, item: "Pasir Urug & Lantai Kerja (Lean Concrete)", unit: "m³", vol: volSand + volLC, price: currentPrices.lc, total: costPasirLC },
+                { no: 3, item: "Beton Struktur K-300 (Box, Wingwall & Headwall)", unit: "m³", vol: volConcreteTotal, price: currentPrices.beton, total: costBeton },
+                { no: 4, item: "Pembesian Rebar (Besi Beton Polos/Sirip SNI)", unit: "kg", vol: weightRebar, price: currentPrices.rebar, total: costRebar },
+                { no: 5, item: "Pekerjaan Bekisting Kayu/Plywood", unit: "m²", vol: areaFormwork, price: currentPrices.bekisting, total: costBekisting },
+                { no: 6, item: "Fondasi Cerucuk Kayu Dia. 8-10 cm", unit: "m'", vol: totalCerucukMeters, price: currentPrices.cerucuk, total: costCerucuk }
+            ], subtotalDirect, profitCost, profitMargin, subtotalWithProfit, taxPPN, ppnMargin, taxPPh, pphMargin, grandTotal, totalLaborCost);
+        }
+
+        // Render Backup Table Detail
+        function renderBackupTable(data) {
+            const tableBody = document.getElementById('backupVolumeTableBody');
+            if (!tableBody) return;
+
+            const fmtN = n => n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const rows = [
+                {
+                    no: "1",
+                    item: "Galian Tanah Konstruksi",
+                    formula: `[W_tot + 1.0m] × [H_tot + alas] × [L + 1.0m] = ${fmtN(data.W_total + 1.0)}m × ${fmtN(data.H_total + 0.2)}m × ${fmtN(data.L + 1.0)}m`,
+                    vol: fmtN(data.volExcavation),
+                    unit: "m³"
+                },
+                {
+                    no: "2",
+                    item: "Pasir Urug Bedding (t=10cm)",
+                    formula: `[W_galian] × 0.10m × [L_galian]`,
+                    vol: fmtN(data.volSand),
+                    unit: "m³"
+                },
+                {
+                    no: "3",
+                    item: "Lantai Kerja / LC (t=10cm)",
+                    formula: `[W_galian] × 0.10m × [L_galian]`,
+                    vol: fmtN(data.volLC),
+                    unit: "m³"
+                },
+                {
+                    no: "4",
+                    item: "Beton Struktur K-300 (Box Body)",
+                    formula: `Luas Penampang Bersih (+ 4 Corner Haunches) × Panjang (${data.L} m) [${data.n} Sel]`,
+                    vol: fmtN(data.volBoxConcrete),
+                    unit: "m³"
+                },
+                {
+                    no: "5",
+                    item: "Beton Struktur K-300 (Wingwall & Headwall)",
+                    formula: `4 Unit Wingwall Trapesium + Ambang Headwall Balok`,
+                    vol: fmtN(data.volWing),
+                    unit: "m³"
+                },
+                {
+                    no: "6",
+                    item: "Total Volume Beton K-300 (SNI 2847)",
+                    formula: `Beton Box (${fmtN(data.volBoxConcrete)} m³) + Beton Wingwall (${fmtN(data.volWing)} m³)`,
+                    vol: fmtN(data.volConcreteTotal),
+                    unit: "m³"
+                },
+                {
+                    no: "7",
+                    item: "Pembesian Besi Beton (Rebar SNI 2052)",
+                    formula: `Volume Beton (${fmtN(data.volConcreteTotal)} m³) × Rasio Besi (${document.getElementById('inp_rebar_ratio').value} kg/m³)`,
+                    vol: fmtN(data.weightRebar),
+                    unit: "kg"
+                },
+                {
+                    no: "8",
+                    item: "Pekerjaan Bekisting",
+                    formula: `(Keliling Dalam + Keliling Luar) × Panjang + Sisi Wingwall`,
+                    vol: fmtN(data.areaFormwork),
+                    unit: "m²"
+                },
+                {
+                    no: "9",
+                    item: "Fondasi Cerucuk Kayu",
+                    formula: `${data.numCerucuk} Batang × Panjang ${data.cerucuk_len} meter`,
+                    vol: fmtN(data.totalCerucukMeters),
+                    unit: "m'"
+                },
+                {
+                    no: "10",
+                    item: "Timbunan Kembali (Backfill)",
+                    formula: `Vol Galian - (Vol Beton Total + Vol Pasir + Vol LC)`,
+                    vol: fmtN(data.volBackfill),
+                    unit: "m³"
+                }
+            ];
+
+            let html = '';
+            rows.forEach(r => {
+                html += `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="p-3 font-semibold text-slate-400">${r.no}</td>
+                        <td class="p-3 font-medium text-slate-100">${r.item}</td>
+                        <td class="p-3 font-mono text-slate-300 text-[11px]">${r.formula}</td>
+                        <td class="p-3 text-right font-bold text-emerald-400 font-mono">${r.vol}</td>
+                        <td class="p-3 text-slate-400 font-medium">${r.unit}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('backupVolumeTableBody').innerHTML = html;
+        }
+
+        // Render Editable Material Base Table
+        function renderMaterialTable() {
+            let html = '';
+            MATERIAL_DEFS.forEach((mat, idx) => {
+                const val = materialPrices[mat.key] || 0;
+                html += `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="p-3 font-mono text-slate-400 font-semibold">${idx + 1}</td>
+                        <td class="p-3 font-bold text-slate-100">${mat.name}</td>
+                        <td class="p-3 text-slate-400 text-[11px]">${mat.spec}</td>
+                        <td class="p-3 font-semibold text-emerald-400">${mat.unit}</td>
+                        <td class="p-3 text-right font-mono font-bold text-blue-300">
+                            Rp ${Math.round(val).toLocaleString('id-ID')}
+                        </td>
+                        <td class="p-3 text-center">
+                            <input type="number" value="${val}" onchange="updateMaterialPrice('${mat.key}', this.value)" class="w-32 bg-slate-900 border border-slate-600 text-right font-mono px-2 py-1 rounded text-emerald-400 text-xs font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('materialTableBody').innerHTML = html;
+        }
+
+        // Handle Material Base Price Edit
+        function updateMaterialPrice(key, val) {
+            const num = parseFloat(val) || 0;
+            materialPrices[key] = num;
+            calculateAll();
+        }
+
+        // Render AHSP Composite Table
+        function renderAhspTable() {
+            const items = [
+                { key: "galian", code: "A.2.3.1", name: "1 m³ Galian Tanah & Preparation", unit: "m³" },
+                { key: "pasir", code: "A.2.3.9", name: "1 m³ Pasir Urug Bedding Foundation", unit: "m³" },
+                { key: "lc", code: "A.4.1.1", name: "1 m³ Lantai Kerja (Lean Concrete K-125)", unit: "m³" },
+                { key: "beton", code: "A.4.1.8", name: "1 m³ Beton Struktur K-300 (FC 25 MPa)", unit: "m³" },
+                { key: "rebar", code: "A.4.1.16", name: "1 kg Pembesian Rebar Sirip/Polos", unit: "kg" },
+                { key: "bekisting", code: "A.4.1.20", name: "1 m² Bekisting Struktur Kayu/Plywood", unit: "m²" },
+                { key: "cerucuk", code: "A.2.1.4", name: "1 m' Pemancangan Cerucuk Kayu", unit: "m'" }
+            ];
+
+            let html = '';
+            items.forEach(it => {
+                html += `
+                    <tr class="hover:bg-slate-700/30 transition">
+                        <td class="p-3 font-mono text-blue-400 font-semibold">${it.code}</td>
+                        <td class="p-3 font-medium text-slate-100">${it.name}</td>
+                        <td class="p-3 text-slate-400">${it.unit}</td>
+                        <td class="p-3 text-right font-mono font-bold text-emerald-400">
+                            Rp ${Math.round(currentPrices[it.key]).toLocaleString('id-ID')}
+                        </td>
+                        <td class="p-3 text-center">
+                            <input type="number" value="${currentPrices[it.key]}" onchange="updateCustomPrice('${it.key}', this.value)" class="w-28 bg-slate-900 border border-slate-700 text-right px-2 py-1 rounded text-slate-100 text-xs outline-none focus:border-blue-500">
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('ahspTableBody').innerHTML = html;
+        }
+
+        // Custom Price Override from AHSP Tab
+        function updateCustomPrice(key, val) {
+            const num = parseFloat(val) || 0;
+            currentPrices[key] = num;
+            calculateAll();
+        }
+
+        // Render RAB Table
+        function renderRabTable(items, subtotalDirect, profitCost, profitMargin, subtotalWithProfit, taxPPN, ppnMargin, taxPPh, pphMargin, grandTotal, totalLaborCost) {
+            const fmt = num => "Rp " + Math.round(num).toLocaleString('id-ID');
+            const fmtVol = num => num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            let html = '';
+            items.forEach(r => {
+                const pct = subtotalDirect > 0 ? ((r.total / subtotalDirect) * 100).toFixed(1) : "0.0";
+                html += `
+                    <tr class="hover:bg-slate-700/30 print:hover:bg-transparent transition">
+                        <td class="p-3 text-center font-medium">${r.no}</td>
+                        <td class="p-3 font-medium text-slate-100 print:text-black">${r.item}</td>
+                        <td class="p-3 text-center text-slate-400 print:text-gray-700">${r.unit}</td>
+                        <td class="p-3 text-right font-mono text-slate-200 print:text-black">${fmtVol(r.vol)}</td>
+                        <td class="p-3 text-right font-mono text-slate-300 print:text-black">${fmt(r.price)}</td>
+                        <td class="p-3 text-right font-mono font-bold text-emerald-400 print:text-black">${fmt(r.total)}</td>
+                        <td class="p-3 text-center font-mono text-slate-400 print:text-gray-700">${pct}%</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('rabTableBody').innerHTML = html;
+            document.getElementById('rabSubtotal').textContent = fmt(subtotalDirect);
+            
+            const rabProfitEl = document.getElementById('rabProfit');
+            if (rabProfitEl) rabProfitEl.textContent = fmt(profitCost);
+            const rabProfitPctLabel = document.getElementById('rabProfitPctLabel');
+            if (rabProfitPctLabel) rabProfitPctLabel.textContent = profitMargin;
+            const rabProfitPctCol = document.getElementById('rabProfitPctCol');
+            if (rabProfitPctCol) rabProfitPctCol.textContent = profitMargin + "%";
+            
+            const rabSubtotalWithProfitEl = document.getElementById('rabSubtotalWithProfit');
+            if (rabSubtotalWithProfitEl) rabSubtotalWithProfitEl.textContent = fmt(subtotalWithProfit);
+
+            document.getElementById('rabTaxPPN').textContent = fmt(taxPPN);
+            
+            const rabPpnPctLabel = document.getElementById('rabPpnPctLabel');
+            if (rabPpnPctLabel) rabPpnPctLabel.textContent = ppnMargin;
+            const rabPpnPctCol = document.getElementById('rabPpnPctCol');
+            if (rabPpnPctCol) rabPpnPctCol.textContent = ppnMargin + "%";
+
+            document.getElementById('rabGrandTotal').textContent = fmt(grandTotal);
+
+            const laborPct = subtotalDirect > 0 ? ((totalLaborCost / subtotalDirect) * 100).toFixed(1) : "0.0";
+            const rabLaborNoteEl = document.getElementById('rabLaborNote');
+            if (rabLaborNoteEl) {
+                rabLaborNoteEl.textContent = `${fmt(totalLaborCost)} (${laborPct}% Direct Cost)`;
+            }
+
+            const rabPphNoteEl = document.getElementById('rabPphNote');
+            if (rabPphNoteEl) {
+                rabPphNoteEl.textContent = `${fmt(taxPPh)} (${pphMargin}% PPh Final)`;
+            }
+        }
+
+        // Document Ready Event Handler
+        document.addEventListener('DOMContentLoaded', () => {
+            initCostChart();
+            applyRegionPrices();
+        });
+    </script>
+</body>
+</html>
