@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titi Panen Estimator - Enterprise Civil Engineering Suite</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            800: '#074e68',
+                            900: '#0c4a60',
+                        },
+                        palm: {
+                            50: '#f0fdf4',
+                            500: '#22c55e',
+                            700: '#15803d',
+                            800: '#166534',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS for Excel Workbook export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- HTML2PDF for direct PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- React & Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        
+        @media print {
+            body { background: white !important; color: black !important; font-size: 11pt; }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .page-break { page-break-before: always; }
+            .print-shadow-none { box-shadow: none !important; border: 1px solid #ddd !important; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 custom-scrollbar antialiased">
+    <div id="root" class="h-full"></div>
+
+    <script type="text/babel">
+
+        // --- REGIONAL LOCATION & MARKET PRICE DATABASE ---
+        const REGIONAL_DATABASE = {
+            "Sumatera": {
+                "Riau": {
+                    "Rokan Hulu": { cement: 78000, sand: 180000, gravel: 240000, rebar6: 48000, rebar8: 72000, rebar10: 108000, rebar12: 155000, bindingWire: 25000, formworkWood: 1850000, labourWorker: 120000, labourArtisan: 160000, labourForeman: 190000 },
+                    "Kampar": { cement: 76000, sand: 175000, gravel: 235000, rebar6: 47000, rebar8: 71000, rebar10: 106000, rebar12: 152000, bindingWire: 24000, formworkWood: 1800000, labourWorker: 115000, labourArtisan: 155000, labourForeman: 185000 },
+                    "Siak": { cement: 79000, sand: 185000, gravel: 245000, rebar6: 49000, rebar8: 73000, rebar10: 109000, rebar12: 157000, bindingWire: 25500, formworkWood: 1880000, labourWorker: 122000, labourArtisan: 162000, labourForeman: 192000 }
+                },
+                "Sumatera Utara": {
+                    "Asahan": { cement: 75000, sand: 165000, gravel: 220000, rebar6: 46000, rebar8: 69000, rebar10: 104000, rebar12: 150000, bindingWire: 23000, formworkWood: 1750000, labourWorker: 110000, labourArtisan: 150000, labourForeman: 180000 },
+                    "Labuhanbatu": { cement: 77000, sand: 170000, gravel: 230000, rebar6: 47500, rebar8: 70500, rebar10: 106500, rebar12: 153000, bindingWire: 24000, formworkWood: 1800000, labourWorker: 115000, labourArtisan: 155000, labourForeman: 185000 }
+                },
+                "Sumatera Selatan": {
+                    "Musi Banyuasin": { cement: 81000, sand: 190000, gravel: 250000, rebar6: 50000, rebar8: 74000, rebar10: 110000, rebar12: 158000, bindingWire: 26000, formworkWood: 1900000, labourWorker: 125000, labourArtisan: 165000, labourForeman: 195000 }
+                }
+            },
+            "Kalimantan": {
+                "Kalimantan Barat": {
+                    "Ketapang": { cement: 88000, sand: 210000, gravel: 280000, rebar6: 54000, rebar8: 79000, rebar10: 118000, rebar12: 168000, bindingWire: 28000, formworkWood: 2100000, labourWorker: 135000, labourArtisan: 175000, labourForeman: 210000 },
+                    "Sanggau": { cement: 86000, sand: 205000, gravel: 275000, rebar6: 53000, rebar8: 78000, rebar10: 116000, rebar12: 165000, bindingWire: 27500, formworkWood: 2050000, labourWorker: 130000, labourArtisan: 170000, labourForeman: 205000 }
+                },
+                "Kalimantan Tengah": {
+                    "Kotawaringin Barat": { cement: 92000, sand: 220000, gravel: 290000, rebar6: 56000, rebar8: 82000, rebar10: 122000, rebar12: 172000, bindingWire: 29000, formworkWood: 2200000, labourWorker: 140000, labourArtisan: 180000, labourForeman: 215000 },
+                    "Kotawaringin Timur": { cement: 90000, sand: 215000, gravel: 285000, rebar6: 55000, rebar8: 80000, rebar10: 120000, rebar12: 170000, bindingWire: 28500, formworkWood: 2150000, labourWorker: 138000, labourArtisan: 178000, labourForeman: 212000 }
+                },
+                "Kalimantan Timur": {
+                    "Kutai Timur": { cement: 95000, sand: 230000, gravel: 300000, rebar6: 58000, rebar8: 85000, rebar10: 125000, rebar12: 175000, bindingWire: 30000, formworkWood: 2250000, labourWorker: 145000, labourArtisan: 185000, labourForeman: 220000 },
+                    "Paser": { cement: 91000, sand: 220000, gravel: 290000, rebar6: 56000, rebar8: 82000, rebar10: 121000, rebar12: 171000, bindingWire: 29000, formworkWood: 2180000, labourWorker: 140000, labourArtisan: 180000, labourForeman: 215000 }
+                }
+            },
+            "Sulawesi": {
+                "Sulawesi Tengah": {
+                    "Morowali": { cement: 96000, sand: 235000, gravel: 310000, rebar6: 59000, rebar8: 86000, rebar10: 128000, rebar12: 178000, bindingWire: 31000, formworkWood: 2300000, labourWorker: 150000, labourArtisan: 190000, labourForeman: 225000 }
+                },
+                "Sulawesi Barat": {
+                    "Mamuju": { cement: 89000, sand: 210000, gravel: 280000, rebar6: 54000, rebar8: 79000, rebar10: 118000, rebar12: 167000, bindingWire: 28000, formworkWood: 2100000, labourWorker: 135000, labourArtisan: 175000, labourForeman: 210000 }
+                },
+                "Sulawesi Selatan": {
+                    "Luwu Utara": { cement: 87000, sand: 200000, gravel: 270000, rebar6: 52000, rebar8: 77000, rebar10: 115000, rebar12: 163000, bindingWire: 27000, formworkWood: 2050000, labourWorker: 130000, labourArtisan: 170000, labourForeman: 205000 }
+                }
+            }
+        };
+
+        // --- DEFAULT PROJECT DATA ---
+        const DEFAULT_PROJECT = {
+            company: "PT Ekadura Indonesia",
+            estate: "PT Ekadura Indonesia",
+            afdeling: "OE",
+            block: "14",
+            seniorEstimator: "Ir. Muhamad Fatoni, S.T., M.M.",
+            date: new Date().toISOString().split('T')[0],
+            island: "Sumatera",
+            province: "Riau",
+            regency: "Rokan Hulu"
+        };
+
+        // --- SPECIFICATIONS DATA FROM TP-01, TP-02, TP-03 ---
+        const TITI_PANEN_TYPES = {
+            TP01: {
+                code: "TP-01",
+                name: "Type 1 - Rectangular Slab",
+                spans: [3, 4, 5],
+                defaultSpan: 4,
+                sectionType: "RECTANGULAR",
+                width: 300, // mm
+                height: 135, // mm
+                concreteGrade: "K-300 (Beton Campuran 2:3:5)",
+                mainRebar: { dia: 10, count: 4, label: "4 - Ø10mm" },
+                stirrupRebar: { dia: 6, spacing: 200, label: "Ø6mm-200" },
+                pdfRef: "001/IFM/SPN/TPA/04/2022",
+                description: "Struktur pelat datar persegi panjang untuk bentang pendek 3m - 5m."
+            },
+            TP02: {
+                code: "TP-02",
+                name: "Type 2 - T-Beam Flanged Section",
+                spans: [6, 7, 8, 9],
+                defaultSpan: 7,
+                sectionType: "T_BEAM",
+                width: 300, // mm (Total Flange Width)
+                flangeThickness: 100, // mm
+                webWidth: 160, // mm
+                webHeight: 150, // mm (Depth below flange)
+                totalHeight: 250, // mm
+                flangeOverhang: 70, // mm each side
+                concreteGrade: "K-300 (Beton Campuran 2:3:5)",
+                mainRebar: { dia: 10, count: 4, label: "4 - Ø10mm" },
+                stirrupRebar: { dia: 6, spacing: 200, label: "Ø6mm-200" },
+                pdfRef: "002/IFM/SPN/TPA/04/2022",
+                description: "Struktur balok-T efisien untuk bentang menengah 6m - 9m."
+            },
+            TP03: {
+                code: "TP-03",
+                name: "Type 3 - Heavy T-Beam Section",
+                spans: [10, 11, 12],
+                defaultSpan: 10,
+                sectionType: "T_BEAM",
+                width: 400, // mm (Total Flange Width)
+                flangeThickness: 100, // mm
+                webWidth: 160, // mm
+                webHeight: 200, // mm (Depth below flange)
+                totalHeight: 300, // mm
+                flangeOverhang: 120, // mm each side
+                concreteGrade: "K-300 (Beton Campuran 2:3:5)",
+                mainRebar: { dia: 12, count: 6, label: "6 - Ø12mm" },
+                stirrupRebar: { dia: 8, spacing: 150, label: "Ø8mm-150" },
+                pdfRef: "003/IFM/SPN/TPA/04/2022",
+                description: "Struktur balok-T bertulang diperkuat untuk bentang panjang 10m - 12m."
+            }
+        };
+
+
+        // 1. GEOMETRY ENGINE
+        const GeometryEngine = {
+            calculateArea(typeKey) {
+                const spec = TITI_PANEN_TYPES[typeKey];
+                if (spec.sectionType === "RECTANGULAR") {
+                    return (spec.width / 1000) * (spec.height / 1000); // m2
+                } else if (spec.sectionType === "T_BEAM") {
+                    const flangeArea = (spec.width / 1000) * (spec.flangeThickness / 1000);
+                    const webArea = (spec.webWidth / 1000) * (spec.webHeight / 1000);
+                    return flangeArea + webArea; // m2
+                }
+                return 0;
+            },
+            calculateConcreteVolume(typeKey, spanLength, quantity = 1) {
+                const area = this.calculateArea(typeKey);
+                return area * spanLength * quantity; // m3
+            },
+            calculateFormworkArea(typeKey, spanLength, quantity = 1) {
+                const spec = TITI_PANEN_TYPES[typeKey];
+                let perimeter = 0;
+                if (spec.sectionType === "RECTANGULAR") {
+                    perimeter = (spec.width / 1000) + 2 * (spec.height / 1000);
+                } else {
+                    const flangeSoffit = 2 * (spec.flangeOverhang / 1000);
+                    const webSoffit = spec.webWidth / 1000;
+                    const webSides = 2 * (spec.webHeight / 1000);
+                    const flangeSides = 2 * (spec.flangeThickness / 1000);
+                    perimeter = flangeSoffit + webSoffit + webSides + flangeSides;
+                }
+                return perimeter * spanLength * quantity; // m2
+            }
+        };
+
+        // 2. REBAR ENGINE
+        const RebarEngine = {
+            getUnitWeight(diameterMm) {
+                return 0.006165 * Math.pow(diameterMm, 2);
+            },
+            calculateRebarDetails(typeKey, spanLength, quantity = 1) {
+                const spec = TITI_PANEN_TYPES[typeKey];
+                
+                const mainDia = spec.mainRebar.dia;
+                const mainCount = spec.mainRebar.count;
+                const mainBarWeightPerM = this.getUnitWeight(mainDia);
+                const hookLength = (2 * 15 * mainDia) / 1000; 
+                const mainLengthPerBar = spanLength + hookLength;
+                const totalMainLength = mainLengthPerBar * mainCount * quantity;
+                const mainWeight = totalMainLength * mainBarWeightPerM;
+
+                const stirrupDia = spec.stirrupRebar.dia;
+                const spacingM = spec.stirrupRebar.spacing / 1000;
+                const stirrupCountPerUnit = Math.floor(spanLength / spacingM) + 1;
+                const totalStirrups = stirrupCountPerUnit * quantity;
+
+                let stirrupCutLength = 0;
+                if (spec.sectionType === "RECTANGULAR") {
+                    stirrupCutLength = (spec.width - 40 + 100) / 1000; 
+                } else {
+                    const webW = spec.webWidth - 40;
+                    const totalH = spec.totalHeight - 40;
+                    const flangeWings = 2 * (spec.flangeOverhang - 20);
+                    stirrupCutLength = (2 * webW + 2 * totalH + flangeWings + 100) / 1000;
+                }
+
+                const stirrupWeightPerM = this.getUnitWeight(stirrupDia);
+                const totalStirrupLength = stirrupCutLength * totalStirrups;
+                const stirrupWeight = totalStirrupLength * stirrupWeightPerM;
+
+                const subtotalWeight = mainWeight + stirrupWeight;
+                const totalWeightWithWaste = subtotalWeight * 1.05;
+                const bindingWireKg = totalWeightWithWaste * 0.015;
+
+                return {
+                    mainDia,
+                    mainCount,
+                    totalMainLength,
+                    mainWeight,
+                    stirrupDia,
+                    totalStirrups,
+                    totalStirrupLength,
+                    stirrupWeight,
+                    subtotalWeight,
+                    totalWeightWithWaste,
+                    bindingWireKg
+                };
+            }
+        };
+
+        // 3. CONCRETE ENGINE
+        const ConcreteEngine = {
+            calculateMixComponents(concreteVolumeM3) {
+                return {
+                    cementKg: concreteVolumeM3 * 380,
+                    cementBags: Math.ceil((concreteVolumeM3 * 380) / 50),
+                    sandM3: concreteVolumeM3 * 0.52,
+                    gravelM3: concreteVolumeM3 * 0.75,
+                    waterLiters: concreteVolumeM3 * 215
+                };
+            }
+        };
+
+        // 4. AHSP & PRICE ENGINE
+        const AHSPEngine = {
+            calculateRAB(typeKey, spanLength, quantity, prices, settings) {
+                const concreteVol = GeometryEngine.calculateConcreteVolume(typeKey, spanLength, quantity);
+                const formworkArea = GeometryEngine.calculateFormworkArea(typeKey, spanLength, quantity);
+                const rebarDetails = RebarEngine.calculateRebarDetails(typeKey, spanLength, quantity);
+                const mix = ConcreteEngine.calculateMixComponents(concreteVol);
+
+                const costCement = mix.cementBags * prices.cement;
+                const costSand = mix.sandM3 * prices.sand;
+                const costGravel = mix.gravelM3 * prices.gravel;
+                
+                const mainBarPricePerKg = (prices[`rebar${rebarDetails.mainDia}`] || 108000) / (RebarEngine.getUnitWeight(rebarDetails.mainDia) * 12);
+                const costRebarMain = rebarDetails.mainWeight * mainBarPricePerKg;
+
+                const stirrupBarPricePerKg = (prices[`rebar${rebarDetails.stirrupDia}`] || 48000) / (RebarEngine.getUnitWeight(rebarDetails.stirrupDia) * 12);
+                const costRebarStirrup = rebarDetails.stirrupWeight * stirrupBarPricePerKg;
+
+                const costWire = rebarDetails.bindingWireKg * prices.bindingWire;
+                const woodVolM3 = formworkArea * 0.035;
+                const costFormworkWood = woodVolM3 * prices.formworkWood;
+
+                const totalMaterialCost = costCement + costSand + costGravel + costRebarMain + costRebarStirrup + costWire + costFormworkWood;
+
+                const totalWorkerOH = (1.6 * concreteVol) + (0.07 * rebarDetails.totalWeightWithWaste) + (0.52 * formworkArea);
+                const totalArtisanOH = (0.25 * concreteVol) + (0.07 * rebarDetails.totalWeightWithWaste) + (0.26 * formworkArea);
+                const totalForemanOH = (0.08 * concreteVol) + (0.004 * rebarDetails.totalWeightWithWaste) + (0.026 * formworkArea);
+
+                const costWorker = totalWorkerOH * prices.labourWorker;
+                const costArtisan = totalArtisanOH * prices.labourArtisan;
+                const costForeman = totalForemanOH * prices.labourForeman;
+
+                const totalLabourCost = costWorker + costArtisan + costForeman;
+                const subtotalDirect = totalMaterialCost + totalLabourCost;
+
+                const overheadVal = subtotalDirect * (settings.overheadPct / 100);
+                const profitVal = subtotalDirect * (settings.profitPct / 100);
+                const subtotalBeforeTax = subtotalDirect + overheadVal + profitVal;
+
+                const pphVal = subtotalBeforeTax * (settings.pphPct / 100);
+                const ppnVal = subtotalBeforeTax * (settings.ppnPct / 100);
+
+                const grandTotal = subtotalBeforeTax + pphVal + ppnVal;
+                const costPerUnit = grandTotal / quantity;
+                const costPerMeter = grandTotal / (spanLength * quantity);
+
+                const estimatedDays = Math.ceil((totalWorkerOH + totalArtisanOH) / 5);
+
+                return {
+                    concreteVol,
+                    formworkArea,
+                    rebarDetails,
+                    mix,
+                    labour: { totalWorkerOH, totalArtisanOH, totalForemanOH, costWorker, costArtisan, costForeman },
+                    costs: {
+                        cement: costCement,
+                        sand: costSand,
+                        gravel: costGravel,
+                        rebarMain: costRebarMain,
+                        rebarStirrup: costRebarStirrup,
+                        wire: costWire,
+                        formworkWood: costFormworkWood,
+                        totalMaterialCost,
+                        totalLabourCost,
+                        subtotalDirect,
+                        overheadVal,
+                        profitVal,
+                        subtotalBeforeTax,
+                        pphVal,
+                        ppnVal,
+                        grandTotal,
+                        costPerUnit,
+                        costPerMeter
+                    },
+                    estimatedDays
+                };
+            }
+        };
+
+
+        // --- EXPORT WORKBOOK EXCEL ENGINE ---
+        const ExportExcelEngine = {
+            exportWorkbook(project, typeKey, spanLength, quantity, rab, prices, rabSettings) {
+                if (!window.XLSX) {
+                    alert("Library XLSX belum dimuat. Silakan periksa koneksi internet.");
+                    return;
+                }
+                const spec = TITI_PANEN_TYPES[typeKey];
+                const wb = XLSX.utils.book_new();
+
+                // 1. Sheet Rekapitulasi RAB
+                const sheet1Data = [
+                    ["REKAPITULASI RENCANA ANGGARAN BIAYA (RAB) TITI PANEN BETON BERTULANG"],
+                    ["Astra Agro Lestari - Civil Engineering Standard"],
+                    [],
+                    ["Informasi Proyek:"],
+                    ["Perusahaan / PT", project.company, "Pulau", project.island],
+                    ["Kebun / Rayon", project.estate, "Provinsi", project.province],
+                    ["Afdeling / Blok", `${project.afdeling} / ${project.block}`, "Kabupaten", project.regency],
+                    ["Senior Estimator", project.seniorEstimator, "Tanggal", project.date],
+                    [],
+                    ["Spesifikasi Titi Panen:"],
+                    ["Kode Titi Panen", spec.code, "Panjang Bentang", `${spanLength} Meter`],
+                    ["Tipe Struktur", spec.name, "Jumlah Unit", `${quantity} Unit`],
+                    ["Mutu Beton", spec.concreteGrade, "Ref. Gambar", spec.pdfRef],
+                    [],
+                    ["No", "Uraian Biaya Pekerjaan", "Jumlah (Rp)", "Persentase (%)"],
+                    [1, "Direct Cost - Pengadaan Material", rab.costs.totalMaterialCost, ((rab.costs.totalMaterialCost / rab.costs.subtotalDirect) * 100).toFixed(2) + "%"],
+                    [2, "Direct Cost - Upah Tenaga Kerja AHSP", rab.costs.totalLabourCost, ((rab.costs.totalLabourCost / rab.costs.subtotalDirect) * 100).toFixed(2) + "%"],
+                    ["", "SUBTOTAL DIRECT COST", rab.costs.subtotalDirect, "100.00%"],
+                    [3, `Overhead (${rabSettings.overheadPct}%)`, rab.costs.overheadVal, ""],
+                    [4, `Keuntungan Kontraktor (${rabSettings.profitPct}%)`, rab.costs.profitVal, ""],
+                    ["", "SUBTOTAL SEBELUM PAJAK", rab.costs.subtotalBeforeTax, ""],
+                    [5, `PPh 21 (${rabSettings.pphPct}%)`, rab.costs.pphVal, ""],
+                    [6, `PPN (${rabSettings.ppnPct}%)`, rab.costs.ppnVal, ""],
+                    ["", "GRAND TOTAL RAB ESTIMASI", rab.costs.grandTotal, ""],
+                    [],
+                    ["Analisa Biaya Satuan:"],
+                    ["Biaya Per Unit Titi Panen", rab.costs.costPerUnit],
+                    ["Biaya Per Meter Panjang", rab.costs.costPerMeter],
+                    ["Estimasi Durasi Pengerjaan", `${rab.estimatedDays} Hari Kerja`]
+                ];
+                const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+                ws1['!cols'] = [{ wch: 6 }, { wch: 42 }, { wch: 22 }, { wch: 18 }];
+                XLSX.utils.book_append_sheet(wb, ws1, "Rekapitulasi RAB");
+
+                // 2. Sheet Bill of Quantities (BoQ) & Material Take-Off
+                const sheet2Data = [
+                    ["BILL OF QUANTITIES (BoQ) & RINCIAN MATERIAL"],
+                    ["Titi Panen: " + spec.code + " (" + spanLength + "m x " + quantity + " Unit)"],
+                    [],
+                    ["Kategori", "Item / Material", "Volume Kebutuhan", "Satuan", "Harga Satuan (Rp)", "Total Biaya (Rp)"],
+                    ["Material", "Semen Portland PCC (50kg)", rab.mix.cementBags, "Sak", prices.cement, rab.costs.cement],
+                    ["Material", "Pasir Beton Cor", rab.mix.sandM3.toFixed(2), "m³", prices.sand, rab.costs.sand],
+                    ["Material", "Kerikil / Batu Pecah 2/3", rab.mix.gravelM3.toFixed(2), "m³", prices.gravel, rab.costs.gravel],
+                    ["Material", `Besi Beton Utama Ø${rab.rebarDetails.mainDia}mm`, rab.rebarDetails.mainWeight.toFixed(2), "Kg", ((prices[`rebar${rab.rebarDetails.mainDia}`] || 108000) / (RebarEngine.getUnitWeight(rab.rebarDetails.mainDia) * 12)).toFixed(0), rab.costs.rebarMain],
+                    ["Material", `Besi Sengkang Ø${rab.rebarDetails.stirrupDia}mm`, rab.rebarDetails.stirrupWeight.toFixed(2), "Kg", ((prices[`rebar${rab.rebarDetails.stirrupDia}`] || 48000) / (RebarEngine.getUnitWeight(rab.rebarDetails.stirrupDia) * 12)).toFixed(0), rab.costs.rebarStirrup],
+                    ["Material", "Kawat Bendrat Tali Besi", rab.rebarDetails.bindingWireKg.toFixed(2), "Kg", prices.bindingWire, rab.costs.wire],
+                    ["Material", "Kayu Bekisting", (rab.formworkArea * 0.035).toFixed(3), "m³", prices.formworkWood, rab.costs.formworkWood],
+                    ["Upah", "Pekerja Lapangan", rab.labour.totalWorkerOH.toFixed(2), "OH", prices.labourWorker, rab.labour.costWorker],
+                    ["Upah", "Tukang Batu/Besi", rab.labour.totalArtisanOH.toFixed(2), "OH", prices.labourArtisan, rab.labour.costArtisan],
+                    ["Upah", "Mandor Lapangan", rab.labour.totalForemanOH.toFixed(2), "OH", prices.labourForeman, rab.labour.costForeman],
+                    [],
+                    ["TOTAL DIRECT COST", "", "", "", "", rab.costs.subtotalDirect]
+                ];
+                const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+                ws2['!cols'] = [{ wch: 12 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 20 }, { wch: 22 }];
+                XLSX.utils.book_append_sheet(wb, ws2, "Take-off & Material");
+
+                // Download File
+                const fileName = `RAB_Titi_Panen_${project.regency.replace(/\s+/g, '_')}_${spec.code}_${new Date().toISOString().slice(0,10)}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+            }
+        };
+
+        // --- EXPLAIN CALCULATION MODAL COMPONENT ---
+        const ExplainModal = ({ isOpen, onClose, topicData }) => {
+            if (!isOpen || !topicData) return null;
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in no-print">
+                    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <div className="px-6 py-4 bg-brand-600 text-white flex justify-between items-center">
+                            <div className="flex items-center space-x-2">
+                                <i data-lucide="calculator" className="w-5 h-5"></i>
+                                <h3 className="font-bold text-lg">Explain Calculation - Trace Engine</h3>
+                            </div>
+                            <button onClick={onClose} className="text-white/80 hover:text-white text-xl font-bold">&times;</button>
+                        </div>
+                        <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                            <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <p className="text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold">Parameter Name</p>
+                                <p className="text-lg font-bold text-brand-600 dark:text-brand-400">{topicData.title}</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">INPUT PARAMETERS</p>
+                                    <ul className="text-xs space-y-1 font-mono text-slate-700 dark:text-slate-300">
+                                        {topicData.inputs && Object.entries(topicData.inputs).map(([k, v]) => (
+                                            <li key={k}><span className="font-semibold">{k}:</span> {v}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">FORMULA / RUMUS</p>
+                                    <p className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">{topicData.formula}</p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                                <p className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">STEP-BY-STEP CALCULATION TRACE</p>
+                                <pre className="text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+                                    {topicData.trace}
+                                </pre>
+                            </div>
+
+                            <div className="p-3 bg-brand-50 dark:bg-brand-950/40 rounded-lg text-right">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold mr-2">HASIL AKHIR:</span>
+                                <span className="text-xl font-extrabold text-brand-700 dark:text-brand-300">{topicData.result}</span>
+                            </div>
+                        </div>
+                        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-700/30 text-right">
+                            <button onClick={onClose} className="px-4 py-2 bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 dark:hover:bg-slate-500 rounded-lg text-sm font-semibold transition">
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- DRAWING CANVAS PREVIEW COMPONENT ---
+        const StructuralDrawingPreview = ({ typeKey, spanLength }) => {
+            const spec = TITI_PANEN_TYPES[typeKey];
+
+            return (
+                <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3">
+                    <div className="flex justify-between items-center border-b pb-2 border-slate-100 dark:border-slate-700">
+                        <div>
+                            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Structural Cross-Section Drawing</h4>
+                            <p className="text-xs text-slate-500">Ref PDF: {spec.pdfRef}</p>
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/60 dark:text-brand-300">
+                            {spec.code} ({spanLength} m Span)
+                        </span>
+                    </div>
+
+                    <div className="w-full h-56 bg-slate-900 rounded-lg p-2 flex items-center justify-center relative overflow-hidden">
+                        <svg viewBox="0 0 400 240" className="w-full h-full">
+                            <defs>
+                                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.5"/>
+                                </pattern>
+                            </defs>
+                            <rect width="400" height="240" fill="url(#grid)" />
+
+                            {spec.sectionType === "RECTANGULAR" ? (
+                                <g transform="translate(100, 50)">
+                                    <rect x="0" y="0" width="200" height="90" fill="#334155" stroke="#38bdf8" strokeWidth="2" />
+                                    <line x1="15" y1="70" x2="185" y2="70" stroke="#f59e0b" strokeWidth="3" strokeDasharray="4 2" />
+                                    <circle cx="25" cy="70" r="5" fill="#ef4444" />
+                                    <circle cx="75" cy="70" r="5" fill="#ef4444" />
+                                    <circle cx="125" cy="70" r="5" fill="#ef4444" />
+                                    <circle cx="175" cy="70" r="5" fill="#ef4444" />
+                                    <rect x="15" y="20" width="170" height="55" fill="none" stroke="#22c55e" strokeWidth="1.5" rx="3"/>
+                                    <text x="100" y="-10" fill="#94a3b8" fontSize="12" textAnchor="middle">Width B = 300 mm</text>
+                                    <line x1="0" y1="-5" x2="200" y2="-5" stroke="#64748b" strokeWidth="1" />
+                                    <text x="215" y="50" fill="#94a3b8" fontSize="12">H = 135 mm</text>
+                                </g>
+                            ) : (
+                                <g transform="translate(100, 30)">
+                                    <path d={typeKey === "TP02" 
+                                        ? "M 10,0 L 190,0 L 190,50 L 145,50 L 145,150 L 55,150 L 55,50 L 10,50 Z" 
+                                        : "M 0,0 L 200,0 L 200,50 L 140,50 L 140,160 L 60,160 L 60,50 L 0,50 Z"} 
+                                        fill="#334155" stroke="#38bdf8" strokeWidth="2" />
+                                    
+                                    {typeKey === "TP02" ? (
+                                        <>
+                                            <circle cx="25" cy="25" r="4" fill="#ef4444" />
+                                            <circle cx="175" cy="25" r="4" fill="#ef4444" />
+                                            <circle cx="68" cy="138" r="4" fill="#ef4444" />
+                                            <circle cx="132" cy="138" r="4" fill="#ef4444" />
+                                            <rect x="62" y="15" width="76" height="128" fill="none" stroke="#22c55e" strokeWidth="1.5" rx="3"/>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <circle cx="20" cy="22" r="5" fill="#ef4444" />
+                                            <circle cx="180" cy="22" r="5" fill="#ef4444" />
+                                            <circle cx="72" cy="80" r="5" fill="#ef4444" />
+                                            <circle cx="128" cy="80" r="5" fill="#ef4444" />
+                                            <circle cx="72" cy="148" r="5" fill="#ef4444" />
+                                            <circle cx="128" cy="148" r="5" fill="#ef4444" />
+                                            <rect x="66" y="12" width="68" height="142" fill="none" stroke="#22c55e" strokeWidth="1.5" rx="3"/>
+                                        </>
+                                    )}
+
+                                    <text x="100" y="-10" fill="#94a3b8" fontSize="11" textAnchor="middle">
+                                        {typeKey === "TP02" ? "Flange Bf = 300 mm" : "Flange Bf = 400 mm"}
+                                    </text>
+                                    <text x="-10" y="30" fill="#38bdf8" fontSize="10" textAnchor="end">hf=100mm</text>
+                                </g>
+                            )}
+                        </svg>
+                        <div className="absolute bottom-2 left-2 text-[10px] text-slate-400 font-mono">
+                            Concrete: {spec.concreteGrade} | Rebar: {spec.mainRebar.label}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded">
+                            <span className="text-slate-500 dark:text-slate-400 block">Tulangan Utama</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{spec.mainRebar.label}</span>
+                        </div>
+                        <div className="p-2 bg-slate-50 dark:bg-slate-700/50 rounded">
+                            <span className="text-slate-500 dark:text-slate-400 block">Sengkang / Begel</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{spec.stirrupRebar.label}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- FULL FORMAL REPORT PRINT/PDF MODAL ---
+        const ReportModal = ({ isOpen, onClose, project, selectedType, selectedSpan, quantity, currentRAB, prices, rabSettings }) => {
+            if (!isOpen) return null;
+            const spec = TITI_PANEN_TYPES[selectedType];
+
+            const handlePrint = () => {
+                window.print();
+            };
+
+            const handleDownloadPDF = () => {
+                const element = document.getElementById('report-document-content');
+                if (!window.html2pdf) {
+                    window.print();
+                    return;
+                }
+                const opt = {
+                    margin:       [10, 10, 10, 10],
+                    filename:     `Laporan_Komplit_RAB_TitiPanen_${project.regency}_${spec.code}.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2 },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                window.html2pdf().set(opt).from(element).save();
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 dark:border-slate-800 my-auto overflow-hidden">
+                        
+                        {/* Header bar */}
+                        <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center no-print">
+                            <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-emerald-600 rounded-lg">
+                                    <i data-lucide="file-text" className="w-5 h-5 text-white"></i>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-base">Preview Laporan Komplit & Printable PDF</h3>
+                                    <p className="text-xs text-slate-400">Siap Cetak / Download PDF Resmi</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <button onClick={handleDownloadPDF} className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 transition">
+                                    <i data-lucide="download" className="w-4 h-4"></i>
+                                    <span>Download PDF</span>
+                                </button>
+                                <button onClick={handlePrint} className="px-3.5 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 transition">
+                                    <i data-lucide="printer" className="w-4 h-4"></i>
+                                    <span>Cetak / Print</span>
+                                </button>
+                                <button onClick={onClose} className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white">
+                                    <i data-lucide="x" className="w-5 h-5"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* DOCUMENT CONTENT */}
+                        <div className="p-8 max-h-[80vh] overflow-y-auto bg-white text-slate-900 font-sans" id="report-document-content">
+                            
+                            {/* Formal Kop Surat */}
+                            <div className="border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-end">
+                                <div>
+                                    <h1 className="text-2xl font-black tracking-wider text-slate-900 uppercase">{project.company}</h1>
+                                    <p className="text-xs text-slate-600 font-semibold uppercase tracking-wider">DEPARTEMEN TEKNIK</p>
+                                    <p className="text-[11px] text-slate-500">Standar Konstruksi Titi Panen Precast / In-Situ Astra Agro Lestari</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="px-3 py-1 bg-slate-100 border border-slate-300 rounded text-xs font-mono font-bold">
+                                        REF: {spec.pdfRef}
+                                    </span>
+                                    <p className="text-xs text-slate-500 mt-1 font-mono">Tanggal: {project.date}</p>
+                                </div>
+                            </div>
+
+                            <div className="text-center mb-6">
+                                <h2 className="text-lg font-extrabold uppercase underline tracking-wide">LAPORAN ESTIMASI RENCANA ANGGARAN BIAYA (RAB)</h2>
+                                <p className="text-xs text-slate-600 font-medium">PEKERJAAN TITI PANEN BETON BERTULANG</p>
+                            </div>
+
+                            {/* Info Table */}
+                            <div className="grid grid-cols-2 gap-4 text-xs mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <div>
+                                    <table className="w-full">
+                                        <tbody>
+                                            <tr><td className="font-semibold text-slate-500 w-28">Nama Kebun/Rayon:</td><td className="font-bold">{project.estate}</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">Afdeling / Blok:</td><td className="font-bold">{project.afdeling} / Blok {project.block}</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">Lokasi Regional:</td><td className="font-bold">{project.island} &rarr; {project.province}</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">Kabupaten Market:</td><td className="font-bold text-brand-700">{project.regency}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div>
+                                    <table className="w-full">
+                                        <tbody>
+                                            <tr><td className="font-semibold text-slate-500 w-28">Tipe Titi Panen:</td><td className="font-bold">{spec.code} - {spec.name}</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">Panjang Bentang:</td><td className="font-bold">{selectedSpan} Meter</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">Jumlah Pekerjaan:</td><td className="font-bold">{quantity} Unit ({selectedSpan * quantity} m Total)</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">Senior Estimator:</td><td className="font-bold">{project.seniorEstimator}</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Section Breakdown Table */}
+                            <h3 className="font-bold text-xs uppercase text-slate-700 mb-2 border-b pb-1">I. Rincian Kebutuhan Material & Upah AHSP</h3>
+                            <table className="w-full text-xs border-collapse border border-slate-300 mb-6">
+                                <thead>
+                                    <tr className="bg-slate-100 text-slate-800 font-bold uppercase text-[10px]">
+                                        <th className="border border-slate-300 p-2 text-center w-8">No</th>
+                                        <th className="border border-slate-300 p-2 text-left">Uraian Komponen AHSP</th>
+                                        <th className="border border-slate-300 p-2 text-right">Volume</th>
+                                        <th className="border border-slate-300 p-2 text-center">Satuan</th>
+                                        <th className="border border-slate-300 p-2 text-right">Harga Satuan</th>
+                                        <th className="border border-slate-300 p-2 text-right">Jumlah Total (Rp)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">A. MATERIAL & BAHAN STRUKTUR</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Semen PCC (50 kg)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.mix.cementBags}</td><td className="border border-slate-300 p-1.5 text-center">Sak</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.cement.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.cement.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Pasir Beton Cor</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.mix.sandM3.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.sand.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.sand.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Kerikil / Batu Pecah 2/3</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.mix.gravelM3.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.gravel.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.gravel.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">4</td><td className="border border-slate-300 p-1.5">Besi Beton Utama Ø{currentRAB.rebarDetails.mainDia}mm</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.rebarDetails.mainWeight.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {((prices[`rebar${currentRAB.rebarDetails.mainDia}`] || 108000) / (RebarEngine.getUnitWeight(currentRAB.rebarDetails.mainDia) * 12)).toFixed(0)}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.rebarMain.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">5</td><td className="border border-slate-300 p-1.5">Besi Sengkang Ø{currentRAB.rebarDetails.stirrupDia}mm</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.rebarDetails.stirrupWeight.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {((prices[`rebar${currentRAB.rebarDetails.stirrupDia}`] || 48000) / (RebarEngine.getUnitWeight(currentRAB.rebarDetails.stirrupDia) * 12)).toFixed(0)}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.rebarStirrup.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">6</td><td className="border border-slate-300 p-1.5">Kawat Bendrat Tali Besi</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.rebarDetails.bindingWireKg.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.bindingWire.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.wire.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">7</td><td className="border border-slate-300 p-1.5">Kayu Bekisting & Cetakan</td><td className="border border-slate-300 p-1.5 text-right">{(currentRAB.formworkArea * 0.035).toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkWood.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkWood.toLocaleString('id-ID')}</td></tr>
+                                    
+                                    <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">B. TENAGA KERJA / UPAH AHSP</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Pekerja Lapangan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalWorkerOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourWorker.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costWorker.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Tukang Batu / Besi</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalArtisanOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourArtisan.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costArtisan.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Mandor Lapangan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalForemanOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourForeman.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costForeman.toLocaleString('id-ID')}</td></tr>
+                                </tbody>
+                            </table>
+
+                            {/* Recap Table */}
+                            <h3 className="font-bold text-xs uppercase text-slate-700 mb-2 border-b pb-1">II. Rekapitulasi RAB & Markup Fiscal</h3>
+                            <div className="bg-slate-50 border border-slate-300 p-4 rounded-lg mb-8 font-mono text-xs space-y-2">
+                                <div className="flex justify-between"><span>Subtotal Material (A)</span><span>Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between"><span>Subtotal Upah AHSP (B)</span><span>Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between font-bold border-t border-slate-300 pt-1 text-slate-900"><span>TOTAL DIRECT COST (A + B)</span><span>Rp {currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>Overhead ({rabSettings.overheadPct}%)</span><span>Rp {currentRAB.costs.overheadVal.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>Keuntungan Kontraktor ({rabSettings.profitPct}%)</span><span>Rp {currentRAB.costs.profitVal.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between font-bold border-t border-slate-300 pt-1"><span>Subtotal Sebelum Pajak</span><span>Rp {currentRAB.costs.subtotalBeforeTax.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>PPh 21 ({rabSettings.pphPct}%)</span><span>Rp {currentRAB.costs.pphVal.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>PPN ({rabSettings.ppnPct}%)</span><span>Rp {currentRAB.costs.ppnVal.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between font-black text-sm text-emerald-800 border-t-2 border-slate-900 pt-2"><span>GRAND TOTAL ESTIMASI RAB</span><span>Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span></div>
+                            </div>
+
+                            {/* Approval Signatures */}
+                            <div className="grid grid-cols-3 gap-6 text-center text-xs font-semibold pt-4 border-t border-slate-300">
+                                <div>
+                                    <p className="text-slate-500 mb-12">Dibuat Oleh,<br/>Senior Estimator</p>
+                                    <p className="font-bold underline text-slate-900">{project.seniorEstimator}</p>
+                                    <p className="text-[10px] text-slate-500">Kepala Teknik</p>
+                                </div>
+                                <div>
+                                    <p className="text-slate-500 mb-12">Diverifikasi Oleh,<br/>Administratur</p>
+                                    <p className="font-bold underline text-slate-900">( .................................... )</p>
+                                    <p className="text-[10px] text-slate-500">Administratur</p>
+                                </div>
+                                <div>
+                                    <p className="text-slate-500 mb-12">Disetujui Oleh,<br/>Function IFM</p>
+                                    <p className="font-bold underline text-slate-900">( .................................... )</p>
+                                    <p className="text-[10px] text-slate-500">Manager Infrastruktur Support</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+
+        const App = () => {
+            const [darkMode, setDarkMode] = React.useState(false);
+            const [activeTab, setActiveTab] = React.useState('dashboard'); 
+
+            // Project State
+            const [project, setProject] = React.useState(DEFAULT_PROJECT);
+            const [selectedType, setSelectedType] = React.useState('TP01');
+            const [selectedSpan, setSelectedSpan] = React.useState(4);
+            const [quantity, setQuantity] = React.useState(1);
+
+            // Dynamic Regional Price Database with LocalStorage persistence
+            const [regionalDb, setRegionalDb] = React.useState(() => {
+                const saved = localStorage.getItem('titi_panen_regional_db');
+                return saved ? JSON.parse(saved) : REGIONAL_DATABASE;
+            });
+
+            // Prices for active selected regency
+            const [prices, setPrices] = React.useState(() => {
+                return regionalDb["Sumatera"]["Riau"]["Rokan Hulu"];
+            });
+
+            const [rabSettings, setRabSettings] = React.useState({
+                overheadPct: 5.0,
+                profitPct: 10.0,
+                pphPct: 4.0,
+                ppnPct: 0.0
+            });
+
+            const [wizardStep, setWizardStep] = React.useState(1);
+            const [isReportOpen, setIsReportOpen] = React.useState(false);
+
+            const [history, setHistory] = React.useState(() => {
+                const saved = localStorage.getItem('titi_panen_estimations');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            const [explainData, setExplainData] = React.useState(null);
+            const [toast, setToast] = React.useState(null);
+
+            const showToast = (message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3500);
+            };
+
+            // Update prices when Location changes
+            const handleLocationChange = (newIsland, newProvince, newRegency) => {
+                let updatedIsland = newIsland || project.island;
+                let availableProvinces = Object.keys(regionalDb[updatedIsland] || {});
+                let updatedProvince = newProvince || (availableProvinces.includes(project.province) ? project.province : availableProvinces[0]);
+                
+                let availableRegencies = Object.keys((regionalDb[updatedIsland] && regionalDb[updatedIsland][updatedProvince]) || {});
+                let updatedRegency = newRegency || (availableRegencies.includes(project.regency) ? project.regency : availableRegencies[0]);
+
+                setProject({
+                    ...project,
+                    island: updatedIsland,
+                    province: updatedProvince,
+                    regency: updatedRegency
+                });
+
+                if (regionalDb[updatedIsland] && regionalDb[updatedIsland][updatedProvince] && regionalDb[updatedIsland][updatedProvince][updatedRegency]) {
+                    setPrices(regionalDb[updatedIsland][updatedProvince][updatedRegency]);
+                }
+            };
+
+            // Save/Update Market Price Database for active regency
+            const handleUpdateMarketPrice = () => {
+                const updated = { ...regionalDb };
+                if (!updated[project.island]) updated[project.island] = {};
+                if (!updated[project.island][project.province]) updated[project.island][project.province] = {};
+                updated[project.island][project.province][project.regency] = { ...prices };
+
+                setRegionalDb(updated);
+                localStorage.setItem('titi_panen_regional_db', JSON.stringify(updated));
+                showToast(`Harga pasar untuk Kabupaten ${project.regency} berhasil diperbarui di database!`);
+            };
+
+            const currentRAB = React.useMemo(() => {
+                return AHSPEngine.calculateRAB(selectedType, selectedSpan, quantity, prices, rabSettings);
+            }, [selectedType, selectedSpan, quantity, prices, rabSettings]);
+
+            const handleSaveEstimation = () => {
+                const newRecord = {
+                    id: 'EST-' + Date.now(),
+                    project: { ...project },
+                    typeKey: selectedType,
+                    spanLength: selectedSpan,
+                    quantity,
+                    rab: currentRAB,
+                    timestamp: new Date().toLocaleString('id-ID')
+                };
+                const updated = [newRecord, ...history];
+                setHistory(updated);
+                localStorage.setItem('titi_panen_estimations', JSON.stringify(updated));
+                showToast("Estimasi Titi Panen berhasil disimpan ke Riwayat!");
+            };
+
+            React.useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [activeTab, wizardStep, darkMode, isReportOpen]);
+
+            const triggerExplain = (title, formula, inputs, trace, result) => {
+                setExplainData({ title, formula, inputs, trace, result });
+            };
+
+            return (
+                <div className={`min-h-screen flex flex-col ${darkMode ? 'dark bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+                    
+                    {/* TOP HEADER */}
+                    <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md no-print">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center font-black text-xl tracking-wider text-white shadow-inner">
+                                    TP
+                                </div>
+                                <div>
+                                    <div className="flex items-center space-x-2">
+                                        <h1 className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent">
+                                            Titi Panen Estimator
+                                        </h1>
+                                        <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/80 font-bold">
+                                            Enterprise
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-400 font-medium">By Tonie De CoSe | Astra Agro Lestari Standard</p>
+                                </div>
+                            </div>
+
+                            <div className="hidden lg:flex items-center space-x-4 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+                                <div className="flex items-center space-x-1.5 text-slate-300">
+                                    <i data-lucide="building" className="w-3.5 h-3.5 text-emerald-400"></i>
+                                    <span className="font-semibold">{project.company}</span>
+                                </div>
+                                <span className="text-slate-600">|</span>
+                                <div className="text-slate-400">
+                                    Kab: <span className="text-emerald-300 font-bold">{project.regency}</span> ({project.island})
+                                </div>
+                                <span className="text-slate-600">|</span>
+                                <div className="text-slate-400">
+                                    Estimator: <span className="text-emerald-300 font-medium">{project.seniorEstimator}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <button 
+                                    onClick={() => ExportExcelEngine.exportWorkbook(project, selectedType, selectedSpan, quantity, currentRAB, prices, rabSettings)}
+                                    className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg font-bold text-xs flex items-center space-x-1.5 shadow transition"
+                                    title="Export ke Excel Workbook Multi-Sheet"
+                                >
+                                    <i data-lucide="file-spreadsheet" className="w-4 h-4"></i>
+                                    <span className="hidden sm:inline">Excel</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setIsReportOpen(true)}
+                                    className="px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-bold text-xs flex items-center space-x-1.5 shadow transition"
+                                    title="Cetak Laporan Komplit & Download PDF"
+                                >
+                                    <i data-lucide="printer" className="w-4 h-4"></i>
+                                    <span className="hidden sm:inline">PDF / Cetak</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setDarkMode(!darkMode)}
+                                    className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition"
+                                    title="Toggle Dark/Light Mode"
+                                >
+                                    <i data-lucide={darkMode ? "sun" : "moon"} className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* MAIN CONTENT BODY */}
+                    <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6">
+                        
+                        {/* NAVIGATION SIDEBAR */}
+                        <aside className="w-full md:w-64 flex-shrink-0 space-y-3 no-print">
+                            <nav className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-1">
+                                <button 
+                                    onClick={() => setActiveTab('dashboard')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'dashboard' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="layout-dashboard" className="w-4 h-4"></i>
+                                    <span>Dashboard & KPI</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('wizard')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'wizard' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="calculator" className="w-4 h-4"></i>
+                                    <span>Wizard Estimasi</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('specs')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'specs' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="file-text" className="w-4 h-4"></i>
+                                    <span>Spesifikasi TP-01/02/03</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('market')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'market' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="coins" className="w-4 h-4"></i>
+                                    <span>Market Price Engine</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('history')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'history' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="history" className="w-4 h-4"></i>
+                                    <span>Riwayat Estimasi</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('settings')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'settings' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="settings" className="w-4 h-4"></i>
+                                    <span>Pengaturan & Proyek</span>
+                                </button>
+                            </nav>
+
+                            {/* Export / Print Quick Actions Card */}
+                            <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-xl shadow-md space-y-3">
+                                <h4 className="text-xs font-extrabold uppercase tracking-wider text-emerald-400">Export & Cetak Laporan</h4>
+                                <p className="text-[11px] text-slate-300">Cetak laporan komplit berformat standar manajemen Astra Agro Lestari.</p>
+                                <div className="space-y-2">
+                                    <button 
+                                        onClick={() => setIsReportOpen(true)}
+                                        className="w-full py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 transition"
+                                    >
+                                        <i data-lucide="printer" className="w-3.5 h-3.5"></i>
+                                        <span>Cetak Laporan PDF</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => ExportExcelEngine.exportWorkbook(project, selectedType, selectedSpan, quantity, currentRAB, prices, rabSettings)}
+                                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 transition"
+                                    >
+                                        <i data-lucide="file-spreadsheet" className="w-3.5 h-3.5"></i>
+                                        <span>Workbook Excel (.xlsx)</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* WORKSPACE AREA */}
+                        <main className="flex-1 space-y-6">
+                            
+                            {/* DASHBOARD TAB */}
+                            {activeTab === 'dashboard' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div 
+                                            onClick={() => triggerExplain(
+                                                "Grand Total RAB Titi Panen",
+                                                "Grand Total = Subtotal Sebelum Pajak + PPh 21 + PPN",
+                                                { DirectCost: currentRAB.costs.subtotalDirect, Overhead: `${rabSettings.overheadPct}%`, ProfitKontraktor: `${rabSettings.profitPct}%`, PPh21: `${rabSettings.pphPct}%` },
+                                                `Subtotal Direct Cost: Rp ${currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}\nOverhead (${rabSettings.overheadPct}%): Rp ${currentRAB.costs.overheadVal.toLocaleString('id-ID')}\nKeuntungan Kontraktor (${rabSettings.profitPct}%): Rp ${currentRAB.costs.profitVal.toLocaleString('id-ID')}\nPPh 21 (${rabSettings.pphPct}%): Rp ${currentRAB.costs.pphVal.toLocaleString('id-ID')}\nPPN (${rabSettings.ppnPct}%): Rp ${currentRAB.costs.ppnVal.toLocaleString('id-ID')}`,
+                                                `Rp ${currentRAB.costs.grandTotal.toLocaleString('id-ID')}`
+                                            )}
+                                            className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-brand-500 transition group"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-bold text-slate-400 uppercase">Grand Total RAB</span>
+                                                <span className="p-1.5 bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 rounded-lg group-hover:scale-110 transition">
+                                                    <i data-lucide="banknote" className="w-4 h-4"></i>
+                                                </span>
+                                            </div>
+                                            <p className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">
+                                                Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                                            </p>
+                                            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">Klik untuk lihat formula trace</p>
+                                        </div>
+
+                                        <div 
+                                            onClick={() => triggerExplain(
+                                                "Estimasi Biaya Per Meter Panjang",
+                                                "Cost / Meter = Grand Total / Total Panjang Bentang",
+                                                { GrandTotal: currentRAB.costs.grandTotal, TotalBentang: `${selectedSpan * quantity} meter` },
+                                                `Rp ${currentRAB.costs.grandTotal.toLocaleString('id-ID')} / (${selectedSpan} m x ${quantity} unit)`,
+                                                `Rp ${currentRAB.costs.costPerMeter.toLocaleString('id-ID', { maximumFractionDigits: 0 })} / m`
+                                            )}
+                                            className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-brand-500 transition group"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-bold text-slate-400 uppercase">Cost / Meter</span>
+                                                <span className="p-1.5 bg-brand-100 text-brand-600 dark:bg-brand-950 dark:text-brand-400 rounded-lg group-hover:scale-110 transition">
+                                                    <i data-lucide="ruler" className="w-4 h-4"></i>
+                                                </span>
+                                            </div>
+                                            <p className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">
+                                                Rp {currentRAB.costs.costPerMeter.toLocaleString('id-ID', { maximumFractionDigits: 0 })} <span className="text-xs font-normal text-slate-400">/m</span>
+                                            </p>
+                                            <p className="text-[11px] text-brand-600 dark:text-brand-400 mt-1 font-medium">Klik untuk lihat formula trace</p>
+                                        </div>
+
+                                        <div 
+                                            onClick={() => triggerExplain(
+                                                "Volume Beton & Berat Besi",
+                                                "Beton (m3) = Luas Penampang x Panjang Bentang; Besi (kg) = Σ (Panjang Batang x Berat Jenis)",
+                                                { SectionArea: GeometryEngine.calculateArea(selectedType) + " m2", Span: selectedSpan + " m" },
+                                                `Volume Beton = ${GeometryEngine.calculateArea(selectedType).toFixed(4)} m2 x ${selectedSpan} m x ${quantity} unit = ${currentRAB.concreteVol.toFixed(3)} m3\nBerat Besi Total (+5% waste) = ${currentRAB.rebarDetails.totalWeightWithWaste.toFixed(2)} kg`,
+                                                `${currentRAB.concreteVol.toFixed(2)} m³ Beton | ${currentRAB.rebarDetails.totalWeightWithWaste.toFixed(1)} kg Besi`
+                                            )}
+                                            className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-brand-500 transition group"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-bold text-slate-400 uppercase">Vol. Beton & Besi</span>
+                                                <span className="p-1.5 bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400 rounded-lg group-hover:scale-110 transition">
+                                                    <i data-lucide="layers" className="w-4 h-4"></i>
+                                                </span>
+                                            </div>
+                                            <p className="text-xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">
+                                                {currentRAB.concreteVol.toFixed(2)} m³ <span className="text-xs font-normal text-slate-400">({currentRAB.rebarDetails.totalWeightWithWaste.toFixed(0)} kg)</span>
+                                            </p>
+                                            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">Klik untuk lihat formula trace</p>
+                                        </div>
+
+                                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-bold text-slate-400 uppercase">Lokasi Market</span>
+                                                <span className="p-1.5 bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-400 rounded-lg">
+                                                    <i data-lucide="map-pin" className="w-4 h-4"></i>
+                                                </span>
+                                            </div>
+                                            <p className="text-base font-extrabold text-slate-800 dark:text-slate-100 mt-2 truncate">
+                                                {project.regency}
+                                            </p>
+                                            <p className="text-[11px] text-purple-600 dark:text-purple-400 mt-1 font-semibold">{project.province} ({project.island})</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        <div className="lg:col-span-2 space-y-6">
+                                            <StructuralDrawingPreview typeKey={selectedType} spanLength={selectedSpan} />
+
+                                            <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-4">
+                                                    Rincian Distribusi Biaya Direct Cost
+                                                </h3>
+                                                <div className="space-y-3 text-xs">
+                                                    <div>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span>Semen Portland ({currentRAB.mix.cementBags} Sak)</span>
+                                                            <span className="font-bold">Rp {currentRAB.costs.cement.toLocaleString('id-ID')}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                                            <div className="bg-brand-500 h-full" style={{ width: `${(currentRAB.costs.cement / currentRAB.costs.subtotalDirect) * 100}%` }}></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span>Besi Beton Utama & Sengkang</span>
+                                                            <span className="font-bold">Rp {(currentRAB.costs.rebarMain + currentRAB.costs.rebarStirrup).toLocaleString('id-ID')}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                                            <div className="bg-amber-500 h-full" style={{ width: `${((currentRAB.costs.rebarMain + currentRAB.costs.rebarStirrup) / currentRAB.costs.subtotalDirect) * 100}%` }}></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span>Agregat (Pasir + Kerikil)</span>
+                                                            <span className="font-bold">Rp {(currentRAB.costs.sand + currentRAB.costs.gravel).toLocaleString('id-ID')}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                                            <div className="bg-emerald-500 h-full" style={{ width: `${((currentRAB.costs.sand + currentRAB.costs.gravel) / currentRAB.costs.subtotalDirect) * 100}%` }}></div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="flex justify-between mb-1">
+                                                            <span>Upah Tenaga Kerja AHSP</span>
+                                                            <span className="font-bold">Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</span>
+                                                        </div>
+                                                        <div className="w-full bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                                                            <div className="bg-purple-500 h-full" style={{ width: `${(currentRAB.costs.totalLabourCost / currentRAB.costs.subtotalDirect) * 100}%` }}></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                                                <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 flex items-center space-x-2">
+                                                    <i data-lucide="sliders" className="w-4 h-4 text-brand-500"></i>
+                                                    <span>Quick Structure Control</span>
+                                                </h3>
+
+                                                <div className="space-y-3 text-xs">
+                                                    <div>
+                                                        <label className="block text-slate-500 font-semibold mb-1">Tipe Titi Panen</label>
+                                                        <select 
+                                                            value={selectedType}
+                                                            onChange={(e) => {
+                                                                const newType = e.target.value;
+                                                                setSelectedType(newType);
+                                                                setSelectedSpan(TITI_PANEN_TYPES[newType].defaultSpan);
+                                                            }}
+                                                            className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-semibold text-slate-800 dark:text-slate-100"
+                                                        >
+                                                            {Object.entries(TITI_PANEN_TYPES).map(([k, v]) => (
+                                                                <option key={k} value={k}>{v.code} - {v.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-slate-500 font-semibold mb-1">Panjang Bentang (L)</label>
+                                                        <div className="grid grid-cols-4 gap-1">
+                                                            {TITI_PANEN_TYPES[selectedType].spans.map(s => (
+                                                                <button
+                                                                    key={s}
+                                                                    onClick={() => setSelectedSpan(s)}
+                                                                    className={`py-1.5 rounded text-xs font-bold transition ${selectedSpan === s ? 'bg-brand-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}`}
+                                                                >
+                                                                    {s} m
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-slate-500 font-semibold mb-1">Jumlah Unit Titi Panen</label>
+                                                        <input 
+                                                            type="number" 
+                                                            min="1" 
+                                                            value={quantity}
+                                                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                                            className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-bold"
+                                                        />
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                                        <div>
+                                                            <label className="block text-slate-500 font-semibold mb-1">Keuntungan (%)</label>
+                                                            <input 
+                                                                type="number" 
+                                                                step="0.5"
+                                                                value={rabSettings.profitPct}
+                                                                onChange={(e) => setRabSettings({...rabSettings, profitPct: Number(e.target.value)})}
+                                                                className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-slate-500 font-semibold mb-1">PPh 21 (%)</label>
+                                                            <input 
+                                                                type="number" 
+                                                                step="0.5"
+                                                                value={rabSettings.pphPct}
+                                                                onChange={(e) => setRabSettings({...rabSettings, pphPct: Number(e.target.value)})}
+                                                                className="w-full p-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <button 
+                                                    onClick={handleSaveEstimation}
+                                                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 shadow transition"
+                                                >
+                                                    <i data-lucide="save" className="w-4 h-4"></i>
+                                                    <span>Simpan Estimasi ke History</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* WIZARD TAB */}
+                            {activeTab === 'wizard' && (
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6 animate-fade-in">
+                                    <div className="flex justify-between items-center border-b pb-4 border-slate-200 dark:border-slate-700">
+                                        <div>
+                                            <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Wizard Estimasi Titi Panen</h2>
+                                            <p className="text-xs text-slate-500">Langkah {wizardStep} dari 4: Konfigurasi Terstruktur & Harga Regional</p>
+                                        </div>
+                                        <div className="flex space-x-1">
+                                            {[1, 2, 3, 4].map(step => (
+                                                <div 
+                                                    key={step} 
+                                                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${wizardStep === step ? 'bg-brand-600 text-white' : wizardStep > step ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}
+                                                >
+                                                    {step}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {wizardStep === 1 && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300">1. Data Proyek & Lokasi Perkebunan (Pulau & Kabupaten)</h3>
+                                            
+                                            {/* Regional Location Selection */}
+                                            <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-3">
+                                                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center space-x-1">
+                                                    <i data-lucide="map-pin" className="w-4 h-4"></i>
+                                                    <span>Pilih Regional Lokasi Kebun (Harga Acuan Otomatis Terhubung)</span>
+                                                </p>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                                                    <div>
+                                                        <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Pulau</label>
+                                                        <select 
+                                                            value={project.island} 
+                                                            onChange={e => handleLocationChange(e.target.value, null, null)}
+                                                            className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
+                                                        >
+                                                            {Object.keys(regionalDb).map(isl => (
+                                                                <option key={isl} value={isl}>{isl}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Provinsi</label>
+                                                        <select 
+                                                            value={project.province} 
+                                                            onChange={e => handleLocationChange(project.island, e.target.value, null)}
+                                                            className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
+                                                        >
+                                                            {Object.keys(regionalDb[project.island] || {}).map(prov => (
+                                                                <option key={prov} value={prov}>{prov}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">Kabupaten</label>
+                                                        <select 
+                                                            value={project.regency} 
+                                                            onChange={e => handleLocationChange(project.island, project.province, e.target.value)}
+                                                            className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-extrabold text-emerald-700 dark:text-emerald-400"
+                                                        >
+                                                            {Object.keys((regionalDb[project.island] && regionalDb[project.island][project.province]) || {}).map(reg => (
+                                                                <option key={reg} value={reg}>{reg}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                                <div>
+                                                    <label className="block text-slate-500 mb-1 font-semibold">Nama PT / Company</label>
+                                                    <input type="text" value={project.company} onChange={e => setProject({...project, company: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-slate-500 mb-1 font-semibold">Estate / Kebun</label>
+                                                    <input type="text" value={project.estate} onChange={e => setProject({...project, estate: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-slate-500 mb-1 font-semibold">Afdeling</label>
+                                                    <input type="text" value={project.afdeling} onChange={e => setProject({...project, afdeling: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-slate-500 mb-1 font-semibold">Nomor Blok</label>
+                                                    <input type="text" value={project.block} onChange={e => setProject({...project, block: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="block text-slate-500 mb-1 font-semibold">Senior Estimator</label>
+                                                    <input type="text" value={project.seniorEstimator} onChange={e => setProject({...project, seniorEstimator: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {wizardStep === 2 && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300">2. Pilih Tipe & Dimensi Titi Panen</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                {Object.entries(TITI_PANEN_TYPES).map(([k, v]) => (
+                                                    <div 
+                                                        key={k} 
+                                                        onClick={() => { setSelectedType(k); setSelectedSpan(v.defaultSpan); }}
+                                                        className={`p-4 rounded-xl border cursor-pointer transition ${selectedType === k ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/30 ring-2 ring-brand-500' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-700/50'}`}
+                                                    >
+                                                        <span className="px-2 py-0.5 bg-brand-100 text-brand-700 text-[10px] font-extrabold rounded">{v.code}</span>
+                                                        <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 mt-2">{v.name}</h4>
+                                                        <p className="text-xs text-slate-500 mt-1">{v.description}</p>
+                                                        <div className="mt-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                                            Pilihan Bentang: {v.spans.join(', ')} meter
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                                <div>
+                                                    <label className="block text-slate-500 font-semibold mb-1">Panjang Bentang (Meter)</label>
+                                                    <select 
+                                                        value={selectedSpan} 
+                                                        onChange={e => setSelectedSpan(Number(e.target.value))}
+                                                        className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold"
+                                                    >
+                                                        {TITI_PANEN_TYPES[selectedType].spans.map(s => (
+                                                            <option key={s} value={s}>{s} Meter</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-slate-500 font-semibold mb-1">Jumlah Unit Pekerjaan</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="1" 
+                                                        value={quantity} 
+                                                        onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                                        className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {wizardStep === 3 && (
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-700/60 p-3 rounded-lg">
+                                                <div>
+                                                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">3. Harga Pasar Kabupaten: <span className="text-emerald-600 dark:text-emerald-400">{project.regency}</span></h3>
+                                                    <p className="text-xs text-slate-500">Harga otomatis disesuaikan dari lokasi {project.province} ({project.island}). Bebas diedit!</p>
+                                                </div>
+                                                <button 
+                                                    onClick={handleUpdateMarketPrice}
+                                                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow"
+                                                >
+                                                    <i data-lucide="refresh-cw" className="w-3.5 h-3.5"></i>
+                                                    <span>Update Harga Pasar</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-2">
+                                                    <p className="font-bold text-slate-700 dark:text-slate-200 border-b pb-1">Material Utama</p>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Semen PCC (per Sak 50kg)</span>
+                                                        <input type="number" value={prices.cement} onChange={e => setPrices({...prices, cement: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Pasir Beton (per m³)</span>
+                                                        <input type="number" value={prices.sand} onChange={e => setPrices({...prices, sand: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Kerikil / Batu Pecah (per m³)</span>
+                                                        <input type="number" value={prices.gravel} onChange={e => setPrices({...prices, gravel: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Besi Ø6mm (12m/batang)</span>
+                                                        <input type="number" value={prices.rebar6} onChange={e => setPrices({...prices, rebar6: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Besi Ø10mm (12m/batang)</span>
+                                                        <input type="number" value={prices.rebar10} onChange={e => setPrices({...prices, rebar10: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Besi Ø12mm (12m/batang)</span>
+                                                        <input type="number" value={prices.rebar12} onChange={e => setPrices({...prices, rebar12: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-2">
+                                                    <p className="font-bold text-slate-700 dark:text-slate-200 border-b pb-1">Upah Tenaga Kerja & Bekisting</p>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Pekerja Lapangan (per OH)</span>
+                                                        <input type="number" value={prices.labourWorker} onChange={e => setPrices({...prices, labourWorker: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Tukang Batu / Besi (per OH)</span>
+                                                        <input type="number" value={prices.labourArtisan} onChange={e => setPrices({...prices, labourArtisan: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Mandor Lapangan (per OH)</span>
+                                                        <input type="number" value={prices.labourForeman} onChange={e => setPrices({...prices, labourForeman: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Kayu Bekisting (per m³)</span>
+                                                        <input type="number" value={prices.formworkWood} onChange={e => setPrices({...prices, formworkWood: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span>Kawat Bendrat (per kg)</span>
+                                                        <input type="number" value={prices.bindingWire} onChange={e => setPrices({...prices, bindingWire: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {wizardStep === 4 && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-bold text-sm text-slate-700 dark:text-slate-300">4. Preview RAB & Rekapitulasi Akhir</h3>
+                                            <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 font-mono text-xs">
+                                                <div className="flex justify-between border-b pb-2 font-bold text-slate-800 dark:text-slate-200">
+                                                    <span>Uraian Pekerjaan</span>
+                                                    <span>Jumlah Biaya</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>A. Direct Cost - Total Material ({project.regency})</span>
+                                                    <span>Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span>B. Direct Cost - Upah AHSP</span>
+                                                    <span>Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between font-bold border-t pt-2 text-slate-800 dark:text-slate-200">
+                                                    <span>Subtotal Direct Cost (A + B)</span>
+                                                    <span>Rp {currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-500">
+                                                    <span>Overhead ({rabSettings.overheadPct}%)</span>
+                                                    <span>Rp {currentRAB.costs.overheadVal.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-500">
+                                                    <span>Keuntungan Kontraktor (%)</span>
+                                                    <div className="flex items-center space-x-2">
+                                                        <input 
+                                                            type="number" 
+                                                            step="0.5"
+                                                            value={rabSettings.profitPct}
+                                                            onChange={e => setRabSettings({...rabSettings, profitPct: Number(e.target.value)})}
+                                                            className="w-16 p-1 text-right font-bold border rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" 
+                                                        />
+                                                        <span className="w-28 text-right font-mono">Rp {currentRAB.costs.profitVal.toLocaleString('id-ID')}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between items-center text-slate-500">
+                                                    <span>PPh 21 (%)</span>
+                                                    <div className="flex items-center space-x-2">
+                                                        <input 
+                                                            type="number" 
+                                                            step="0.5"
+                                                            value={rabSettings.pphPct}
+                                                            onChange={e => setRabSettings({...rabSettings, pphPct: Number(e.target.value)})}
+                                                            className="w-16 p-1 text-right font-bold border rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" 
+                                                        />
+                                                        <span className="w-28 text-right font-mono">Rp {currentRAB.costs.pphVal.toLocaleString('id-ID')}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-between text-slate-500">
+                                                    <span>PPN ({rabSettings.ppnPct}%)</span>
+                                                    <span>Rp {currentRAB.costs.ppnVal.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div className="flex justify-between font-extrabold text-sm text-emerald-600 dark:text-emerald-400 border-t-2 border-emerald-500 pt-2">
+                                                    <span>GRAND TOTAL ESTIMASI RAB</span>
+                                                    <span>Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Report Export Buttons in Step 4 */}
+                                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row justify-between items-center gap-3">
+                                                <div>
+                                                    <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Cetak Laporan Komplit & Excel Workbook</p>
+                                                    <p className="text-[11px] text-slate-500">Siap untuk diajukan ke manajemen dan tim pengadaan.</p>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                    <button 
+                                                        onClick={() => ExportExcelEngine.exportWorkbook(project, selectedType, selectedSpan, quantity, currentRAB, prices, rabSettings)}
+                                                        className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow transition"
+                                                    >
+                                                        <i data-lucide="file-spreadsheet" className="w-4 h-4"></i>
+                                                        <span>Workbook Excel</span>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setIsReportOpen(true)}
+                                                        className="px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow transition"
+                                                    >
+                                                        <i data-lucide="printer" className="w-4 h-4"></i>
+                                                        <span>Laporan PDF</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+                                        <button 
+                                            disabled={wizardStep === 1}
+                                            onClick={() => setWizardStep(wizardStep - 1)}
+                                            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold disabled:opacity-50"
+                                        >
+                                            Kembali
+                                        </button>
+                                        {wizardStep < 4 ? (
+                                            <button 
+                                                onClick={() => setWizardStep(wizardStep + 1)}
+                                                className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold shadow"
+                                            >
+                                                Lanjut Langkah {wizardStep + 1}
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => { handleSaveEstimation(); setActiveTab('dashboard'); }}
+                                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow flex items-center space-x-1.5"
+                                            >
+                                                <i data-lucide="check" className="w-4 h-4"></i>
+                                                <span>Selesaikan & Simpan Estimasi</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* STRUCTURE SPECS TAB */}
+                            {activeTab === 'specs' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
+                                        Spesifikasi Teknis & Drawing Titi Panen Beton
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {Object.entries(TITI_PANEN_TYPES).map(([k, v]) => (
+                                            <div key={k} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="px-2.5 py-0.5 rounded text-xs font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                                        {v.code}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 font-mono">{v.pdfRef}</span>
+                                                </div>
+                                                <h3 className="font-bold text-slate-800 dark:text-slate-100">{v.name}</h3>
+                                                <p className="text-xs text-slate-500">{v.description}</p>
+                                                <StructuralDrawingPreview typeKey={k} spanLength={v.defaultSpan} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* MARKET PRICE TAB */}
+                            {activeTab === 'market' && (
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6 animate-fade-in">
+                                    <div className="flex justify-between items-center border-b pb-4 border-slate-200 dark:border-slate-700">
+                                        <div>
+                                            <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Market Price Engine Database</h2>
+                                            <p className="text-xs text-slate-500">Atur & simpan harga pasar regional per Kabupaten ({project.regency}, {project.province})</p>
+                                        </div>
+                                        <button 
+                                            onClick={handleUpdateMarketPrice}
+                                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow"
+                                        >
+                                            <i data-lucide="save" className="w-4 h-4"></i>
+                                            <span>Update Harga Pasar Kabupaten</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                        {Object.entries(prices).map(([item, price]) => (
+                                            <div key={item} className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg flex justify-between items-center">
+                                                <span className="font-semibold text-slate-700 dark:text-slate-300 capitalize">{item.replace(/([A-Z])/g, ' $1')}</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={price} 
+                                                    onChange={e => {
+                                                        setPrices({...prices, [item]: Number(e.target.value)});
+                                                    }}
+                                                    className="w-28 p-1 text-right font-mono font-bold border rounded bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100" 
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* HISTORY TAB */}
+                            {activeTab === 'history' && (
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4 animate-fade-in">
+                                    <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Riwayat Estimasi Tersimpan</h2>
+                                    {history.length === 0 ? (
+                                        <div className="p-8 text-center text-slate-400 text-xs">
+                                            Belum ada riwayat estimasi yang disimpan. Buat estimasi baru dari wizard!
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left text-xs">
+                                                <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold uppercase">
+                                                    <tr>
+                                                        <th className="p-3">ID Estimasi</th>
+                                                        <th className="p-3">Waktu</th>
+                                                        <th className="p-3">Lokasi / Kabupaten</th>
+                                                        <th className="p-3">Tipe Titi Panen</th>
+                                                        <th className="p-3">Bentang / Qty</th>
+                                                        <th className="p-3">Grand Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                                    {history.map(item => (
+                                                        <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                                                            <td className="p-3 font-mono font-bold text-brand-600">{item.id}</td>
+                                                            <td className="p-3 text-slate-500">{item.timestamp}</td>
+                                                            <td className="p-3 font-semibold">{item.project.regency}</td>
+                                                            <td className="p-3 font-bold">{TITI_PANEN_TYPES[item.typeKey].code}</td>
+                                                            <td className="p-3">{item.spanLength}m ({item.quantity} Unit)</td>
+                                                            <td className="p-3 font-extrabold text-emerald-600 dark:text-emerald-400">
+                                                                Rp {item.rab.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* SETTINGS TAB */}
+                            {activeTab === 'settings' && (
+                                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-6 animate-fade-in">
+                                    <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Pengaturan Markup & Pajak RAB</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                        <div>
+                                            <label className="block text-slate-500 mb-1 font-semibold">Overhead (%)</label>
+                                            <input type="number" step="0.5" value={rabSettings.overheadPct} onChange={e => setRabSettings({...rabSettings, overheadPct: Number(e.target.value)})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-500 mb-1 font-semibold">Keuntungan Kontraktor (%)</label>
+                                            <input type="number" step="0.5" value={rabSettings.profitPct} onChange={e => setRabSettings({...rabSettings, profitPct: Number(e.target.value)})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-500 mb-1 font-semibold">PPh 21 (%)</label>
+                                            <input type="number" step="0.1" value={rabSettings.pphPct} onChange={e => setRabSettings({...rabSettings, pphPct: Number(e.target.value)})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-slate-500 mb-1 font-semibold">PPN (%)</label>
+                                            <input type="number" step="0.1" value={rabSettings.ppnPct} onChange={e => setRabSettings({...rabSettings, ppnPct: Number(e.target.value)})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </main>
+                    </div>
+
+                    {/* TOAST NOTIFICATION */}
+                    {toast && (
+                        <div className={`fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-white font-semibold text-xs flex items-center space-x-2 transition-all ${toast.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
+                            <i data-lucide={toast.type === 'error' ? 'alert-circle' : 'check-circle'} className="w-4 h-4"></i>
+                            <span>{toast.message}</span>
+                        </div>
+                    )}
+
+                    {/* EXPLAIN CALCULATION MODAL */}
+                    <ExplainModal 
+                        isOpen={!!explainData} 
+                        onClose={() => setExplainData(null)} 
+                        topicData={explainData} 
+                    />
+
+                    {/* FULL REPORT / PRINT MODAL */}
+                    <ReportModal 
+                        isOpen={isReportOpen}
+                        onClose={() => setIsReportOpen(false)}
+                        project={project}
+                        selectedType={selectedType}
+                        selectedSpan={selectedSpan}
+                        quantity={quantity}
+                        currentRAB={currentRAB}
+                        prices={prices}
+                        rabSettings={rabSettings}
+                    />
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

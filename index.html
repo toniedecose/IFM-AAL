@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Infrastructure Support AAL Cost Estimator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#eef2f7}
+header{height:64px;background:#166534;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.container{display:flex;height:calc(100vh - 64px)}
+aside{width:260px;background:#1f2937;color:#fff;padding:16px}
+aside h3{font-size:13px;color:#9ca3af;text-transform:uppercase;margin:20px 0 8px}
+.menu button{width:100%;padding:12px;border:none;border-radius:8px;margin-bottom:8px;background:#374151;color:#fff;text-align:left;cursor:pointer}
+.menu button:hover{background:#16a34a}
+main{flex:1;padding:0}
+#home{padding:30px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+iframe{width:100%;height:100%;border:none;display:none}
+</style>
+</head>
+<body>
+<header>
+<div>Infrastructure Support AAL Cost Estimator</div>
+<div>Version 1.0</div>
+</header>
+<div class="container">
+<aside>
+<h2>Dashboard</h2>
+<div class="menu">
+<button onclick="showHome()">🏠 Dashboard</button>
+<h3>Cost Estimator</h3>
+<button onclick="loadModule('titi_panen_estimator.html')">🌉 Titi Panen</button>
+<button onclick="loadModule('box_culvert_cost_estimator_by_tonie_de_cose.html')">🧱 Box Culvert</button>
+<button onclick="loadModule('fleet_cost_engineer_pro.html')">🚜 Fleet Cost Engineer</button>
+</div>
+</aside>
+<main>
+<div id="home">
+<h1>Welcome</h1>
+<p>Pilih salah satu estimator pada menu di sebelah kiri.</p>
+<div class="cards">
+<div class="card"><h3>Titi Panen</h3><p>Estimator struktur titi panen.</p></div>
+<div class="card"><h3>Box Culvert</h3><p>Estimator box culvert.</p></div>
+<div class="card"><h3>Fleet Cost</h3><p>Owning & Operating Cost.</p></div>
+</div>
+</div>
+<iframe id="viewer"></iframe>
+</main>
+</div>
+<script>
+const frame=document.getElementById('viewer');
+const home=document.getElementById('home');
+function loadModule(file){
+ home.style.display='none';
+ frame.style.display='block';
+ frame.src=file;
+}
+function showHome(){
+ frame.style.display='none';
+ frame.src='about:blank';
+ home.style.display='block';
+}
+</script>
+</body>
+</html>
