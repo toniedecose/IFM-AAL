@@ -67,17 +67,42 @@
             /* Prevent the report modal's scrollable wrapper from clipping content
                so the full multi-page report is captured/printed, not just the
                portion that fit inside the on-screen 80vh preview box. */
-            #report-document-content,
-            #report-document-content-clone {
+            #report-document-content {
                 max-height: none !important;
                 overflow: visible !important;
             }
             table { page-break-inside: auto; }
             tr { page-break-inside: avoid; page-break-after: auto; }
+            /* The report modal is a fixed, centered, scroll-clipped overlay
+               on screen. During native browser print that combination
+               (position:fixed + overflow-y-auto + centered flex) causes the
+               same "cut on the left / cut at the bottom" problem as the PDF
+               export, since only the single on-screen viewport-sized page
+               gets rendered. Reset it to a normal, unclipped, full-width
+               block so the whole report flows across as many printed pages
+               as needed. */
+            #report-print-overlay {
+                position: static !important;
+                display: block !important;
+                background: none !important;
+                backdrop-filter: none !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                height: auto !important;
+                width: auto !important;
+            }
+            #report-print-card {
+                max-width: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                overflow: visible !important;
+                height: auto !important;
+            }
         }
         .print-only { display: none; }
-        /* Off-screen host used only while generating the PDF clone (see handleDownloadPDF) */
-        #pdf-export-host { position: fixed; top: 0; left: -10000px; background: #ffffff; }
     </style>
 </head>
 <body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 custom-scrollbar antialiased">
@@ -613,51 +638,77 @@
 
             const handleDownloadPDF = () => {
                 const original = document.getElementById('report-document-content');
-                if (!window.html2pdf || !original) {
+                const overlay = document.getElementById('report-print-overlay');
+                const card = document.getElementById('report-print-card');
+                if (!window.html2pdf || !original || !overlay || !card) {
                     window.print();
                     return;
                 }
 
                 // The on-screen preview box is capped at max-h-[80vh] with
-                // overflow-y-auto so it fits inside the modal. If we hand that
-                // element straight to html2canvas, it only captures the portion
-                // currently visible in that scroll box, so the PDF cuts off
-                // before the recap/signature section. To get every page, we
-                // clone the report into an off-screen wrapper with no height
-                // restriction, render THAT instead, then remove it.
-                const clone = original.cloneNode(true);
-                clone.id = 'report-document-content-clone';
-                clone.style.maxHeight = 'none';
-                clone.style.overflow = 'visible';
-                clone.style.height = 'auto';
-                clone.style.width = original.offsetWidth + 'px';
+                // overflow-y-auto, and the modal overlay around it is a
+                // viewport-locked position:fixed element with its own
+                // overflow-y-auto. Earlier attempts cloned the report into a
+                // separate off-screen/appended-elsewhere element to dodge
+                // this, but that introduced its own problems (huge combined
+                // document height, mismatched virtual render-window sizing)
+                // that ended up clipping the right or bottom edge instead.
+                //
+                // The simplest reliable fix: capture the REAL element, in
+                // its REAL position, and just temporarily strip every
+                // height/overflow/position constraint that would otherwise
+                // clip it - then put everything back exactly as it was.
+                const saved = [
+                    [original, 'maxHeight', original.style.maxHeight],
+                    [original, 'overflow', original.style.overflow],
+                    [overlay, 'position', overlay.style.position],
+                    [overlay, 'overflow', overlay.style.overflow],
+                    [overlay, 'height', overlay.style.height],
+                    [overlay, 'display', overlay.style.display],
+                    [overlay, 'background', overlay.style.background],
+                    [overlay, 'backdropFilter', overlay.style.backdropFilter],
+                    [overlay, 'padding', overlay.style.padding],
+                    [card, 'overflow', card.style.overflow],
+                ];
 
-                const host = document.createElement('div');
-                host.id = 'pdf-export-host';
-                host.style.width = original.offsetWidth + 'px';
-                host.appendChild(clone);
-                document.body.appendChild(host);
+                original.style.maxHeight = 'none';
+                original.style.overflow = 'visible';
+                // Switch the overlay from a fixed, 100vh, scroll-clipped box
+                // into a normal in-flow block so the now-taller report can
+                // expand the page naturally instead of being cropped to the
+                // viewport.
+                overlay.style.position = 'static';
+                overlay.style.overflow = 'visible';
+                overlay.style.height = 'auto';
+                overlay.style.display = 'block';
+                overlay.style.background = 'none';
+                overlay.style.backdropFilter = 'none';
+                overlay.style.padding = '0';
+                card.style.overflow = 'visible';
+
+                const restore = () => {
+                    saved.forEach(([el, prop, val]) => { el.style[prop] = val; });
+                };
 
                 const opt = {
                     margin:       [10, 10, 10, 10],
                     filename:     `Laporan_Komplit_RAB_TitiPanen_${project.regency}_${spec.code}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, windowWidth: clone.scrollWidth, height: clone.scrollHeight },
+                    html2canvas:  { scale: 2, useCORS: true },
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak:    { mode: ['css', 'legacy'], avoid: ['tr', 'table'] }
                 };
 
-                const cleanup = () => { if (host.parentNode) document.body.removeChild(host); };
-                window.html2pdf().set(opt).from(clone).save().then(cleanup).catch((err) => {
+                window.html2pdf().set(opt).from(original).save().then(restore).catch((err) => {
                     console.error('Gagal membuat PDF:', err);
-                    cleanup();
+                    restore();
                     window.print();
                 });
             };
 
             return (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 dark:border-slate-800 my-auto overflow-hidden">
+                <div id="report-print-overlay" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+                    <div id="report-print-card" className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 dark:border-slate-800 my-auto overflow-hidden">
                         
                         {/* Header bar */}
                         <div className="px-6 py-4 bg-slate-900 text-white flex justify-between items-center no-print">
