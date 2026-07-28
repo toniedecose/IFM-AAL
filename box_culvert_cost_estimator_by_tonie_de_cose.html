@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AAL IFM Box Culvert Cost Estimator</title>
+    <title>Box Culvert Cost Estimator By Tonie De CoSe</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         // Recolor the Tailwind palette to match the Infrastructure Engineering
@@ -78,11 +78,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
+
+        /* Removes the browser's own print header/footer (URL, page title,
+           date, page numbers): Chrome/Edge only reserve space for that
+           chrome inside the @page margin, so zeroing it out leaves nothing
+           for the browser to draw there. Visual whitespace around the
+           report is recreated below via body padding instead. */
+        @page {
+            size: auto;
+            margin: 0;
+        }
+
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             .page-break { page-break-before: always; }
-            body { background: white; color: black; }
+            body {
+                background: white;
+                color: black;
+                margin: 0 !important;
+                padding: 14mm 10mm !important;
+            }
             .card-box { border: 1px solid #ccc !important; shadow: none !important; }
 
             /* Force every report section to render for the PDF export,
@@ -116,7 +132,7 @@
                             SNI &amp; PUPR Verified
                         </span>
                     </div>
-                    <p class="text-xs text-slate-400">By AAL IFM &bull; Engineering &amp; RAB Suite Standar Permen PUPR 1/2022</p>
+                    <p class="text-xs text-slate-400">By Tonie De CoSe &bull; Engineering &amp; RAB Suite Standar Permen PUPR 1/2022</p>
                 </div>
             </div>
 
@@ -167,7 +183,7 @@
         <div class="hidden print:block mb-6 text-center border-b-2 border-black pb-4">
             <h1 class="text-lg font-bold uppercase tracking-wide">Laporan Engineering &amp; Rencana Anggaran Biaya (RAB)</h1>
             <p class="text-sm font-semibold mt-0.5">Pekerjaan Konstruksi Box Culvert</p>
-            <p class="text-[10px] text-gray-700 mt-0.5">Standar Permen PUPR No. 1/2022 &amp; SNI 2847:2019 &bull; By AAL IFM </p>
+            <p class="text-[10px] text-gray-700 mt-0.5">Standar Permen PUPR No. 1/2022 &amp; SNI 2847:2019 &bull; By Tonie De CoSe</p>
             <div class="flex flex-wrap justify-center gap-x-8 gap-y-1 text-[10px] mt-3">
                 <span>Format Penampang: <strong id="printCoverNomenklatur">-</strong></span>
                 <span>Wilayah Harga: <strong id="printCoverRegion">-</strong></span>
@@ -573,30 +589,30 @@
                     <div class="flex flex-col justify-between" style="min-height:150px">
                         <div>
                             <p>Dibuat oleh,</p>
-                           
+                            <p class="font-bold">Senior Estimator</p>
                         </div>
-                        <p class="font-bold">( ..................................... )<br>Asisten Infrastruktur & Fasilitas</p>
+                        <p class="border-t border-black pt-1 font-bold">Tonie De CoSe</p>
                     </div>
                     <div class="flex flex-col justify-between" style="min-height:150px">
                         <div>
                             <p>Diperiksa oleh,</p>
-                           
+                            <p class="font-bold">Kepala Teknik</p>
                         </div>
-                        <p class="font-bold">( ..................................... )<br>Kepala Teknik</p>
+                        <p class="border-t border-black pt-1">( ..................................... )</p>
                     </div>
                     <div class="flex flex-col justify-between" style="min-height:150px">
                         <div>
                             <p>Disetujui oleh,</p>
-                            
+                            <p class="font-bold">Administratur</p>
                         </div>
-                        <p class="font-bold">( ..................................... )<br>Administratur</p>
+                        <p class="border-t border-black pt-1">( ..................................... )</p>
                     </div>
                     <div class="flex flex-col justify-between" style="min-height:150px">
                         <div>
                             <p>Disetujui oleh,</p>
-                            
+                            <p class="font-bold">Function IFM<br>Manager Infrastruktur Support</p>
                         </div>
-                        <p class="font-bold">Muhamad Fatoni<br>Manager Infrastruktur Support</p>
+                        <p class="border-t border-black pt-1 font-bold">Muhamad Fatoni</p>
                     </div>
                 </div>
 
