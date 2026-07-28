@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Infrastructure Support AAL Workspace - Cost Estimator Suite </title>
+    <title>IFM Infrastructure Support Workspace - Cost Estimator Suite</title>
     <!-- Google Fonts Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,8 +23,8 @@
             --bg-workspace: #F5F7FA;
             --bg-card: #FFFFFF;
             --bg-card-hover: #FAFCFF;
-            --bg-header: rgba(255, 255, 255, 0.88);
-            --bg-sidebar: #FFFFFF;
+            --bg-header: linear-gradient(90deg, #0D1B2E 0%, #16324F 100%);
+            --bg-sidebar: #0D1826;
             --bg-overlay: rgba(15, 23, 42, 0.45);
             --bg-input: #F8FAFC;
             --bg-pill: #F1F5F9;
@@ -35,6 +35,19 @@
             --text-light: #9CA3AF;
             --border-subtle: #E5E7EB;
             --border-strong: #D1D5DB;
+
+            /* Dark-surface tokens (header & sidebar are always navy, so these
+               feed the light-on-dark text/border/surface colors used there) */
+            --on-dark-text-main: #F1F5F9;
+            --on-dark-text-muted: #9FB2CC;
+            --on-dark-text-light: #7488A8;
+            --on-dark-border-subtle: rgba(255, 255, 255, 0.10);
+            --on-dark-border-strong: rgba(255, 255, 255, 0.20);
+            --on-dark-bg-card: rgba(255, 255, 255, 0.08);
+            --on-dark-bg-pill: rgba(255, 255, 255, 0.065);
+            --on-dark-bg-input: rgba(255, 255, 255, 0.065);
+            --on-dark-accent: #6BAAF7;
+            --on-dark-accent-light: rgba(107, 170, 247, 0.18);
 
             /* Shadows & Effects */
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
@@ -61,8 +74,6 @@
             --bg-workspace: #0B0F17;
             --bg-card: #141C2B;
             --bg-card-hover: #1A2438;
-            --bg-header: rgba(20, 28, 43, 0.88);
-            --bg-sidebar: #101623;
             --bg-overlay: rgba(0, 0, 0, 0.75);
             --bg-input: #1A2438;
             --bg-pill: #1E293B;
@@ -119,12 +130,28 @@
             overflow: hidden;
         }
 
+        /* Header & Sidebar are always navy-branded surfaces, independent of the
+           light/dark workspace theme toggle. Re-map the shared tokens locally
+           so every existing component (search box, chips, nav items, etc.)
+           automatically renders correctly on the dark surface. */
+        header, aside {
+            --text-main: var(--on-dark-text-main);
+            --text-muted: var(--on-dark-text-muted);
+            --text-light: var(--on-dark-text-light);
+            --border-subtle: var(--on-dark-border-subtle);
+            --border-strong: var(--on-dark-border-strong);
+            --bg-card: var(--on-dark-bg-card);
+            --bg-pill: var(--on-dark-bg-pill);
+            --bg-input: var(--on-dark-bg-input);
+            --color-primary: var(--on-dark-accent);
+            --color-primary-light: var(--on-dark-accent-light);
+        }
+
         header {
             height: var(--header-height);
             background: var(--bg-header);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 2px 16px rgba(6, 12, 22, 0.25);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -165,13 +192,13 @@
         .brand-logo {
             width: 38px;
             height: 38px;
-            background: linear-gradient(135deg, var(--color-primary), #1d6fa5);
+            background: linear-gradient(135deg, #1D6FA5, #2B8FD6);
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            box-shadow: 0 2px 8px rgba(15, 76, 129, 0.3);
+            box-shadow: 0 2px 10px rgba(43, 143, 214, 0.45);
         }
 
         .brand-title-group {
@@ -333,7 +360,8 @@
         aside {
             width: var(--sidebar-width);
             background: var(--bg-sidebar);
-            border-right: 1px solid var(--border-subtle);
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 2px 0 16px rgba(6, 12, 22, 0.18);
             display: flex;
             flex-direction: column;
             transition: width var(--transition-normal);
@@ -388,13 +416,7 @@
             background: var(--color-primary-light);
             color: var(--color-primary);
             font-weight: 600;
-            border-color: rgba(15, 76, 129, 0.15);
-        }
-
-        [data-theme="dark"] .nav-item.active {
-            background: rgba(43, 127, 255, 0.12);
-            color: #60A5FA;
-            border-color: rgba(96, 165, 250, 0.2);
+            border-color: rgba(94, 161, 242, 0.28);
         }
 
         .nav-item .icon {
@@ -1116,7 +1138,7 @@
                     <svg class="icon" viewBox="0 0 24 24" style="width:22px;height:22px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                 </div>
                 <div class="brand-title-group">
-                    <span class="brand-title">Infrastructure Support AAL Workspace</span>
+                    <span class="brand-title">Infrastructure Engineering Workspace</span>
                     <span class="brand-subtitle">Cost Estimator Suite</span>
                 </div>
             </div>
@@ -1342,12 +1364,12 @@
 
     <footer>
         <div class="footer-left">
-            <span>Infrastructure Support AAL Workspace &copy; 2026</span>
+            <span>Infrastructure Engineering Workspace &copy; 2026</span>
             <span>&bull;</span>
             <span class="footer-tag">STATUS: ONLINE (100% LOCAL)</span>
         </div>
         <div class="footer-right">
-            <span>Powered ToNie De CoSe</span>
+            <span>Powered by ToNie De CoSe</span>
             <span class="footer-tag">v4.2.0-ENT</span>
         </div>
     </footer>
@@ -1370,7 +1392,7 @@
                 <svg class="icon" viewBox="0 0 24 24" style="width:32px;height:32px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
             </div>
             <h2 class="welcome-modal-title">Welcome Engineer</h2>
-            <p class="welcome-modal-sub">Infrastructure Support AAL Workspace &bull; Cost Estimator Suite</p>
+            <p class="welcome-modal-sub">Infrastructure Engineering Workspace &bull; Cost Estimator Suite</p>
             
             <form id="welcome-form" onsubmit="event.preventDefault(); app.saveUserProfile();">
                 <div class="form-group">
