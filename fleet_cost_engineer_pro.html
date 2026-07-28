@@ -10,6 +10,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2canvas + jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         // Recolor the Tailwind palette to match the Infrastructure Engineering
         // Workspace launcher's design system (index.html): light surfaces,
@@ -89,6 +94,11 @@
             border-color: #0F4C81 !important;
             box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.15);
         }
+        /* Ensure header/footer never appear in browser print/PDF output */
+        @media print {
+            header, footer, .no-print { display: none !important; }
+        }
+        #pdfApprovalBlock { display: none; }
     </style>
 </head>
 <body class="bg-industrial-900 text-slate-100 font-sans min-h-screen">
@@ -105,9 +115,17 @@
                     <p class="text-xs text-slate-400">By Tonie De CoSe (Komatsu & Multi-Brand Standard Expert)</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-2 text-xs bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Active Model: Komatsu, Bomag & Isuzu Fleet Standard</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex items-center space-x-2 text-xs bg-slate-900 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Active Model: Komatsu, Bomag & Isuzu Fleet Standard</span>
+                </div>
+                <button onclick="exportToPDF()" id="btnExportPDF" class="flex items-center gap-1.5 text-xs font-bold bg-industrial-amber text-white px-3 py-1.5 rounded-full hover:opacity-90 transition shadow">
+                    <i class="fa-solid fa-file-pdf"></i> <span>Download PDF</span>
+                </button>
+                <button onclick="exportToExcel()" id="btnExportExcel" class="flex items-center gap-1.5 text-xs font-bold bg-emerald-600 text-white px-3 py-1.5 rounded-full hover:opacity-90 transition shadow">
+                    <i class="fa-solid fa-file-excel"></i> <span>Export Excel</span>
+                </button>
             </div>
         </div>
     </header>
@@ -122,10 +140,8 @@
                     <span class="bg-industrial-amber/10 text-industrial-amber text-xs font-bold px-2.5 py-1 rounded border border-industrial-amber/20">Komatsu & General Fleet Edition</span>
                     <span class="bg-blue-500/10 text-blue-400 text-xs font-bold px-2.5 py-1 rounded border border-blue-500/20">Komatsu / Bomag / Isuzu Standard</span>
                 </div>
-                <h2 class="text-xl font-bold text-slate-100">Kalkulator Life Cycle Cost (LCC) & Biaya Per Jam Armada Alat Berat</h2>
-                <p class="text-sm text-slate-400 max-w-4xl">
-                    Sistem ini telah disesuaikan dengan daftar armada Anda (Komatsu PC200/PC70/PC45, Dozer D31/D68, Isuzu NMR, Motor Grader GD511/535, dan Compactor Bomag). Pilih preset di bawah untuk memuat angka estimasi standar industri Indonesia, atau ubah parameter sesuai realita operasi lapangan Anda.
-                </p>
+                <h2 class="text-xl font-bold text-slate-100">Life Cycle Cost (LCC) & Biaya Per Jam Armada Alat Berat Estimator</h2>
+               
             </div>
         </div>
 
@@ -138,9 +154,9 @@
                 <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 shadow-lg">
                     <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wider mb-2 flex items-center gap-2">
                         <i class="fa-solid fa-list-check text-industrial-amber"></i>
-                        Pilih Preset Unit Armada Anda
+                        Pilih Alat Berat / Unit
                     </h3>
-                    <p class="text-xs text-slate-400 mb-3">Klik salah satu unit di bawah untuk mengisi data otomatis sesuai standar Komatsu/Isuzu/Bomag:</p>
+                    <p class="text-xs text-slate-400 mb-3">Klik salah satu unit di bawah untuk mengisi data otomatis sesuai standar Unit dan Alat berat:</p>
                     
                     <!-- CATEGORIES GRID -->
                     <div class="space-y-3 max-h-[320px] overflow-y-auto pr-1">
@@ -725,7 +741,7 @@
     <footer class="border-t border-slate-800 bg-slate-950 mt-12 py-6 text-xs text-slate-500">
         <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-                <p>&copy; 2026 Fleet Cost Engineer By Tonie De CoSe. Dirancang untuk Komatsu, Bomag, Isuzu, dan standar armada industri.</p>
+                <p>&copy; 2026 Fleet Cost Engineer By AAL IFM. Dirancang untuk Komatsu, Bomag, Isuzu, dan standar armada industri.</p>
             </div>
             <div class="flex space-x-4">
                 <a href="#" class="hover:text-slate-100 transition">Komatsu Cost Handbook Standard</a>
@@ -1496,6 +1512,261 @@
                     }
                 }
             });
+        }
+
+        // =====================================================================
+        // EXPORT ENGINE: PDF (html2canvas + jsPDF) & EXCEL (SheetJS)
+        // =====================================================================
+
+        // Parse a formatted "Rp 1.234.567" string back into a raw number
+        function parseRupiahToNumber(text) {
+            if (!text) return 0;
+            const cleaned = String(text).replace(/[^0-9\-]/g, '');
+            return cleaned ? parseInt(cleaned, 10) : 0;
+        }
+
+        function getElText(id) {
+            const el = document.getElementById(id);
+            return el ? el.innerText.trim() : '';
+        }
+
+        // Builds the "Lembar Pengesahan" (approval / sign-off) block used in the PDF export
+        function buildApprovalBlockHTML() {
+            return `
+                <div style="margin-top:36px;padding:24px 4px 4px 4px;border-top:2px solid #CBD5E1;">
+                    <p style="text-align:center;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:800;color:#1F2937;margin-bottom:4px;">Lembar Pengesahan</p>
+                    <p style="text-align:center;font-size:10px;color:#6B7280;margin-bottom:22px;">Dokumen ini disusun dan disahkan sesuai struktur persetujuan berikut</p>
+                    <div style="display:flex;justify-content:space-between;gap:14px;text-align:center;font-family:Inter,sans-serif;">
+                        <div style="flex:1;">
+                            <p style="font-size:11px;color:#374151;margin-bottom:4px;">Dibuat oleh,</p>
+                            <div style="height:64px;"></div>
+                            <p style="border-top:1px solid #1F2937;padding-top:6px;margin:0;font-size:11px;font-weight:700;color:#1F2937;">Asisten Teknik dan Infrastruktur</p>
+                        </div>
+                        <div style="flex:1;">
+                            <p style="font-size:11px;color:#374151;margin-bottom:4px;">Diperiksa oleh,</p>
+                            <div style="height:64px;"></div>
+                            <p style="border-top:1px solid #1F2937;padding-top:6px;margin:0;font-size:11px;font-weight:700;color:#1F2937;">Kepala Teknik</p>
+                        </div>
+                        <div style="flex:1;">
+                            <p style="font-size:11px;color:#374151;margin-bottom:4px;">Disetujui oleh,</p>
+                            <div style="height:64px;"></div>
+                            <p style="border-top:1px solid #1F2937;padding-top:6px;margin:0;font-size:11px;font-weight:700;color:#1F2937;">Administratur</p>
+                         
+                        </div>
+			<div style="flex:1;">
+                            <p style="font-size:11px;color:#374151;margin-bottom:4px;">Disetujui oleh,</p>
+                            <div style="height:64px;"></div>
+                            <p style="border-top:1px solid #1F2937;padding-top:6px;margin:0;font-size:11px;font-weight:700;color:#1F2937;">Muhamad Fatoni</p>
+                         
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        async function exportToPDF() {
+            const btn = document.getElementById('btnExportPDF');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Memproses...</span>';
+            btn.disabled = true;
+
+            // Capture ONLY the <main> content area — the sticky header nav bar
+            // and the site footer are siblings of <main> and are never included,
+            // so they will never appear in the generated PDF.
+            const mainEl = document.querySelector('main');
+
+            const approvalDiv = document.createElement('div');
+            approvalDiv.id = 'pdfApprovalBlock';
+            approvalDiv.style.display = 'block';
+            approvalDiv.style.background = '#FFFFFF';
+            approvalDiv.innerHTML = buildApprovalBlockHTML();
+            mainEl.appendChild(approvalDiv);
+
+            try {
+                const canvas = await html2canvas(mainEl, {
+                    backgroundColor: '#F5F7FA',
+                    scale: 2,
+                    useCORS: true,
+                    windowWidth: mainEl.scrollWidth
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = pageWidth;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                let heightLeft = imgHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+
+                const assetName = (document.getElementById('asset_name').value || 'Fleet-Cost-Report').replace(/[^a-zA-Z0-9]+/g, '_');
+                const dateStr = new Date().toISOString().slice(0, 10);
+                pdf.save(`Laporan-LCC-${assetName}-${dateStr}.pdf`);
+            } catch (err) {
+                console.error(err);
+                alert('Gagal membuat PDF: ' + err.message);
+            } finally {
+                mainEl.removeChild(approvalDiv);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        function exportToExcel() {
+            const btn = document.getElementById('btnExportExcel');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Memproses...</span>';
+            btn.disabled = true;
+
+            try {
+                const assetName = document.getElementById('asset_name').value || '-';
+                const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+                const wb = XLSX.utils.book_new();
+
+                // ---------- SHEET 1: RINGKASAN ----------
+                const summaryData = [
+                    ['LAPORAN LIFE CYCLE COST (LCC) & BIAYA PER JAM ARMADA'],
+                    ['Fleet Cost Engineer By Tonie De CoSe'],
+                    [],
+                    ['Nama Aset', assetName],
+                    ['Tanggal Laporan', tanggal],
+                    [],
+                    ['RINGKASAN BIAYA GABUNGAN (OWNING + OPERATING)'],
+                    ['Biaya Per Jam', parseRupiahToNumber(getElText('summary_total_hourly_cost'))],
+                    ['Biaya Per Hari', parseRupiahToNumber(getElText('summary_total_daily'))],
+                    ['Biaya Per Bulan', parseRupiahToNumber(getElText('summary_total_monthly'))],
+                    ['Biaya Per Tahun', parseRupiahToNumber(getElText('summary_total_yearly'))],
+                    [],
+                    ['ANALISIS RAM & LIFE CYCLE COST'],
+                    ['Mechanical Availability (MA)', getElText('stat_ma')],
+                    ['Downtime Per Tahun', getElText('stat_downtime_hours')],
+                    ['Downtime Cost Impact (Rp/tahun)', parseRupiahToNumber(getElText('stat_downtime_cost'))],
+                    ['Total Life Cycle Cost / LCC (Rp)', parseRupiahToNumber(getElText('stat_lcc'))],
+                    [],
+                    ['REKOMENDASI FLEET ADVISOR', getElText('final_rec_verdict')],
+                    [],
+                    [],
+                    ['LEMBAR PENGESAHAN'],
+                    ['Peran', 'Jabatan', 'Nama'],
+                    ['Dibuat oleh', 'Asisten Teknik dan Infrastruktur', ''],
+                    ['Diperiksa oleh', 'Kepala Teknik', ''],
+                    ['Disetujui oleh', 'Administratur', 'Muhamad Fatoni'],
+                ];
+                const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+                ws1['!cols'] = [{ wch: 32 }, { wch: 45 }, { wch: 22 }];
+                XLSX.utils.book_append_sheet(wb, ws1, 'Ringkasan');
+
+                // ---------- SHEET 2: OWNING COST ----------
+                const owningRows = [
+                    ['RINCIAN BIAYA KEPEMILIKAN (OWNING COST)'],
+                    [],
+                    ['Elemen Biaya', 'Per Tahun', 'Per Bulan', 'Per Hari', 'Per Jam Kerja']
+                ];
+                [
+                    ['Depresiasi (Penyusutan Nilai Unit)', 'dep_yr', 'dep_mo', 'dep_dy', 'dep_hr'],
+                    ['Bunga Modal (Interest)', 'int_yr', 'int_mo', 'int_dy', 'int_hr'],
+                    ['Asuransi Proteksi Unit', 'ins_yr', 'ins_mo', 'ins_dy', 'ins_hr'],
+                    ['Pajak Alat / STNK', 'tax_yr', 'tax_mo', 'tax_dy', 'tax_hr'],
+                    ['Storage / Mess Workshop', 'sto_yr', 'sto_mo', 'sto_dy', 'sto_hr'],
+                    ['TOTAL OWNING COST', 'tot_own_yr', 'tot_own_mo', 'tot_own_dy', 'tot_own_hr'],
+                ].forEach(r => {
+                    owningRows.push([r[0], parseRupiahToNumber(getElText(r[1])), parseRupiahToNumber(getElText(r[2])), parseRupiahToNumber(getElText(r[3])), parseRupiahToNumber(getElText(r[4]))]);
+                });
+                const ws2 = XLSX.utils.aoa_to_sheet(owningRows);
+                ws2['!cols'] = [{ wch: 38 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+                XLSX.utils.book_append_sheet(wb, ws2, 'Owning Cost');
+
+                // ---------- SHEET 3: OPERATING COST ----------
+                const operatingRows = [
+                    ['RINCIAN BIAYA OPERASIONAL (OPERATING COST)'],
+                    [],
+                    ['Elemen Biaya', 'Per Jam', 'Per Hari', 'Per Bulan', 'Per Tahun']
+                ];
+                [
+                    ['Bahan Bakar Solar', 'op_fuel_hr', 'op_fuel_dy', 'op_fuel_mo', 'op_fuel_yr'],
+                    ['Oli, Grease & Filter Suku Cadang', 'op_lub_hr', 'op_lub_dy', 'op_lub_mo', 'op_lub_yr'],
+                    ['Maintenance & Spare Part Perbaikan', 'op_rep_hr', 'op_rep_dy', 'op_rep_mo', 'op_rep_yr'],
+                    ['Konsumsi Ban (Tyres)', 'op_tyre_hr', 'op_tyre_dy', 'op_tyre_mo', 'op_tyre_yr'],
+                    ['Keausan Undercarriage (Rantai/Track)', 'op_uc_hr', 'op_uc_dy', 'op_uc_mo', 'op_uc_yr'],
+                    ['Upah & Tunjangan Operator/Driver', 'op_opr_hr', 'op_opr_dy', 'op_opr_mo', 'op_opr_yr'],
+                    ['TOTAL OPERATING COST', 'tot_op_hr', 'tot_op_dy', 'tot_op_mo', 'tot_op_yr'],
+                ].forEach(r => {
+                    operatingRows.push([r[0], parseRupiahToNumber(getElText(r[1])), parseRupiahToNumber(getElText(r[2])), parseRupiahToNumber(getElText(r[3])), parseRupiahToNumber(getElText(r[4]))]);
+                });
+                const ws3 = XLSX.utils.aoa_to_sheet(operatingRows);
+                ws3['!cols'] = [{ wch: 38 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+                XLSX.utils.book_append_sheet(wb, ws3, 'Operating Cost');
+
+                // ---------- SHEET 4: SENSITIVITY ANALYSIS ----------
+                const sensRows = [
+                    ['ANALISIS SENSITIVITAS RISIKO OPERASIONAL'],
+                    [],
+                    ['Skenario Deviasi', 'Biaya/Jam Normal', 'Biaya/Jam Skenario', 'Kenaikan (%)']
+                ];
+                const sensLabels = [
+                    'Bahan Bakar Solar Naik 10%',
+                    'Jam Kerja / Utilisasi Turun 20%',
+                    'Biaya Perbaikan/Parts Naik 20%',
+                    'Harga Investasi Alat Naik 10%',
+                    'Worst Case (Solar +10% & Jam Kerja -20%)'
+                ];
+                for (let i = 1; i <= 5; i++) {
+                    sensRows.push([
+                        sensLabels[i - 1],
+                        parseRupiahToNumber(getElText('sens_base' + i)),
+                        parseRupiahToNumber(getElText('sens_scen' + i)),
+                        getElText('sens_pct' + i)
+                    ]);
+                }
+                const ws4 = XLSX.utils.aoa_to_sheet(sensRows);
+                ws4['!cols'] = [{ wch: 42 }, { wch: 18 }, { wch: 20 }, { wch: 15 }];
+                XLSX.utils.book_append_sheet(wb, ws4, 'Sensitivitas');
+
+                // ---------- SHEET 5: RENT VS BUY ----------
+                const rvbRows = [
+                    ['ANALISIS OPSI: BELI SENDIRI VS SEWA (RENTAL)'],
+                    [],
+                    ['Total Biaya Milik Sendiri (Per Tahun)', parseRupiahToNumber(getElText('rvb_own_yr'))],
+                    ['Total Biaya Sewa Pasaran (Per Tahun)', parseRupiahToNumber(getElText('rvb_rent_yr'))],
+                    ['Selisih Penghematan Bersih', parseRupiahToNumber(getElText('rvb_saving'))],
+                    ['Status', getElText('rental_indicator')],
+                    [],
+                    ['Catatan Verdict', getElText('rvb_verdict').replace(/\s+/g, ' ').trim()],
+                    [],
+                    [],
+                    ['LEMBAR PENGESAHAN'],
+                    ['Peran', 'Jabatan', 'Nama'],
+                    ['Dibuat oleh', 'Asisten Teknik dan Infrastruktur', ''],
+                    ['Diperiksa oleh', 'Kepala Teknik', ''],
+                    ['Disetujui oleh', 'Administratur', 'Muhamad Fatoni'],
+                ];
+                const ws5 = XLSX.utils.aoa_to_sheet(rvbRows);
+                ws5['!cols'] = [{ wch: 40 }, { wch: 70 }];
+                XLSX.utils.book_append_sheet(wb, ws5, 'Sewa vs Beli');
+
+                const fileSafeName = assetName.replace(/[^a-zA-Z0-9]+/g, '_');
+                const dateStr = new Date().toISOString().slice(0, 10);
+                XLSX.writeFile(wb, `Laporan-LCC-${fileSafeName}-${dateStr}.xlsx`);
+            } catch (err) {
+                console.error(err);
+                alert('Gagal membuat Excel: ' + err.message);
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
         }
 
         window.onload = function() {
