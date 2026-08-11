@@ -23,11 +23,20 @@
             --bg-workspace: #F5F7FA;
             --bg-card: #FFFFFF;
             --bg-card-hover: #FAFCFF;
-            --bg-header: rgba(255, 255, 255, 0.88);
+            --bg-header: #0A1930;
             --bg-sidebar: #FFFFFF;
             --bg-overlay: rgba(15, 23, 42, 0.45);
             --bg-input: #F8FAFC;
             --bg-pill: #F1F5F9;
+
+            /* Dark Navy Surfaces (header / hero band, to match brand reference) */
+            --bg-header-navy: #0A1930;
+            --bg-hero-gradient: linear-gradient(120deg, #0B2545 0%, #123C66 55%, #0D3054 100%);
+            --on-navy-text: #FFFFFF;
+            --on-navy-muted: rgba(255, 255, 255, 0.68);
+            --on-navy-border: rgba(255, 255, 255, 0.14);
+            --on-navy-surface: rgba(255, 255, 255, 0.08);
+            --on-navy-surface-hover: rgba(255, 255, 255, 0.16);
 
             /* Text & Borders */
             --text-main: #1F2937;
@@ -121,10 +130,10 @@
 
         header {
             height: var(--header-height);
-            background: var(--bg-header);
+            background: var(--bg-header-navy);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 1px solid var(--on-navy-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -141,7 +150,7 @@
         .sidebar-toggle-btn {
             background: transparent;
             border: none;
-            color: var(--text-muted);
+            color: var(--on-navy-muted);
             cursor: pointer;
             padding: 8px;
             border-radius: var(--radius-sm);
@@ -152,14 +161,14 @@
         }
 
         .sidebar-toggle-btn:hover {
-            background: var(--bg-pill);
-            color: var(--text-main);
+            background: var(--on-navy-surface);
+            color: var(--on-navy-text);
         }
 
         .home-link-btn {
-            background: var(--bg-pill);
-            border: 1px solid var(--border-subtle);
-            color: var(--text-muted);
+            background: var(--on-navy-surface);
+            border: 1px solid var(--on-navy-border);
+            color: var(--on-navy-muted);
             width: 36px;
             height: 36px;
             border-radius: var(--radius-md);
@@ -172,9 +181,9 @@
         }
 
         .home-link-btn:hover {
-            background: var(--bg-card);
-            color: var(--color-primary);
-            border-color: var(--border-strong);
+            background: var(--on-navy-surface-hover);
+            color: var(--color-accent);
+            border-color: var(--on-navy-border);
             box-shadow: var(--shadow-sm);
         }
 
@@ -205,7 +214,7 @@
             font-size: 15px;
             font-weight: 700;
             letter-spacing: -0.01em;
-            color: var(--text-main);
+            color: var(--on-navy-text);
             line-height: 1.2;
         }
 
@@ -225,34 +234,34 @@
 
         .search-trigger-btn {
             width: 100%;
-            background: var(--bg-input);
-            border: 1px solid var(--border-subtle);
+            background: var(--on-navy-surface);
+            border: 1px solid var(--on-navy-border);
             border-radius: var(--radius-md);
             padding: 8px 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            color: var(--text-muted);
+            color: var(--on-navy-muted);
             font-size: 13px;
             cursor: pointer;
             transition: var(--transition-fast);
         }
 
         .search-trigger-btn:hover {
-            border-color: var(--color-primary);
-            background: var(--bg-card);
+            border-color: var(--color-accent);
+            background: var(--on-navy-surface-hover);
             box-shadow: var(--shadow-sm);
         }
 
         .shortcut-badge {
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--on-navy-border);
             border-radius: 4px;
             padding: 2px 6px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 10px;
             font-weight: 600;
-            color: var(--text-muted);
+            color: var(--on-navy-muted);
         }
 
         .header-right {
@@ -266,7 +275,7 @@
             flex-direction: column;
             align-items: flex-end;
             margin-right: 8px;
-            border-right: 1px solid var(--border-subtle);
+            border-right: 1px solid var(--on-navy-border);
             padding-right: 16px;
         }
 
@@ -274,18 +283,18 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-main);
+            color: var(--on-navy-text);
         }
 
         .date-text {
             font-size: 11px;
-            color: var(--text-muted);
+            color: var(--on-navy-muted);
         }
 
         .icon-action-btn {
-            background: var(--bg-pill);
+            background: var(--on-navy-surface);
             border: 1px solid transparent;
-            color: var(--text-muted);
+            color: var(--on-navy-muted);
             width: 36px;
             height: 36px;
             border-radius: var(--radius-md);
@@ -298,9 +307,9 @@
         }
 
         .icon-action-btn:hover {
-            background: var(--bg-card);
-            color: var(--color-primary);
-            border-color: var(--border-subtle);
+            background: var(--on-navy-surface-hover);
+            color: var(--color-accent);
+            border-color: var(--on-navy-border);
             box-shadow: var(--shadow-sm);
         }
 
@@ -312,7 +321,7 @@
             height: 7px;
             background: var(--color-accent);
             border-radius: 50%;
-            border: 2px solid var(--bg-card);
+            border: 2px solid var(--bg-header-navy);
         }
 
         .user-profile-chip {
@@ -320,16 +329,16 @@
             align-items: center;
             gap: 10px;
             padding: 4px 10px 4px 4px;
-            background: var(--bg-pill);
-            border: 1px solid var(--border-subtle);
+            background: var(--on-navy-surface);
+            border: 1px solid var(--on-navy-border);
             border-radius: 30px;
             cursor: pointer;
             transition: var(--transition-fast);
         }
 
         .user-profile-chip:hover {
-            background: var(--bg-card);
-            border-color: var(--border-strong);
+            background: var(--on-navy-surface-hover);
+            border-color: var(--on-navy-border);
         }
 
         .avatar-circle {
@@ -348,7 +357,7 @@
         .user-name {
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-main);
+            color: var(--on-navy-text);
             padding-right: 4px;
         }
 
@@ -530,19 +539,23 @@
 
         .welcome-hero-banner {
             margin-bottom: 32px;
+            background: var(--bg-hero-gradient);
+            border-radius: var(--radius-lg);
+            padding: 28px 32px;
+            box-shadow: var(--shadow-lg);
         }
 
         .welcome-title {
             font-size: 28px;
             font-weight: 800;
-            color: var(--text-main);
+            color: var(--on-navy-text);
             letter-spacing: -0.02em;
             margin-bottom: 6px;
         }
 
         .welcome-subtitle {
             font-size: 14px;
-            color: var(--text-muted);
+            color: var(--on-navy-muted);
             font-weight: 400;
         }
 
@@ -696,7 +709,7 @@
         }
 
         .launch-btn {
-            background: var(--color-primary);
+            background: var(--color-accent);
             color: white;
             border: none;
             padding: 8px 16px;
@@ -712,9 +725,9 @@
         }
 
         .launch-btn:hover {
-            background: var(--color-primary-hover);
+            background: var(--color-accent-hover);
             transform: translateX(2px);
-            box-shadow: 0 4px 10px rgba(15, 76, 129, 0.25);
+            box-shadow: 0 4px 10px rgba(24, 169, 87, 0.3);
         }
 
         .workspace-tabs-bar {
