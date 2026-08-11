@@ -70,9 +70,26 @@
             font-size: 1.15rem;
         }
 
-        /* Penyesuaian Logo agar jelas dan proporsional di Header & Footer */
+        /* Enterprise Logo Frame & Background */
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #FFFFFF;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: var(--transition);
+        }
+
+        .logo-container:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
         .brand-logo {
-            height: 38px;
+            height: 34px;
             width: auto;
             object-fit: contain;
             display: block;
@@ -744,7 +761,9 @@
     <!-- Header / Navigation -->
     <header>
         <a href="index.html" class="brand">
-            <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+            <div class="logo-container">
+                <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+            </div>
         </a>
         <nav class="nav-links">
             <a href="index.html" class="active">Dashboard</a>
@@ -1081,7 +1100,9 @@
         <div class="footer-container">
             <div class="footer-brand">
                 <a href="index.html" class="brand" style="color: #FFFFFF;">
-                    <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+                    <div class="logo-container">
+                        <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+                    </div>
                 </a>
                 <p>Engineering • Projects • Estimation • Digital Transformation</p>
             </div>
