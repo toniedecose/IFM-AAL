@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBS Refinery Plant — Enterprise Project Control Dashboard</title>
+    <title>CBS Plant — Enterprise Project Control Dashboard</title>
     <!-- Type system: Space Grotesk (display), Inter (body), JetBrains Mono (engineering data) -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
@@ -101,7 +101,6 @@
             transition: var(--transition);
         }
         .card::before, .kpi-card::before, .info-card::before, .health-card::before {
-
             top: -1px; left: -1px;
             border-top: 1.5px solid var(--accent-teal);
             border-left: 1.5px solid var(--accent-teal);
@@ -289,6 +288,10 @@
             background: var(--bg-card);
             color: var(--text-primary);
             transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .btn-primary {
@@ -622,11 +625,18 @@
                 <line x1="17" y1="9" x2="17" y2="12" stroke="#e0a339" stroke-width="1.5"/>
             </svg>
             <div>
-                <h2>CBS REFINERY PLANT</h2>
+                <h2>CBS PLANT</h2>
                 <p>Project Control System</p>
             </div>
         </div>
         <ul class="sidebar-menu">
+            <!-- Navigasi menuju halaman utama index.html -->
+            <li style="margin-bottom: 12px; border-bottom: 1px solid var(--sidebar-border); padding-bottom: 10px;">
+                <a href="index.html" style="color: var(--accent-amber); font-weight: 600;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    Halaman Utama
+                </a>
+            </li>
             <li class="active"><a href="#overview">Overview</a></li>
             <li><a href="#progress-section">Progress</a></li>
             <li><a href="#schedule-section">Schedule Control</a></li>
@@ -648,11 +658,12 @@
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <div class="header-title">
-                    <h1>CBS REFINERY PLANT — PROJECT CONTROL DASHBOARD</h1>
+                    <h1>CBS PLANT — PROJECT CONTROL DASHBOARD</h1>
                     <p>Pekerjaan Timbunan &bull; Project ID: <span class="mono">P001</span></p>
                 </div>
             </div>
             <div class="header-meta">
+                <a href="index.html" class="btn" style="padding: 6px 12px; font-size: 0.75rem;">← Utama</a>
                 <div>Status: <span id="project-status-badge" class="badge-status badge-running">—</span></div>
                 <div>Last Update: <span id="last-data-update" class="mono">—</span></div>
                 <button class="btn btn-primary" onclick="loadDashboardData()">Refresh Now</button>
@@ -1019,9 +1030,6 @@
                     throw new Error(json?.error || "API tidak mengembalikan success=true.");
                 }
 
-                // Code.gs versi sekarang mengembalikan payload di json.data.
-                // Fallback ke json membuat frontend tetap kompatibel bila endpoint
-                // mengembalikan payload langsung di root.
                 const data = json.data || json;
                 cachedData = data;
 
@@ -1043,13 +1051,11 @@
             const riskKpi = kpi.risk || {};
             const scheduleKpi = kpi.schedule || {};
 
-            // ===== PROJECT SNAPSHOT =====
             setText("snapshot-status", project.currentStatus || scheduleKpi.status || "—");
             setText("snapshot-update", formatDateTime(envelope.timestamp));
             setText("snapshot-wbs", project.currentWbs || "—");
             setText("snapshot-activity", project.currentActivity || "—");
 
-            // ===== HEADER =====
             setText("last-data-update", formatDateTime(envelope.timestamp));
             const status = project.currentStatus || scheduleKpi.status || "UNKNOWN";
             const badge = document.getElementById("project-status-badge");
@@ -1058,7 +1064,6 @@
                 badge.className = "badge-status " + getStatusBadgeClass(status);
             }
 
-            // ===== PROJECT INFORMATION =====
             setText("info-pm", project.projectManager || "—");
 
             setText(
@@ -1089,7 +1094,6 @@
                     : "—"
             );
 
-            // ===== KPI =====
             setText("kpi-actual-progress", fmtPct(progressKpi.actual));
             setText("kpi-planned-progress", fmtPct(progressKpi.planned));
             setText("kpi-progress-var", fmtPct(progressKpi.variance, true));
@@ -1115,7 +1119,6 @@
             setText("kpi-equip-util", fmtPct(equipmentKpi.utilization));
             setText("kpi-equip-working", fmtNumber(equipmentKpi.working));
 
-            // ===== HEALTH =====
             updateHealthBadge("health-schedule", healthFromVariance(progressKpi.variance));
             updateHealthBadge("health-progress", healthFromVariance(progressKpi.variance));
             updateHealthBadge(
@@ -1139,21 +1142,17 @@
                     : Number(riskKpi.high || 0) > 0 ? "YELLOW" : "GREEN"
             );
 
-            // ===== CHARTS =====
-            // IMPORTANT: use API's actual sCurve array.
             renderSCurveChart(data.sCurve || []);
             renderWbsChart(data.schedule || [], data.progress || []);
             renderMaterialChart(materialKpi, project);
             renderLogisticChart(data.logistic || [], logisticKpi);
             renderEquipmentChart(data.equipment || [], equipmentKpi);
 
-            // ===== DISTRIBUTION DONUTS =====
             renderMaterialDonut(materialKpi, project);
             renderQualityDonut(qualityKpi);
             renderRiskDonut(riskKpi);
             renderEquipmentDonut(equipmentKpi);
 
-            // ===== TABLES =====
             renderScheduleTable(data.schedule || [], data.progress || []);
             renderQualityTable(data.quality || []);
             renderRiskTable(data.risks || []);
@@ -1174,7 +1173,6 @@
             const planned = rows.map(r => numberOrNull(r.planned));
             const actual = rows.map(r => numberOrNull(r.actual));
 
-            // If there is no S-Curve data, show an informative empty state.
             if (!rows.length) {
                 clearCanvasWithMessage(canvas, "S-Curve data belum tersedia.");
                 return;
@@ -1253,9 +1251,6 @@
             const ctx = canvas.getContext("2d");
             if (wbsChartObj) wbsChartObj.destroy();
 
-            // API/Sheet compatibility:
-            // WBS may arrive as WBS, wbs, "WBS Code", or "WBS No".
-            // Actual progress may arrive in camelCase or as the Sheet header.
             const getWbs = row => {
                 const value =
                     row?.WBS ??
@@ -1305,8 +1300,6 @@
                 .filter(row => getWbs(row))
                 .filter(row => !["6", "7", "8"].includes(getWbs(row)));
 
-            // If schedule data is unavailable but progress contains WBS data,
-            // use progress rows so the chart never renders "undefined".
             const chartRows = rows.length
                 ? rows
                 : (Array.isArray(progress) ? progress : [])
@@ -1493,7 +1486,6 @@
             });
         }
 
-        /* ===== Distribution donuts ===== */
         function donutOptions(centerLabel) {
             return {
                 responsive: true,
