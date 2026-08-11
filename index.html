@@ -55,7 +55,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 2rem;
+            padding: 0.75rem 2rem;
             z-index: 1000;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -70,15 +70,12 @@
             font-size: 1.15rem;
         }
 
-        .brand-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--accent);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #FFFFFF;
+        /* Penyesuaian Logo agar jelas dan proporsional di Header & Footer */
+        .brand-logo {
+            height: 38px;
+            width: auto;
+            object-fit: contain;
+            display: block;
         }
 
         .nav-links {
@@ -332,7 +329,7 @@
             font-size: 1.05rem;
         }
 
-        /* 6. Infrastructure Management Ecosystem */
+        /* Ecosystem Section */
         .ecosystem-section {
             background: #FFFFFF;
             border-bottom: 1px solid var(--border-color);
@@ -386,7 +383,7 @@
             line-height: 1.4;
         }
 
-        /* 7 & 8 & 9. Main Modules Grid */
+        /* Main Modules Grid */
         .modules-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -491,7 +488,7 @@
             gap: 0.75rem;
         }
 
-        /* 10. Infrastructure Capability */
+        /* Infrastructure Capability */
         .capability-section {
             background: #FFFFFF;
             border-top: 1px solid var(--border-color);
@@ -531,7 +528,7 @@
             color: var(--dark-navy);
         }
 
-        /* 11. Engineering Scale */
+        /* Engineering Scale */
         .scale-section {
             background: var(--dark-navy);
             color: #FFFFFF;
@@ -559,7 +556,7 @@
             font-weight: 500;
         }
 
-        /* 12. Engineering Principles */
+        /* Engineering Principles */
         .principles-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -594,7 +591,7 @@
             line-height: 1.5;
         }
 
-        /* 13. Digital Transformation */
+        /* Digital Transformation */
         .digital-section {
             background: #FFFFFF;
             border-top: 1px solid var(--border-color);
@@ -634,7 +631,7 @@
             font-weight: bold;
         }
 
-        /* 14. Featured Projects */
+        /* Featured Projects */
         .projects-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -747,10 +744,7 @@
     <!-- Header / Navigation -->
     <header>
         <a href="index.html" class="brand">
-            <div class="brand-icon">
-                <i data-lucide="layers" size="18"></i>
-            </div>
-            Infrastructure Management
+            <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
         </a>
         <nav class="nav-links">
             <a href="index.html" class="active">Dashboard</a>
@@ -859,7 +853,7 @@
         </div>
     </section>
 
-    <!-- 7, 8, 9. Main Modules -->
+    <!-- Main Modules -->
     <section id="modules" class="container">
         <div class="section-header">
             <span class="section-tag">Core Tools & Portals</span>
@@ -939,7 +933,7 @@
         </div>
     </section>
 
-    <!-- 10. Infrastructure Capability -->
+    <!-- Infrastructure Capability -->
     <section id="capability" class="capability-section container" style="max-width: 100%; padding: 5rem 10%;">
         <div class="section-header">
             <span class="section-tag">Domain Coverage</span>
@@ -962,7 +956,7 @@
         </div>
     </section>
 
-    <!-- 11. Engineering Scale -->
+    <!-- Engineering Scale -->
     <section class="scale-section">
         <div class="scale-grid container" style="padding: 0;">
             <div class="scale-item">
@@ -984,7 +978,7 @@
         </div>
     </section>
 
-    <!-- 12. Engineering Principles -->
+    <!-- Engineering Principles -->
     <section class="container">
         <div class="section-header">
             <span class="section-tag">Execution Standard</span>
@@ -1011,7 +1005,7 @@
         </div>
     </section>
 
-    <!-- 13. Digital Transformation -->
+    <!-- Digital Transformation -->
     <section id="digital" class="digital-section container" style="max-width: 100%; padding: 5rem 10%;">
         <div class="section-header">
             <span class="section-tag">Future Ready</span>
@@ -1031,7 +1025,7 @@
         </div>
     </section>
 
-    <!-- 14. Featured Projects -->
+    <!-- Featured Projects -->
     <section id="projects" class="container">
         <div class="section-header">
             <span class="section-tag">Portfolio Overview</span>
@@ -1087,10 +1081,7 @@
         <div class="footer-container">
             <div class="footer-brand">
                 <a href="index.html" class="brand" style="color: #FFFFFF;">
-                    <div class="brand-icon">
-                        <i data-lucide="layers" size="18"></i>
-                    </div>
-                    Infrastructure Management
+                    <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
                 </a>
                 <p>Engineering • Projects • Estimation • Digital Transformation</p>
             </div>
