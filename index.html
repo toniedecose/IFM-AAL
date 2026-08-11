@@ -95,6 +95,31 @@
             display: block;
         }
 
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.15;
+        }
+
+        .brand-text .brand-title {
+            font-family: 'Inter', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: 0.02em;
+            color: #22C55E;
+            white-space: nowrap;
+        }
+
+        .brand-text .brand-subtitle {
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94A3B8;
+            white-space: nowrap;
+        }
+
         .nav-links {
             display: flex;
             gap: 1.75rem;
@@ -764,6 +789,10 @@
             <div class="logo-container">
                 <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
             </div>
+            <div class="brand-text">
+                <span class="brand-title">AAL Infrastructure</span>
+                <span class="brand-subtitle">Management</span>
+            </div>
         </a>
         <nav class="nav-links">
             <a href="index.html" class="active">Dashboard</a>
@@ -1102,6 +1131,10 @@
                 <a href="index.html" class="brand" style="color: #FFFFFF;">
                     <div class="logo-container">
                         <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">AAL Infrastructure</span>
+                        <span class="brand-subtitle">Management</span>
                     </div>
                 </a>
                 <p>Engineering • Projects • Estimation • Digital Transformation</p>
