@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infrastructure Management | Engineering & Project Workspace</title>
+    <meta name="description" content="Integrated infrastructure management workspace for engineering, cost estimation, project development and digital engineering initiatives.">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --primary: #0F4C81;
+            --primary-dark: #0A355D;
+            --accent: #18A957;
+            --accent-hover: #138746;
+            --dark-navy: #0D1B2E;
+            --workspace: #F5F7FA;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --card-bg: #FFFFFF;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+            --transition: all 0.25s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--workspace);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(13, 27, 46, 0.95);
+            backdrop-filter: blur(10px);
+            color: #FFFFFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: #FFFFFF;
+            font-weight: 700;
+            font-size: 1.15rem;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.75rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #CBD5E1;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: #FFFFFF;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--dark-navy);
+            min-width: 200px;
+            box-shadow: var(--shadow-lg);
+            border-radius: 8px;
+            padding: 0.5rem 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 1001;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-content a {
+            display: block;
+            padding: 0.5rem 1rem;
+            color: #CBD5E1;
+            font-size: 0.85rem;
+        }
+
+        .dropdown-content a:hover {
+            background: rgba(255,255,255,0.05);
+            color: #FFFFFF;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #FFFFFF;
+            cursor: pointer;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--dark-navy) 0%, var(--primary-dark) 100%);
+            color: #FFFFFF;
+            padding: 9rem 2rem 6rem 2rem;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(24, 169, 87, 0.15);
+            color: #4ADE80;
+            padding: 0.35rem 0.85rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero h1 span {
+            color: #60A5FA;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: #94A3B8;
+            margin-bottom: 2rem;
+            max-width: 650px;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #FFFFFF;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #FFFFFF;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .hero-card-widget {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            backdrop-filter: blur(5px);
+        }
+
+        .widget-header {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94A3B8;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .widget-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .widget-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.6rem 0.8rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            border-left: 3px solid var(--accent);
+            text-decoration: none;
+            color: #FFFFFF;
+            font-size: 0.85rem;
+            transition: var(--transition);
+        }
+
+        .widget-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(4px);
+        }
+
+        .widget-item span.status {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ADE80;
+        }
+
+        /* Container General */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 5rem 2rem;
+        }
+
+        .section-header {
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        .section-tag {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .section-header h2 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--dark-navy);
+            letter-spacing: -0.02em;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-size: 1.05rem;
+        }
+
+        /* 6. Infrastructure Management Ecosystem */
+        .ecosystem-section {
+            background: #FFFFFF;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 1rem;
+            position: relative;
+        }
+
+        .workflow-step {
+            background: var(--workspace);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .workflow-step:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .workflow-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(15, 76, 129, 0.1);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem auto;
+        }
+
+        .workflow-step h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--dark-navy);
+            margin-bottom: 0.4rem;
+        }
+
+        .workflow-step p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* 7 & 8 & 9. Main Modules Grid */
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .module-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-4px);
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--workspace);
+            color: var(--primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+        }
+
+        .status-active {
+            background: rgba(24, 169, 87, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(24, 169, 87, 0.2);
+        }
+
+        .status-dev {
+            background: rgba(234, 179, 8, 0.1);
+            color: #CA8A04;
+            border: 1px solid rgba(234, 179, 8, 0.2);
+        }
+
+        .card-category {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark-navy);
+            margin-bottom: 0.75rem;
+        }
+
+        .card-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .card-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .card-action:hover {
+            color: var(--accent);
+            gap: 0.75rem;
+        }
+
+        /* 10. Infrastructure Capability */
+        .capability-section {
+            background: #FFFFFF;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .capability-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .capability-item {
+            background: var(--workspace);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: var(--transition);
+        }
+
+        .capability-item:hover {
+            border-color: var(--primary);
+            background: #FFFFFF;
+        }
+
+        .capability-item svg {
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .capability-item span {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--dark-navy);
+        }
+
+        /* 11. Engineering Scale */
+        .scale-section {
+            background: var(--dark-navy);
+            color: #FFFFFF;
+            padding: 5rem 2rem;
+        }
+
+        .scale-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .scale-item h3 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #60A5FA;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .scale-item p {
+            font-size: 0.95rem;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+
+        /* 12. Engineering Principles */
+        .principles-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .principle-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.75rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .principle-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--dark-navy);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .principle-card h3 svg {
+            color: var(--accent);
+        }
+
+        .principle-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* 13. Digital Transformation */
+        .digital-section {
+            background: #FFFFFF;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .digital-flow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .digital-node {
+            background: var(--workspace);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 2rem;
+            width: 100%;
+            text-align: center;
+            font-weight: 600;
+            color: var(--dark-navy);
+            font-size: 0.95rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .digital-node.highlight {
+            background: var(--primary);
+            color: #FFFFFF;
+            border-color: var(--primary);
+        }
+
+        .digital-arrow {
+            color: var(--accent);
+            padding: 0.5rem 0;
+            font-weight: bold;
+        }
+
+        /* 14. Featured Projects */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .project-compact-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .project-compact-card h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--dark-navy);
+            margin-bottom: 0.5rem;
+        }
+
+        .project-compact-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .project-compact-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--border-color);
+            padding-top: 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--dark-navy);
+            color: #94A3B8;
+            padding: 4rem 2rem 2rem 2rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-brand p {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            color: #64748B;
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media(max-width: 1024px) {
+            .hero-container {
+                grid-template-columns: 1fr;
+            }
+            .workflow-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .modules-grid, .capability-grid, .principles-grid, .scale-grid, .projects-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media(max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            .mobile-menu-btn {
+                display: block;
+            }
+            .hero h1 {
+                font-size: 2.25rem;
+            }
+            .workflow-grid, .modules-grid, .capability-grid, .principles-grid, .scale-grid, .projects-grid {
+                grid-template-columns: 1fr;
+            }
+            .footer-container, .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navigation -->
+    <header>
+        <a href="index.html" class="brand">
+            <div class="brand-icon">
+                <i data-lucide="layers" size="18"></i>
+            </div>
+            Infrastructure Management
+        </a>
+        <nav class="nav-links">
+            <a href="index.html" class="active">Dashboard</a>
+            <a href="estimator.html">Estimator</a>
+            <div class="dropdown">
+                <a href="#" style="display: flex; align-items: center; gap: 0.25rem;">Projects <i data-lucide="chevron-down" size="14"></i></a>
+                <div class="dropdown-content">
+                    <a href="cbs.html">Project CBS</a>
+                    <a href="soil-improvement.html">Project Soil Improvement</a>
+                    <a href="jembatan.html">Project Jembatan</a>
+                    <a href="fuel.html">Project Fuel</a>
+                </div>
+            </div>
+            <a href="#capability">Infrastructure</a>
+            <a href="#digital">Digital Engineering</a>
+        </nav>
+        <button class="mobile-menu-btn" aria-label="Toggle Menu">
+            <i data-lucide="menu" size="24"></i>
+        </button>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div>
+                <div class="hero-badge">
+                    <i data-lucide="shield-check" size="14"></i> Infrastructure Management Platform
+                </div>
+                <h1>Integrated Engineering, <span>Project & Cost Management</span> Workspace</h1>
+                <p>A centralized digital workspace for managing infrastructure projects, engineering tools, cost estimation and technical initiatives.</p>
+                <div class="hero-cta">
+                    <a href="#modules" class="btn btn-primary">
+                        Explore Modules <i data-lucide="arrow-right" size="16"></i>
+                    </a>
+                    <a href="#projects" class="btn btn-secondary">
+                        View Projects
+                    </a>
+                </div>
+            </div>
+            <div class="hero-card-widget">
+                <div class="widget-header">Quick Launch Portal</div>
+                <div class="widget-list">
+                    <a href="estimator.html" class="widget-item">
+                        <span>Estimator Workspace</span>
+                        <span class="status">Active</span>
+                    </a>
+                    <a href="cbs.html" class="widget-item">
+                        <span>Project CBS (Box Structure)</span>
+                        <span class="status">Active</span>
+                    </a>
+                    <a href="soil-improvement.html" class="widget-item">
+                        <span>Soil Improvement</span>
+                        <span style="color:#CA8A04; background:rgba(234,179,8,0.15);" class="status">Dev</span>
+                    </a>
+                    <a href="jembatan.html" class="widget-item">
+                        <span>Project Jembatan</span>
+                        <span style="color:#CA8A04; background:rgba(234,179,8,0.15);" class="status">Dev</span>
+                    </a>
+                    <a href="fuel.html" class="widget-item">
+                        <span>Project Fuel Infrastructure</span>
+                        <span style="color:#CA8A04; background:rgba(234,179,8,0.15);" class="status">Dev</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. Infrastructure Management Ecosystem -->
+    <section class="ecosystem-section container">
+        <div class="section-header">
+            <span class="section-tag">Lifecycle Management</span>
+            <h2>Infrastructure Management Ecosystem</h2>
+            <p>End-to-end framework governing engineering activities from strategy to operations.</p>
+        </div>
+        <div class="workflow-grid">
+            <div class="workflow-step">
+                <div class="workflow-icon"><i data-lucide="compass" size="20"></i></div>
+                <h3>PLAN</h3>
+                <p>Infrastructure planning & engineering strategy</p>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-icon"><i data-lucide="calculator" size="20"></i></div>
+                <h3>ESTIMATE</h3>
+                <p>Cost estimation & resource planning</p>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-icon"><i data-lucide="folder-kanban" size="20"></i></div>
+                <h3>PROJECT</h3>
+                <p>Project development & construction management</p>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-icon"><i data-lucide="trending-up" size="20"></i></div>
+                <h3>IMPROVE</h3>
+                <p>Soil improvement & engineering solutions</p>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-icon"><i data-lucide="wrench" size="20"></i></div>
+                <h3>MAINTAIN</h3>
+                <p>Maintenance & asset management</p>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-icon"><i data-lucide="activity" size="20"></i></div>
+                <h3>MONITOR</h3>
+                <p>Performance, condition & operational monitoring</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7, 8, 9. Main Modules -->
+    <section id="modules" class="container">
+        <div class="section-header">
+            <span class="section-tag">Core Tools & Portals</span>
+            <h2>Engineering & Project Modules</h2>
+            <p>Select a module to access specialized engineering workspaces and estimation tools.</p>
+        </div>
+        <div class="modules-grid">
+            <!-- Estimator -->
+            <div class="module-card">
+                <div>
+                    <div class="card-top">
+                        <div class="card-icon"><i data-lucide="calculator" size="24"></i></div>
+                        <span class="status-badge status-active">ACTIVE</span>
+                    </div>
+                    <div class="card-category">ENGINEERING TOOL</div>
+                    <h3 class="card-title">Estimator</h3>
+                    <p class="card-desc">Engineering & Infrastructure Cost Estimation. Dedicated estimation tools for construction and equipment.</p>
+                </div>
+                <a href="estimator.html" class="card-action">OPEN ESTIMATOR <i data-lucide="arrow-right" size="14"></i></a>
+            </div>
+
+            <!-- Project CBS -->
+            <div class="module-card">
+                <div>
+                    <div class="card-top">
+                        <div class="card-icon"><i data-lucide="box" size="24"></i></div>
+                        <span class="status-badge status-active">ACTIVE</span>
+                    </div>
+                    <div class="card-category">STRUCTURAL ENGINEERING</div>
+                    <h3 class="card-title">Project CBS</h3>
+                    <p class="card-desc">Concrete Box Structure engineering and project workspace for development, analysis and documentation.</p>
+                </div>
+                <a href="cbs.html" class="card-action">OPEN PROJECT <i data-lucide="arrow-right" size="14"></i></a>
+            </div>
+
+            <!-- Project Soil Improvement -->
+            <div class="module-card">
+                <div>
+                    <div class="card-top">
+                        <div class="card-icon"><i data-lucide="layers" size="24"></i></div>
+                        <span class="status-badge status-dev">IN DEVELOPMENT</span>
+                    </div>
+                    <div class="card-category">GEOTECHNICAL ENGINEERING</div>
+                    <h3 class="card-title">Project Soil Improvement</h3>
+                    <p class="card-desc">Ground improvement engineering, methodology and project development workspace.</p>
+                </div>
+                <a href="soil-improvement.html" class="card-action">OPEN PROJECT <i data-lucide="arrow-right" size="14"></i></a>
+            </div>
+
+            <!-- Project Jembatan -->
+            <div class="module-card">
+                <div>
+                    <div class="card-top">
+                        <div class="card-icon"><i data-lucide="git-commit" size="24"></i></div>
+                        <span class="status-badge status-dev">IN DEVELOPMENT</span>
+                    </div>
+                    <div class="card-category">BRIDGE ENGINEERING</div>
+                    <h3 class="card-title">Project Jembatan</h3>
+                    <p class="card-desc">Bridge engineering, design considerations, construction methodology and project documentation.</p>
+                </div>
+                <a href="jembatan.html" class="card-action">OPEN PROJECT <i data-lucide="arrow-right" size="14"></i></a>
+            </div>
+
+            <!-- Project Fuel -->
+            <div class="module-card">
+                <div>
+                    <div class="card-top">
+                        <div class="card-icon"><i data-lucide="fuel" size="24"></i></div>
+                        <span class="status-badge status-dev">IN DEVELOPMENT</span>
+                    </div>
+                    <div class="card-category">FUEL INFRASTRUCTURE</div>
+                    <h3 class="card-title">Project Fuel</h3>
+                    <p class="card-desc">Engineering and management workspace for fuel infrastructure, storage, distribution and operational management.</p>
+                </div>
+                <a href="fuel.html" class="card-action">OPEN PROJECT <i data-lucide="arrow-right" size="14"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 10. Infrastructure Capability -->
+    <section id="capability" class="capability-section container" style="max-width: 100%; padding: 5rem 10%;">
+        <div class="section-header">
+            <span class="section-tag">Domain Coverage</span>
+            <h2>Infrastructure Management Scope</h2>
+            <p>Core engineering domains managed within the centralized platform environment.</p>
+        </div>
+        <div class="capability-grid">
+            <div class="capability-item"><i data-lucide="map" size="20"></i><span>Roads</span></div>
+            <div class="capability-item"><i data-lucide="git-commit" size="20"></i><span>Bridges</span></div>
+            <div class="capability-item"><i data-lucide="droplet" size="20"></i><span>Drainage</span></div>
+            <div class="capability-item"><i data-lucide="truck" size="20"></i><span>Heavy Equipment</span></div>
+            <div class="capability-item"><i data-lucide="cpu" size="20"></i><span>Fleet</span></div>
+            <div class="capability-item"><i data-lucide="tool" size="20"></i><span>Workshop</span></div>
+            <div class="capability-item"><i data-lucide="zap" size="20"></i><span>Generator</span></div>
+            <div class="capability-item"><i data-lucide="activity" size="20"></i><span>Water Pump</span></div>
+            <div class="capability-item"><i data-lucide="power" size="20"></i><span>Electrical System</span></div>
+            <div class="capability-item"><i data-lucide="fuel" size="20"></i><span>Fuel Infrastructure</span></div>
+            <div class="capability-item"><i data-lucide="briefcase" size="20"></i><span>Asset Management</span></div>
+            <div class="capability-item"><i data-lucide="settings" size="20"></i><span>Maintenance</span></div>
+        </div>
+    </section>
+
+    <!-- 11. Engineering Scale -->
+    <section class="scale-section">
+        <div class="scale-grid container" style="padding: 0;">
+            <div class="scale-item">
+                <h3>15M+</h3>
+                <p>Meters of Roads</p>
+            </div>
+            <div class="scale-item">
+                <h3>25K+</h3>
+                <p>Bridges</p>
+            </div>
+            <div class="scale-item">
+                <h3>100+</h3>
+                <p>People Led</p>
+            </div>
+            <div class="scale-item">
+                <h3>20+</h3>
+                <p>Years Engineering Experience</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 12. Engineering Principles -->
+    <section class="container">
+        <div class="section-header">
+            <span class="section-tag">Execution Standard</span>
+            <h2>Engineering Approach</h2>
+            <p>Core principles guiding technical decisions, resource allocation, and project delivery.</p>
+        </div>
+        <div class="principles-grid">
+            <div class="principle-card">
+                <h3><i data-lucide="database" size="18"></i> DATA</h3>
+                <p>Decisions based on reliable engineering data and precise field measurements.</p>
+            </div>
+            <div class="principle-card">
+                <h3><i data-lucide="dollar-sign" size="18"></i> COST</h3>
+                <p>Understand cost, resources and lifecycle implications at every project stage.</p>
+            </div>
+            <div class="principle-card">
+                <h3><i data-lucide="check-circle" size="18"></i> QUALITY</h3>
+                <p>Build with strict engineering standards and controlled execution methodology.</p>
+            </div>
+            <div class="principle-card">
+                <h3><i data-lucide="refresh-cw" size="18"></i> CONTINUOUS IMPROVEMENT</h3>
+                <p>Improve infrastructure performance through better methods, technology and data analytics.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 13. Digital Transformation -->
+    <section id="digital" class="digital-section container" style="max-width: 100%; padding: 5rem 10%;">
+        <div class="section-header">
+            <span class="section-tag">Future Ready</span>
+            <h2>Digital Infrastructure Management</h2>
+            <p>A growing digital engineering ecosystem combining modern computational workflows.</p>
+        </div>
+        <div class="digital-flow">
+            <div class="digital-node">ENGINEERING DATA</div>
+            <div class="digital-arrow">↓</div>
+            <div class="digital-node">DIGITAL WORKFLOW</div>
+            <div class="digital-arrow">↓</div>
+            <div class="digital-node">AI & ANALYTICS</div>
+            <div class="digital-arrow">↓</div>
+            <div class="digital-node">ENGINEERING INSIGHT</div>
+            <div class="digital-arrow">↓</div>
+            <div class="digital-node highlight">BETTER DECISION</div>
+        </div>
+    </section>
+
+    <!-- 14. Featured Projects -->
+    <section id="projects" class="container">
+        <div class="section-header">
+            <span class="section-tag">Portfolio Overview</span>
+            <h2>Featured Engineering Projects</h2>
+            <p>Key infrastructure initiatives managed across structural, geotechnical, bridge, and fuel sectors.</p>
+        </div>
+        <div class="projects-grid">
+            <div class="project-compact-card">
+                <div>
+                    <h3>Project CBS</h3>
+                    <p>Concrete Box Structure engineering and documentation workspace.</p>
+                </div>
+                <div class="project-compact-footer">
+                    <span style="color: var(--accent); font-weight: 600;">Active</span>
+                    <a href="cbs.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View →</a>
+                </div>
+            </div>
+            <div class="project-compact-card">
+                <div>
+                    <h3>Soil Improvement</h3>
+                    <p>Ground improvement engineering and methodology planning.</p>
+                </div>
+                <div class="project-compact-footer">
+                    <span style="color: #CA8A04; font-weight: 600;">In Development</span>
+                    <a href="soil-improvement.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View →</a>
+                </div>
+            </div>
+            <div class="project-compact-card">
+                <div>
+                    <h3>Project Jembatan</h3>
+                    <p>Bridge engineering, design considerations & documentation.</p>
+                </div>
+                <div class="project-compact-footer">
+                    <span style="color: #CA8A04; font-weight: 600;">In Development</span>
+                    <a href="jembatan.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View →</a>
+                </div>
+            </div>
+            <div class="project-compact-card">
+                <div>
+                    <h3>Project Fuel</h3>
+                    <p>Fuel infrastructure, storage and distribution management.</p>
+                </div>
+                <div class="project-compact-footer">
+                    <span style="color: #CA8A04; font-weight: 600;">In Development</span>
+                    <a href="fuel.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <a href="index.html" class="brand" style="color: #FFFFFF;">
+                    <div class="brand-icon">
+                        <i data-lucide="layers" size="18"></i>
+                    </div>
+                    Infrastructure Management
+                </a>
+                <p>Engineering • Projects • Estimation • Digital Transformation</p>
+            </div>
+            <div style="font-size: 0.85rem; color: #64748B;">
+                Centralized Command Center & Enterprise Portal
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div>© 2026 Infrastructure Management</div>
+            <div>Engineering Workspace by Fatoni</div>
+        </div>
+    </footer>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        lucide.createIcons();
+
+        // Simple mobile menu toggle functionality
+        const mobileBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+        
+        if(mobileBtn) {
+            mobileBtn.addEventListener('click', () => {
+                if(navLinks.style.display === 'flex') {
+                    navLinks.style.display = 'none';
+                } else {
+                    navLinks.style.display = 'flex';
+                    navLinks.style.flexDirection = 'column';
+                    navLinks.style.position = 'absolute';
+                    navLinks.style.top = '100%';
+                    navLinks.style.left = '0';
+                    navLinks.style.width = '100%';
+                    navLinks.style.background = '#0D1B2E';
+                    navLinks.style.padding = '1.5rem';
+                    navLinks.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                }
+            });
+        }
+    </script>
+</body>
+</html>
