@@ -1253,32 +1253,97 @@
             const ctx = canvas.getContext("2d");
             if (wbsChartObj) wbsChartObj.destroy();
 
+            // API/Sheet compatibility:
+            // WBS may arrive as WBS, wbs, "WBS Code", or "WBS No".
+            // Actual progress may arrive in camelCase or as the Sheet header.
+            const getWbs = row => {
+                const value =
+                    row?.WBS ??
+                    row?.wbs ??
+                    row?.["WBS Code"] ??
+                    row?.["WBS No"] ??
+                    row?.["WBS Number"] ??
+                    "";
+                return String(value).trim();
+            };
+
+            const getActivity = row =>
+                String(
+                    row?.Activity ??
+                    row?.activity ??
+                    ""
+                ).trim();
+
+            const getActual = row =>
+                numberOrNull(
+                    row?.actualProgress ??
+                    row?.["Actual Progress (%)"] ??
+                    row?.["Actual Progress"] ??
+                    row?.actual ??
+                    null
+                );
+
+            const getPlanned = row =>
+                numberOrNull(
+                    row?.["Planned Progress (%)"] ??
+                    row?.plannedProgress ??
+                    row?.["Planned Progress"] ??
+                    row?.planned ??
+                    0
+                ) ?? 0;
+
             const actualMap = {};
-            (progress || []).forEach(row => {
-                const wbs = String(row.wbs ?? row.WBS ?? "");
-                const value = numberOrNull(row.actualProgress ?? row["Actual Progress (%)"]);
-                if (wbs && value !== null) actualMap[wbs] = value;
+            (Array.isArray(progress) ? progress : []).forEach(row => {
+                const wbs = getWbs(row);
+                const value = getActual(row);
+                if (wbs && value !== null) {
+                    actualMap[wbs] = value;
+                }
             });
 
-            const rows = (schedule || []).filter(row => {
-                const wbs = String(row.WBS ?? "");
-                return !["6", "7", "8"].includes(wbs);
+            const rows = (Array.isArray(schedule) ? schedule : [])
+                .filter(row => getWbs(row))
+                .filter(row => !["6", "7", "8"].includes(getWbs(row)));
+
+            // If schedule data is unavailable but progress contains WBS data,
+            // use progress rows so the chart never renders "undefined".
+            const chartRows = rows.length
+                ? rows
+                : (Array.isArray(progress) ? progress : [])
+                    .filter(row => getWbs(row))
+                    .filter(row => !["6", "7", "8"].includes(getWbs(row)));
+
+            if (!chartRows.length) {
+                clearCanvasWithMessage(canvas, "Data WBS belum tersedia.");
+                return;
+            }
+
+            const labels = chartRows.map(row => {
+                const wbs = getWbs(row);
+                const activity = getActivity(row);
+                return activity ? `${wbs} — ${activity}` : wbs;
+            });
+
+            const plannedData = chartRows.map(row => getPlanned(row));
+            const actualData = chartRows.map(row => {
+                const wbs = getWbs(row);
+                return actualMap[wbs] ?? getActual(row) ?? 0;
             });
 
             wbsChartObj = new Chart(ctx, {
                 type: "bar",
                 data: {
-                    labels: rows.map(r => String(r.WBS)),
+                    labels,
                     datasets: [
                         {
                             label: "Planned",
-                            data: rows.map(r => Number(r["Planned Progress (%)"] || 0)),
+                            data: plannedData,
                             backgroundColor: "#2a3441",
                             borderRadius: 3
                         },
                         {
                             label: "Actual",
-                            data: rows.map(r => actualMap[String(r.WBS)] ?? 0),
+                            data: actualData,
                             backgroundColor: "#e0a339",
                             borderRadius: 3
                         }
@@ -1290,7 +1355,16 @@
                     indexAxis: "y",
                     plugins: {
                         legend: {
-                            labels: { color: "#8b96a5", font: { family: "Inter", size: 11 } }
+                            labels: {
+                                color: "#8b96a5",
+                                font: { family: "Inter", size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: items => items?.[0]?.label || "",
+                                label: item => `${item.dataset.label}: ${Number(item.parsed.x ?? 0).toFixed(2)}%`
+                            }
                         }
                     },
                     scales: {
@@ -1305,7 +1379,10 @@
                         },
                         y: {
                             grid: { display: false },
-                            ticks: { color: "#8b96a5", font: { size: 10 } }
+                            ticks: {
+                                color: "#8b96a5",
+                                font: { size: 10 }
+                            }
                         }
                     }
                 }
