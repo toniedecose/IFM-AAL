@@ -628,7 +628,7 @@
             <div class="project-info-grid">
                 <div class="info-card">
                     <label>Project Manager</label>
-                    <span id="info-pm">Muhammad Fatoni</span>
+                    <span id="info-pm">—</span>
                 </div>
                 <div class="info-card">
                     <label>Timeline</label>
@@ -913,7 +913,7 @@
 
         async function loadDashboardData() {
             try {
-                const response = await fetch(API_URL + "?_=" + Date.now(), {
+                const response = await fetch(API_URL + "?action=dashboard&_=" + Date.now(), {
                     method: "GET",
                     cache: "no-store"
                 });
@@ -968,31 +968,35 @@
             }
 
             // ===== PROJECT INFORMATION =====
-            if (project.projectManager) setText("info-pm", project.projectManager);
-            if (project.startDate && project.finishDate) {
-                setText(
-                    "info-timeline",
-                    `${formatDate(project.startDate)} — ${formatDate(project.finishDate)}`
-                );
-            }
-            if (project.totalFillVolume) {
-                setText(
-                    "info-volume",
-                    `${fmtNumber(project.totalFillVolume)} m³ (${project.materialType || "—"})`
-                );
-            }
-            if (project.targetElevation !== undefined && project.targetElevation !== null) {
-                setText(
-                    "info-elevation",
-                    `${project.targetElevation} m (Layer: ${project.layerThickness ?? "—"}cm | Total: ${project.totalFillThickness ?? "—"}cm)`
-                );
-            }
-            if (project.compactionRequirement !== undefined || project.cbrRequirement !== undefined) {
-                setText(
-                    "info-specification",
-                    `MDD ≥ ${project.compactionRequirement ?? "—"}% | CBR ≥ ${project.cbrRequirement ?? "—"}%`
-                );
-            }
+            setText("info-pm", project.projectManager || "—");
+
+            setText(
+                "info-timeline",
+                (project.startDate && project.finishDate)
+                    ? `${formatDate(project.startDate)} — ${formatDate(project.finishDate)}`
+                    : "—"
+            );
+
+            setText(
+                "info-volume",
+                project.totalFillVolume
+                    ? `${fmtNumber(project.totalFillVolume)} m³ (${project.materialType || "—"})`
+                    : "—"
+            );
+
+            setText(
+                "info-elevation",
+                (project.targetElevation !== undefined && project.targetElevation !== null && project.targetElevation !== "")
+                    ? `${project.targetElevation} m (Layer: ${project.layerThickness ?? "—"}cm | Total: ${project.totalFillThickness ?? "—"}cm)`
+                    : "—"
+            );
+
+            setText(
+                "info-specification",
+                (project.compactionRequirement || project.cbrRequirement)
+                    ? `MDD ≥ ${project.compactionRequirement ?? "—"}% | CBR ≥ ${project.cbrRequirement ?? "—"}%`
+                    : "—"
+            );
 
             // ===== KPI =====
             setText("kpi-actual-progress", fmtPct(progressKpi.actual));
