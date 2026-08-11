@@ -901,237 +901,329 @@
             document.getElementById('sidebar').classList.toggle('open');
         }
 
-        function loadDashboardData() {
-            if (API_URL.includes("GANTI")) {
-                renderEmptyState();
-                return;
-            }
+        async function loadDashboardData() {
+            try {
+                const res = await fetch(API_URL, { cache: 'no-store' });
+                const json = await res.json();
 
-            fetch(API_URL)
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.success) {
-                        cachedData = data;
-                        renderDashboard(data);
-                    } else {
-                        renderEmptyState();
-                    }
-                })
-                .catch(err => {
-                    console.error('Failed to fetch dashboard data:', err);
-                    renderEmptyState();
-                });
+                if (!json || !json.success) {
+                    throw new Error('API tidak mengembalikan success=true');
+                }
+
+                // API CBS mengembalikan payload di dalam json.data
+                const data = json.data || json;
+                cachedData = data;
+                renderDashboard(data, json);
+            } catch (err) {
+                console.error('Failed to fetch dashboard data:', err);
+                showApiError(err);
+            }
         }
 
-        function renderEmptyState() {
-            document.getElementById('last-data-update').textContent = '—';
-            document.getElementById('project-status-badge').textContent = '—';
-            document.getElementById('project-status-badge').className = 'badge-status badge-running';
+        function showApiError(err) {
+            document.getElementById('last-data-update').textContent = 'API ERROR';
+            const badge = document.getElementById('project-status-badge');
+            badge.textContent = 'API ERROR';
+            badge.className = 'badge-status badge-danger';
+
+            document.getElementById('kpi-actual-progress').textContent = '—';
+            document.getElementById('kpi-planned-progress').textContent = '—';
+            document.getElementById('kpi-progress-var').textContent = '—';
+            console.error(err);
         }
 
-        function renderDashboard(data) {
-            if (data.lastUpdate) {
-                document.getElementById('last-data-update').textContent = data.lastUpdate;
-            }
-            if (data.projectStatus) {
-                const badge = document.getElementById('project-status-badge');
-                badge.textContent = data.projectStatus;
-                badge.className = 'badge-status ' + (data.projectStatus === 'Berjalan' ? 'badge-running' : data.projectStatus === 'Selesai' ? 'badge-success' : 'badge-warning');
-            }
+        function renderDashboard(data, envelope) {
+            const project = data.project || {};
+            const kpi = data.kpi || {};
+            const progressKpi = kpi.progress || {};
+            const materialKpi = kpi.material || {};
+            const logisticKpi = kpi.logistic || {};
+            const equipmentKpi = kpi.equipment || {};
+            const qualityKpi = kpi.quality || {};
+            const riskKpi = kpi.risk || {};
+            const scheduleKpi = kpi.schedule || {};
 
-            if (data.kpi) {
-                document.getElementById('kpi-actual-progress').textContent = (data.kpi.actualProgress !== undefined) ? data.kpi.actualProgress + '%' : '—';
-                document.getElementById('kpi-planned-progress').textContent = (data.kpi.plannedProgress !== undefined) ? data.kpi.plannedProgress + '%' : '—';
-                document.getElementById('kpi-progress-var').textContent = (data.kpi.progressVariance !== undefined) ? data.kpi.progressVariance + '%' : '—';
-                
-                document.getElementById('kpi-actual-vol').textContent = (data.kpi.actualVolume !== undefined) ? data.kpi.actualVolume.toLocaleString() + ' m³' : '—';
-                document.getElementById('kpi-remaining-vol').textContent = (data.kpi.remainingVolume !== undefined) ? data.kpi.remainingVolume.toLocaleString() + ' m³' : '—';
-                
-                document.getElementById('kpi-forecast-finish').textContent = data.kpi.forecastFinish || '—';
-                document.getElementById('kpi-actual-prod').textContent = data.kpi.actualProductivity || '—';
-                document.getElementById('kpi-target-prod').textContent = data.kpi.targetProductivity || '—';
-                
-                document.getElementById('kpi-mat-received').textContent = data.kpi.materialReceived || '—';
-                document.getElementById('kpi-mat-required').textContent = data.kpi.materialRequired || '—';
-                
-                document.getElementById('kpi-open-risks').textContent = data.kpi.openRisks || '—';
-                document.getElementById('kpi-crit-risks').textContent = data.kpi.criticalRisks || '—';
-                
-                document.getElementById('kpi-pass-rate').textContent = (data.kpi.passRate !== undefined) ? data.kpi.passRate + '%' : '—';
-                document.getElementById('kpi-total-tests').textContent = data.kpi.totalTests || '—';
-                
-                document.getElementById('kpi-equip-util').textContent = (data.kpi.equipmentUtilization !== undefined) ? data.kpi.equipmentUtilization + '%' : '—';
-                document.getElementById('kpi-equip-working').textContent = data.kpi.equipmentWorking || '—';
-            }
+            document.getElementById('last-data-update').textContent =
+                formatDateTime(envelope?.timestamp || new Date().toISOString());
 
-            if (data.health) {
-                updateHealthBadge('health-schedule', data.health.schedule);
-                updateHealthBadge('health-progress', data.health.progress);
-                updateHealthBadge('health-material', data.health.material);
-                updateHealthBadge('health-productivity', data.health.productivity);
-                updateHealthBadge('health-quality', data.health.quality);
-                updateHealthBadge('health-risk', data.health.risk);
-            }
+            const projectStatus = project.currentStatus || scheduleKpi.status || 'UNKNOWN';
+            const badge = document.getElementById('project-status-badge');
+            badge.textContent = projectStatus;
+            badge.className = 'badge-status ' + getStatusBadgeClass(projectStatus);
 
-            renderSCurveChart(data.sCurve);
-            renderWbsChart(data.progressByWbs);
-            renderMaterialChart(data.materialFlow);
-            renderLogisticChart(data.logisticDelivery);
-            renderEquipmentChart(data.equipmentPerf);
+            // Project information
+            setText('info-pm', project.projectManager || '—');
+            updateProjectInfo(project);
 
-            renderScheduleTable(data.schedule);
-            renderQualityTable(data.quality);
-            renderRiskTable(data.risks);
-            renderAIAnalysis(data.aiAnalysis);
-            renderUpdatesTable(data.updates || data.progress);
+            // KPI
+            setText('kpi-actual-progress', fmtPct(progressKpi.actual));
+            setText('kpi-planned-progress', fmtPct(progressKpi.planned));
+            setText('kpi-progress-var', fmtPct(progressKpi.variance, true));
+
+            setText('kpi-actual-vol', fmtNumber(materialKpi.installed) + ' m³');
+            setText('kpi-remaining-vol', fmtNumber(
+                materialKpi.remaining !== undefined ? materialKpi.remaining :
+                Math.max(0, Number(project.totalFillVolume || 0) - Number(materialKpi.installed || 0))
+            ) + ' m³');
+
+            setText('kpi-forecast-finish', scheduleKpi.forecastFinish || '—');
+            setText('kpi-actual-prod', logisticKpi.averageCycleTime !== null && logisticKpi.averageCycleTime !== undefined
+                ? fmtNumber(logisticKpi.averageCycleTime) + ' cycle'
+                : '—');
+            setText('kpi-target-prod', '—');
+
+            setText('kpi-mat-received', fmtNumber(materialKpi.plantReceived) + ' m³');
+            setText('kpi-mat-required', fmtNumber(materialKpi.planned || project.totalFillVolume) + ' m³');
+
+            setText('kpi-open-risks', fmtNumber(riskKpi.open));
+            setText('kpi-crit-risks', fmtNumber(Number(riskKpi.high || 0) + Number(riskKpi.critical || 0)));
+
+            setText('kpi-pass-rate', fmtPct(qualityKpi.passRate));
+            setText('kpi-total-tests', fmtNumber(qualityKpi.totalTests));
+
+            setText('kpi-equip-util', fmtPct(equipmentKpi.utilization));
+            setText('kpi-equip-working', fmtNumber(equipmentKpi.working));
+
+            // Health
+            updateHealthBadge('health-schedule', healthFromSchedule(scheduleKpi, progressKpi));
+            updateHealthBadge('health-progress', healthFromVariance(progressKpi.variance));
+            updateHealthBadge('health-material', materialHealth(materialKpi, project));
+            updateHealthBadge('health-productivity', equipmentKpi.utilization == null ? 'UNKNOWN' : 'GREEN');
+            updateHealthBadge('health-quality', qualityKpi.passRate == null ? 'UNKNOWN' : (Number(qualityKpi.passRate) >= 95 ? 'GREEN' : 'YELLOW'));
+            updateHealthBadge('health-risk', Number(riskKpi.critical || 0) > 0 ? 'RED' :
+                Number(riskKpi.high || 0) > 0 ? 'YELLOW' : 'GREEN');
+
+            // Charts and tables use the actual API structure
+            renderSCurveChart(data.schedule || [], progressKpi.actual, project);
+            renderWbsChart(data.schedule || []);
+            renderMaterialChart(materialKpi, project);
+            renderLogisticChart(data.logistic || [], logisticKpi);
+            renderEquipmentChart(data.equipment || [], equipmentKpi);
+
+            renderScheduleTable(data.schedule || []);
+            renderQualityTable(data.quality || []);
+            renderRiskTable(data.risks || []);
+            renderAIAnalysis(data.aiAnalysis || []);
+            renderUpdatesTable(data.updates || data.progress || []);
+        }
+
+        function updateProjectInfo(project) {
+            const timeline = `${formatDate(project.startDate)} — ${formatDate(project.finishDate)}`;
+            const infoCards = document.querySelectorAll('.project-info-grid .info-card span');
+            if (infoCards[1]) infoCards[1].textContent = timeline;
+            if (infoCards[2]) infoCards[2].textContent =
+                `${fmtNumber(project.totalFillVolume)} m³ (${project.materialType || '—'})`;
+            if (infoCards[3]) infoCards[3].textContent =
+                `${project.targetElevation ?? '—'} m (Layer: ${project.layerThickness ?? '—'}cm | Total: ${project.totalFillThickness ?? '—'}cm)`;
+            if (infoCards[4]) infoCards[4].textContent =
+                `MDD ≥ ${project.compactionRequirement ?? '—'}% | CBR ≥ ${project.cbrRequirement ?? '—'}%`;
+        }
+
+        function healthFromSchedule(scheduleKpi, progressKpi) {
+            if (scheduleKpi.status === 'DELAYED' || Number(progressKpi.variance) < -10) return 'RED';
+            if (Number(progressKpi.variance) < -5) return 'YELLOW';
+            if (scheduleKpi.status === 'UNKNOWN') return 'UNKNOWN';
+            return 'GREEN';
+        }
+
+        function healthFromVariance(v) {
+            if (v === null || v === undefined || isNaN(Number(v))) return 'UNKNOWN';
+            if (Number(v) < -10) return 'RED';
+            if (Number(v) < -5) return 'YELLOW';
+            return 'GREEN';
+        }
+
+        function materialHealth(mat, project) {
+            const req = Number(project.totalFillVolume || mat.planned || 0);
+            const received = Number(mat.plantReceived || mat.tslReceived || 0);
+            if (!req) return 'UNKNOWN';
+            if (received >= req) return 'GREEN';
+            if (received > 0) return 'YELLOW';
+            return 'UNKNOWN';
         }
 
         function updateHealthBadge(elementId, status) {
             const el = document.getElementById(elementId);
-            if (!status) {
-                el.textContent = 'UNKNOWN';
-                el.className = 'health-indicator health-unknown';
-                return;
-            }
-            el.textContent = status.toUpperCase();
-            if (status.toUpperCase() === 'GREEN') el.className = 'health-indicator health-green';
-            else if (status.toUpperCase() === 'YELLOW') el.className = 'health-indicator health-yellow';
-            else if (status.toUpperCase() === 'RED') el.className = 'health-indicator health-red';
-            else el.className = 'health-indicator health-unknown';
+            const s = String(status || 'UNKNOWN').toUpperCase();
+            el.textContent = s;
+            el.className = 'health-indicator ' +
+                (s === 'GREEN' ? 'health-green' :
+                 s === 'YELLOW' ? 'health-yellow' :
+                 s === 'RED' ? 'health-red' : 'health-unknown');
         }
 
-        function renderSCurveChart(sCurveData) {
+        function renderSCurveChart(scheduleList, actual, project) {
             const ctx = document.getElementById('sCurveChart').getContext('2d');
             if (sCurveChartObj) sCurveChartObj.destroy();
 
-            const labels = sCurveData && sCurveData.labels ? sCurveData.labels : [];
-            const planned = sCurveData && sCurveData.planned ? sCurveData.planned : [];
-            const actual = sCurveData && sCurveData.actual ? sCurveData.actual : [];
-            const forecast = sCurveData && sCurveData.forecast ? sCurveData.forecast : null;
+            const dates = buildDateRange(project.startDate, project.finishDate, 7);
+            const planned = dates.map(d => calculatePlannedProgress(scheduleList, d));
 
-            let datasets = [
-                { label: 'Planned Progress', data: planned, borderColor: '#9ca3af', backgroundColor: 'transparent', tension: 0.1, borderWidth: 2 },
-                { label: 'Actual Progress', data: actual, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.05)', fill: true, tension: 0.1, borderWidth: 2 }
-            ];
-            if (forecast) {
-                datasets.push({ label: 'Forecast', data: forecast, borderColor: '#f59e0b', borderDash: [5,5], backgroundColor: 'transparent', tension: 0.1, borderWidth: 2 });
-            }
+            // Actual is a snapshot, not a historical time series.
+            // Therefore only show the latest actual point to avoid inventing history.
+            const actualValue = Number(actual);
+            const actualSeries = dates.map(d => null);
+            const updateDate = parseDate(project.currentStatus ? new Date() : new Date());
+            let closest = 0;
+            let minDiff = Infinity;
+            dates.forEach((d, i) => {
+                const diff = Math.abs(new Date(d) - updateDate);
+                if (diff < minDiff) { minDiff = diff; closest = i; }
+            });
+            if (!isNaN(actualValue)) actualSeries[closest] = actualValue;
 
             sCurveChartObj = new Chart(ctx, {
                 type: 'line',
-                data: { labels: labels, datasets: datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'Inter', size: 11 } } } },
-                    scales: {
-                        x: { grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af' } },
-                        y: { min: 0, max: 100, grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af', callback: function(v) { return v + '%'; } } }
-                    }
-                }
+                data: {
+                    labels: dates.map(formatDate),
+                    datasets: [
+                        { label: 'Planned Progress', data: planned, borderColor: '#9ca3af', backgroundColor: 'transparent', tension: 0.2, borderWidth: 2 },
+                        { label: 'Actual Progress (Latest Update)', data: actualSeries, borderColor: '#3b82f6', backgroundColor: 'transparent', tension: 0.1, borderWidth: 3, pointRadius: 5, spanGaps: false }
+                    ]
+                },
+                options: chartOptionsPercent()
             });
         }
 
-        function renderWbsChart(wbsData) {
+        function calculatePlannedProgress(scheduleList, dateStr) {
+            const d = new Date(dateStr + 'T12:00:00');
+            let total = 0;
+            scheduleList.forEach(item => {
+                const w = Number(item['Weight (%)'] || 0);
+                const start = new Date(String(item['Start Date']).slice(0,10) + 'T12:00:00');
+                const finish = new Date(String(item['Finish Date']).slice(0,10) + 'T12:00:00');
+                if (!w || isNaN(start) || isNaN(finish)) return;
+                let p = 0;
+                if (d >= finish) p = 100;
+                else if (d > start) {
+                    const duration = Math.max(1, finish - start);
+                    p = Math.min(100, Math.max(0, ((d - start) / duration) * 100));
+                }
+                total += w * p / 100;
+            });
+            return Number(total.toFixed(2));
+        }
+
+        function renderWbsChart(scheduleList) {
             const ctx = document.getElementById('wbsProgressChart').getContext('2d');
             if (wbsChartObj) wbsChartObj.destroy();
 
-            const labels = wbsData && wbsData.labels ? wbsData.labels : [];
-            const planned = wbsData && wbsData.planned ? wbsData.planned : [];
-            const actual = wbsData && wbsData.actual ? wbsData.actual : [];
+            const items = scheduleList.filter(x => !Number.isInteger(Number(x.WBS)) || true)
+                .filter(x => !['1','2','3','4','5','6','7','8','9','10'].includes(String(x.WBS)));
+
+            const list = items.length ? items : scheduleList;
+            const labels = list.map(x => String(x.WBS));
+            const planned = list.map(x => Number(x['Planned Progress (%)'] || 0));
+            const actual = list.map(x => 0);
+
+            // Latest actual values are available from PROGRESS, but the API currently
+            // returns them as progress rows. Merge those where available.
+            const progressRows = cachedData?.progress || [];
+            const actualMap = {};
+            progressRows.forEach(x => actualMap[String(x.WBS)] = Number(x['Actual Progress (%)'] || 0));
+            list.forEach((x, i) => actual[i] = actualMap[String(x.WBS)] ?? 0);
 
             wbsChartObj = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels,
                     datasets: [
                         { label: 'Planned', data: planned, backgroundColor: '#4b5563', borderRadius: 4 },
                         { label: 'Actual', data: actual, backgroundColor: '#06b6d4', borderRadius: 4 }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: 'y',
+                    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
                     plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'Inter', size: 11 } } } },
                     scales: {
-                        x: { min: 0, max: 100, grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af' } },
+                        x: { min: 0, max: 100, grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af', callback: v => v + '%' } },
                         y: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 10 } } }
                     }
                 }
             });
         }
 
-        function renderMaterialChart(matData) {
+        function renderMaterialChart(mat, project) {
             const ctx = document.getElementById('materialChart').getContext('2d');
             if (materialChartObj) materialChartObj.destroy();
 
-            const labels = matData && matData.labels ? matData.labels : ['Required', 'Loaded', 'TSL', 'Plant', 'Installed'];
-            const values = matData && matData.values ? matData.values : [0,0,0,0,0];
+            const labels = ['Required', 'Loaded', 'TSL Received', 'Plant Received', 'Installed'];
+            const values = [
+                Number(mat.planned || project.totalFillVolume || 0),
+                Number(mat.loaded || 0),
+                Number(mat.tslReceived || 0),
+                Number(mat.plantReceived || 0),
+                Number(mat.installed || 0)
+            ];
 
             materialChartObj = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{ label: 'Volume (m³)', data: values, backgroundColor: '#3b82f6', borderRadius: 4 }]
-                },
+                data: { labels, datasets: [{ label: 'Volume (m³)', data: values, backgroundColor: '#3b82f6', borderRadius: 4 }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
-                        y: { grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af' } }
+                        y: { grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af' } }
                     }
                 }
             });
         }
 
-        function renderLogisticChart(logData) {
+        function renderLogisticChart(logList, kpi) {
             const ctx = document.getElementById('logisticChart').getContext('2d');
             if (logisticChartObj) logisticChartObj.destroy();
 
-            const labels = logData && logData.labels ? logData.labels : [];
-            const values = logData && logData.values ? logData.values : [];
+            const labels = Array.isArray(logList) ? logList.map(x => x.date || x.Date || '') : [];
+            const values = Array.isArray(logList) ? logList.map(x => Number(x.volume || x.Volume || x.actualVolume || 0)) : [];
+
+            if (!labels.length) {
+                labels.push('Current');
+                values.push(Number(kpi.totalVolume || 0));
+            }
 
             logisticChartObj = new Chart(ctx, {
                 type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{ label: 'Daily Delivery (m³)', data: values, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.2, borderWidth: 2 }]
-                },
+                data: { labels, datasets: [{ label: 'Delivery (m³)', data: values, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.1)', fill: true, tension: .2, borderWidth: 2 }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af' } },
-                        y: { grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af' } }
+                        x: { grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af' } },
+                        y: { grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af' } }
                     }
                 }
             });
         }
 
-        function renderEquipmentChart(eqData) {
+        function renderEquipmentChart(eqList, kpi) {
             const ctx = document.getElementById('equipmentChart').getContext('2d');
             if (equipmentChartObj) equipmentChartObj.destroy();
 
-            const labels = eqData && eqData.labels ? eqData.labels : [];
-            const values = eqData && eqData.values ? eqData.values : [];
+            let labels = [];
+            let values = [];
+
+            if (Array.isArray(eqList) && eqList.length) {
+                labels = eqList.map(x => x.equipment || x.type || x.name || 'Equipment');
+                values = eqList.map(x => Number(x.utilization || x.Utilization || 0));
+            } else {
+                labels = ['Working', 'Available', 'Downtime'];
+                values = [
+                    Number(kpi.working || 0),
+                    Number(kpi.available || 0),
+                    Number(kpi.downtime || 0)
+                ];
+            }
 
             equipmentChartObj = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{ label: 'Utilization (%)', data: values, backgroundColor: '#8b5cf6', borderRadius: 4 }]
-                },
+                data: { labels, datasets: [{ label: 'Equipment', data: values, backgroundColor: '#8b5cf6', borderRadius: 4 }] },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: '#9ca3af' } },
-                        y: { min: 0, max: 100, grid: { color: 'rgba(55, 65, 81, 0.4)' }, ticks: { color: '#9ca3af' } }
+                        y: { min: 0, grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af' } }
                     }
                 }
             });
@@ -1140,78 +1232,81 @@
         function renderScheduleTable(scheduleList) {
             const tbody = document.querySelector('#schedule-table tbody');
             tbody.innerHTML = '';
-            if (!scheduleList || scheduleList.length === 0) {
+            if (!scheduleList.length) {
                 tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Data belum tersedia.</td></tr>';
                 return;
             }
+
             scheduleList.forEach(item => {
                 const tr = document.createElement('tr');
+                const planned = Number(item['Planned Progress (%)'] || 0);
                 tr.innerHTML = `
-                    <td class="mono">${item.wbs || '—'}</td>
-                    <td>${item.activity || '—'}</td>
-                    <td class="mono">${item.baselineFinish || '—'}</td>
-                    <td class="mono">${item.forecastFinish || '—'}</td>
-                    <td class="mono">${item.variance || '—'}</td>
-                    <td><span class="badge-status ${getStatusBadgeClass(item.status)}">${item.status || '—'}</span></td>
+                    <td class="mono">${item.WBS ?? '—'}</td>
+                    <td>${item.Activity || '—'}</td>
+                    <td class="mono">${formatDate(item['Finish Date'])}</td>
+                    <td class="mono">—</td>
+                    <td class="mono">${fmtPct(planned - planned, true)}</td>
+                    <td><span class="badge-status ${getStatusBadgeClass(item.Critical === 'Yes' ? 'Critical' : '—')}">${item.Critical === 'Yes' ? 'Critical' : '—'}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function renderQualityTable(qualityList) {
+        function renderQualityTable(list) {
             const tbody = document.querySelector('#quality-table tbody');
             tbody.innerHTML = '';
-            if (!qualityList || qualityList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Data belum tersedia.</td></tr>';
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada data quality testing.</td></tr>';
                 return;
             }
-            qualityList.forEach(item => {
+            list.forEach(item => {
                 const tr = document.createElement('tr');
-                const isPass = (item.result || '').toUpperCase() === 'PASS';
+                const result = item.result || item.Result || '';
+                const pass = String(result).toUpperCase() === 'PASS';
                 tr.innerHTML = `
-                    <td class="mono">${item.date || '—'}</td>
-                    <td class="mono">${item.wbs || '—'}</td>
-                    <td>${item.testType || '—'}</td>
-                    <td class="mono">${item.requirement || '—'}</td>
-                    <td class="mono">${item.actual || '—'}</td>
-                    <td><span class="badge-status ${isPass ? 'badge-success' : 'badge-danger'}">${item.result || '—'}</span></td>
+                    <td class="mono">${item.date || item.Date || '—'}</td>
+                    <td class="mono">${item.wbs || item.WBS || '—'}</td>
+                    <td>${item.testType || item['Test Type'] || '—'}</td>
+                    <td class="mono">${item.requirement || item.Requirement || '—'}</td>
+                    <td class="mono">${item.actual || item.Actual || '—'}</td>
+                    <td><span class="badge-status ${pass ? 'badge-success' : 'badge-danger'}">${result || '—'}</span></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function renderRiskTable(riskList) {
+        function renderRiskTable(list) {
             const tbody = document.querySelector('#risk-table tbody');
             tbody.innerHTML = '';
-            if (!riskList || riskList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Data belum tersedia.</td></tr>';
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Belum ada risk / issue yang tercatat.</td></tr>';
                 return;
             }
-            riskList.forEach(item => {
+            list.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="mono">${item.id || '—'}</td>
-                    <td class="mono">${item.date || '—'}</td>
-                    <td>${item.type || '—'}</td>
-                    <td>${item.description || '—'}</td>
-                    <td>${item.probability || '—'}</td>
-                    <td>${item.impact || '—'}</td>
-                    <td class="mono"><strong>${item.score || '—'}</strong></td>
-                    <td><span class="badge-status ${getStatusBadgeClass(item.status)}">${item.status || '—'}</span></td>
-                    <td>${item.owner || '—'}</td>
+                    <td class="mono">${item.id || item.ID || '—'}</td>
+                    <td class="mono">${item.date || item.Date || '—'}</td>
+                    <td>${item.type || item.Type || '—'}</td>
+                    <td>${item.description || item.Description || '—'}</td>
+                    <td>${item.probability || item.Prob || '—'}</td>
+                    <td>${item.impact || item.Impact || '—'}</td>
+                    <td class="mono"><strong>${item.score || item.Score || '—'}</strong></td>
+                    <td><span class="badge-status ${getStatusBadgeClass(item.status || item.Status)}">${item.status || item.Status || '—'}</span></td>
+                    <td>${item.owner || item.Owner || '—'}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        function renderAIAnalysis(aiList) {
+        function renderAIAnalysis(list) {
             const container = document.getElementById('ai-analysis-container');
             container.innerHTML = '';
-            if (!aiList || aiList.length === 0) {
-                container.innerHTML = '<div class="empty-state">Data belum tersedia.</div>';
+            if (!list.length) {
+                container.innerHTML = '<div class="empty-state">AI Analysis belum tersedia. AI Agent akan diaktifkan pada tahap berikutnya.</div>';
                 return;
             }
-            aiList.forEach(ai => {
+            list.forEach(ai => {
                 const panel = document.createElement('div');
                 panel.className = 'ai-panel';
                 panel.innerHTML = `
@@ -1224,36 +1319,26 @@
             });
         }
 
-        function renderUpdatesTable(updatesList) {
+        function renderUpdatesTable(list) {
             const tbody = document.querySelector('#updates-table tbody');
             tbody.innerHTML = '';
-            if (!updatesList || updatesList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Data belum tersedia.</td></tr>';
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada log update.</td></tr>';
                 return;
             }
-            updatesList.forEach(item => {
+            list.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="mono">${item.date || '—'}</td>
-                    <td class="mono">${item.wbs || '—'}</td>
-                    <td>${item.activity || '—'}</td>
-                    <td><span class="badge-status ${getStatusBadgeClass(item.status)}">${item.status || '—'}</span></td>
-                    <td class="mono">${item.actualVolume !== undefined ? item.actualVolume : '—'}</td>
-                    <td class="mono">${item.actualProgress !== undefined ? item.actualProgress + '%' : '—'}</td>
-                    <td>${item.remarks || '—'}</td>
+                    <td class="mono">${item.date || item.Date || '—'}</td>
+                    <td class="mono">${item.wbs || item.WBS || '—'}</td>
+                    <td>${item.activity || item.Activity || '—'}</td>
+                    <td><span class="badge-status ${getStatusBadgeClass(item.status || item.Status)}">${item.status || item.Status || '—'}</span></td>
+                    <td class="mono">${item.actualVolume ?? item['Actual Volume'] ?? '—'}</td>
+                    <td class="mono">${item.actualProgress !== undefined ? item.actualProgress + '%' : (item['Actual Progress (%)'] !== undefined ? item['Actual Progress (%)'] + '%' : '—')}</td>
+                    <td>${item.remarks || item.Remarks || '—'}</td>
                 `;
                 tbody.appendChild(tr);
             });
-        }
-
-        function getStatusBadgeClass(status) {
-            if (!status) return 'badge-running';
-            const s = status.toLowerCase();
-            if (s.includes('selesai') || s.includes('completed') || s.includes('closed') || s.includes('on track')) return 'badge-success';
-            if (s.includes('berjalan') || s.includes('open')) return 'badge-running';
-            if (s.includes('tertunda') || s.includes('at risk') || s.includes('delayed')) return 'badge-warning';
-            if (s.includes('critical') || s.includes('high') || s.includes('fail')) return 'badge-danger';
-            return 'badge-running';
         }
 
         function applyFilters() {
@@ -1263,13 +1348,17 @@
             const wbs = document.getElementById('filter-wbs').value;
             const status = document.getElementById('filter-status').value;
 
-            let filteredUpdates = cachedData.updates || cachedData.progress || [];
-            if (startDate) filteredUpdates = filteredUpdates.filter(u => u.date >= startDate);
-            if (endDate) filteredUpdates = filteredUpdates.filter(u => u.date <= endDate);
-            if (wbs) filteredUpdates = filteredUpdates.filter(u => u.wbs === wbs);
-            if (status) filteredUpdates = filteredUpdates.filter(u => u.status === status);
-
-            renderUpdatesTable(filteredUpdates);
+            let rows = cachedData.updates || cachedData.progress || [];
+            rows = rows.filter(u => {
+                const d = String(u.date || u.Date || '').slice(0,10);
+                const w = String(u.wbs || u.WBS || '');
+                const s = String(u.status || u.Status || '');
+                return (!startDate || d >= startDate) &&
+                       (!endDate || d <= endDate) &&
+                       (!wbs || w === wbs) &&
+                       (!status || s === status);
+            });
+            renderUpdatesTable(rows);
         }
 
         function resetFilters() {
@@ -1277,9 +1366,80 @@
             document.getElementById('filter-end-date').value = '';
             document.getElementById('filter-wbs').value = '';
             document.getElementById('filter-status').value = '';
-            if (cachedData) {
-                renderUpdatesTable(cachedData.updates || cachedData.progress);
+            if (cachedData) renderUpdatesTable(cachedData.updates || cachedData.progress || []);
+        }
+
+        function chartOptionsPercent() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#9ca3af', font: { family: 'Inter', size: 11 } } }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af' } },
+                    y: { min: 0, max: 100, grid: { color: 'rgba(55,65,81,.4)' }, ticks: { color: '#9ca3af', callback: v => v + '%' } }
+                }
+            };
+        }
+
+        function buildDateRange(start, finish, stepDays) {
+            const out = [];
+            let d = new Date(String(start).slice(0,10) + 'T12:00:00');
+            const end = new Date(String(finish).slice(0,10) + 'T12:00:00');
+            if (isNaN(d) || isNaN(end)) return out;
+            while (d <= end) {
+                out.push(d.toISOString().slice(0,10));
+                d.setDate(d.getDate() + stepDays);
             }
+            if (out[out.length - 1] !== end.toISOString().slice(0,10)) out.push(end.toISOString().slice(0,10));
+            return out;
+        }
+
+        function parseDate(v) {
+            const d = new Date(v);
+            return isNaN(d) ? new Date() : d;
+        }
+
+        function formatDate(v) {
+            if (!v) return '—';
+            const d = new Date(String(v).slice(0,10) + 'T12:00:00');
+            if (isNaN(d)) return v;
+            return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+        }
+
+        function formatDateTime(v) {
+            const d = new Date(v);
+            if (isNaN(d)) return v;
+            return d.toLocaleString('en-GB', {
+                day:'2-digit', month:'short', year:'numeric',
+                hour:'2-digit', minute:'2-digit'
+            });
+        }
+
+        function fmtNumber(v) {
+            if (v === null || v === undefined || v === '' || isNaN(Number(v))) return '0';
+            return Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 });
+        }
+
+        function fmtPct(v, signed=false) {
+            if (v === null || v === undefined || v === '' || isNaN(Number(v))) return '—';
+            const n = Number(v);
+            return (signed && n > 0 ? '+' : '') + n.toFixed(2) + '%';
+        }
+
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+
+        function getStatusBadgeClass(status) {
+            const s = String(status || '').toLowerCase();
+            if (s.includes('selesai') || s.includes('completed') || s.includes('closed') || s.includes('on track') || s === 'green') return 'badge-success';
+            if (s.includes('berjalan') || s.includes('open') || s.includes('running')) return 'badge-running';
+            if (s.includes('tertunda') || s.includes('at risk') || s.includes('delayed') || s === 'yellow') return 'badge-warning';
+            if (s.includes('critical') || s.includes('high') || s.includes('fail') || s.includes('error') || s === 'red') return 'badge-danger';
+            return 'badge-running';
         }
     </script>
 </body>
