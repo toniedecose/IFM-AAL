@@ -1035,7 +1035,7 @@
             const fetchCentralLocations = async () => {
                 setCentralLoading(true);
                 try {
-                    const response = await fetch(`${ESTIMATOR_API_URL}?action=locations&estimator=Titi%20Panen`);
+                    const response = await fetch(ESTIMATOR_API_URL + '?_=' + Date.now(), { cache: 'no-store' });
                     const data = await response.json();
                     if (!data.success) throw new Error(data.error || 'Gagal mengambil lokasi.');
                     setCentralLocations({ provinces: data.provinces || {}, provinceList: data.provinceList || [] });
