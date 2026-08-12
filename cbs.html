@@ -1271,6 +1271,8 @@
                                 <th>Date</th>
                                 <th>WBS</th>
                                 <th>Activity</th>
+                                <th>Start Date</th>
+                                <th>Target Finish</th>
                                 <th>Status</th>
                                 <th>Actual Vol (m³)</th>
                                 <th>Actual Prog (%)</th>
@@ -1278,7 +1280,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td colspan="7" class="empty-state">Data belum tersedia.</td></tr>
+                            <tr><td colspan="9" class="empty-state">Data belum tersedia.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1462,7 +1464,7 @@
             renderLogisticTable(data.logistic || []);
             renderQualityTable(data.quality || []);
             renderRiskTable(data.risks || []);
-            renderUpdatesTable(data.updates || data.progress || []);
+            renderUpdatesTable(data.updates || [], data.schedule || []);
         }
 
         // ==========================================
@@ -2022,19 +2024,18 @@
             }
 
             schedule.forEach(item => {
-                const wbs = String(item.WBS ?? "");
-                const planned = Number(item["Planned Progress (%)"] || 0);
-                const actual = actualMap[wbs];
-                const variance = actual === null || actual === undefined ? null : actual - planned;
+                const wbs = String(item.wbs ?? item.WBS ?? "");
+                const actual = item.actualProgress ?? actualMap[wbs];
+                const variance = actual === null || actual === undefined ? null : Number(item.variance ?? (actual - Number(item.plannedProgress || 0)));
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
                     <td class="mono">${escapeHtml(wbs)}</td>
-                    <td>${escapeHtml(item.Activity || "—")}</td>
-                    <td class="mono">${formatDate(item["Finish Date"])}</td>
-                    <td class="mono">${formatDate(item["Forecast Finish"] || "")}</td>
+                    <td>${escapeHtml(item.activity || item.Activity || "—")}</td>
+                    <td class="mono">${formatDate(item.baselineFinish || item["Finish Date"])}</td>
+                    <td class="mono">${formatDate(item.forecastFinish || "")}</td>
                     <td class="mono">${variance === null ? "—" : fmtPct(variance, true)}</td>
-                    <td>${statusBadge(variance === null ? (item.Critical === "Yes" ? "Critical" : "—") : getStatusFromVariance(variance))}</td>
+                    <td>${statusBadge(item.status || (item.critical === "Yes" ? "Critical" : "—"))}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -2143,27 +2144,62 @@
             });
         }
 
-        function renderUpdatesTable(list) {
+        function renderUpdatesTable(list, scheduleFallback) {
             const tbody = document.querySelector("#updates-table tbody");
             if (!tbody) return;
 
             tbody.innerHTML = "";
-            if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada log update.</td></tr>';
+
+            // Kalau PROGRESS_HISTORY belum punya snapshot (belum ada Actual Progress
+            // yang pernah diisi/berubah), tampilkan baseline langsung dari sheet
+            // BASELINE (via data.schedule) supaya tabel tidak kosong. Baris ini
+            // menunjukkan Start Date & Target Finish per WBS beserta status
+            // terhitung dari planned progress hari ini.
+            const usingFallback = !list.length && (scheduleFallback || []).length > 0;
+            const rows = usingFallback ? scheduleFallback : list;
+
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Belum ada log update.</td></tr>';
                 return;
             }
 
-            list.forEach(item => {
-                const actual = item.actualProgress ?? item["Actual Progress (%)"];
+            rows.forEach(item => {
+                let date, wbs, activity, startDate, finishDate, status, actualVolume, actual, remarks;
+
+                if (usingFallback) {
+                    // Bentuk data dari buildScheduleControl() di Code.gs (baseline-driven).
+                    wbs = item.wbs;
+                    activity = item.activity;
+                    startDate = item.baselineStart;
+                    finishDate = item.baselineFinish;
+                    status = item.status;
+                    actualVolume = null;
+                    actual = item.actualProgress;
+                    date = "—";
+                    remarks = "Baseline (belum ada update aktual)";
+                } else {
+                    wbs = item.wbs || item.WBS;
+                    activity = item.activity || item.Activity;
+                    startDate = item.startDate || item["Start Date"];
+                    finishDate = item.finishDate || item["Finish Date"];
+                    status = item.status || item.Status;
+                    actualVolume = item.actualVolume ?? item["Actual Volume"];
+                    actual = item.actualProgress ?? item["Actual Progress (%)"];
+                    date = item.date || item.Date;
+                    remarks = item.remarks || item.Remarks;
+                }
+
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td class="mono">${escapeHtml(item.date || item.Date || "—")}</td>
-                    <td class="mono">${escapeHtml(item.wbs || item.WBS || "—")}</td>
-                    <td>${escapeHtml(item.activity || item.Activity || "—")}</td>
-                    <td>${statusBadge(item.status || item.Status || "—")}</td>
-                    <td class="mono">${escapeHtml(item.actualVolume ?? item["Actual Volume"] ?? "—")}</td>
+                    <td class="mono">${escapeHtml(date || "—")}</td>
+                    <td class="mono">${escapeHtml(wbs || "—")}</td>
+                    <td>${escapeHtml(activity || "—")}</td>
+                    <td class="mono">${formatDate(startDate)}</td>
+                    <td class="mono">${formatDate(finishDate)}</td>
+                    <td>${statusBadge(status || "—")}</td>
+                    <td class="mono">${actualVolume === undefined || actualVolume === null || actualVolume === "" ? "—" : escapeHtml(actualVolume)}</td>
                     <td class="mono">${actual === undefined || actual === null || actual === "" ? "—" : fmtPct(actual)}</td>
-                    <td>${escapeHtml(item.remarks || item.Remarks || "—")}</td>
+                    <td>${escapeHtml(remarks || "—")}</td>
                 `;
                 tbody.appendChild(tr);
             });
