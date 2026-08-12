@@ -1032,11 +1032,26 @@
                 return normalized;
             };
 
+            // JSONP bridge for Apps Script Web App (avoids browser CORS blocking).
+            const callEstimatorApi = (params = {}) => new Promise((resolve, reject) => {
+                const callbackName = '__estimator_cb_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+                const script = document.createElement('script');
+                const query = new URLSearchParams({ ...params, callback: callbackName, _: Date.now().toString() });
+                const cleanup = () => {
+                    try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+                    if (script.parentNode) script.parentNode.removeChild(script);
+                };
+                const timer = setTimeout(() => { cleanup(); reject(new Error('Database pusat timeout.')); }, 15000);
+                window[callbackName] = (data) => { clearTimeout(timer); cleanup(); resolve(data); };
+                script.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('Database pusat tidak dapat diakses.')); };
+                script.src = ESTIMATOR_API_URL + '?' + query.toString();
+                document.body.appendChild(script);
+            });
+
             const fetchCentralLocations = async () => {
                 setCentralLoading(true);
                 try {
-                    const response = await fetch(ESTIMATOR_API_URL + '?_=' + Date.now(), { cache: 'no-store' });
-                    const data = await response.json();
+                    const data = await callEstimatorApi();
                     if (!data.success) throw new Error(data.error || 'Gagal mengambil lokasi.');
                     setCentralLocations({ provinces: data.provinces || {}, provinceList: data.provinceList || [] });
                     setCentralPriceSource('CENTRAL DATABASE');
@@ -1059,9 +1074,12 @@
 
             const fetchCentralPrices = async (province, regency) => {
                 try {
-                    const url = `${ESTIMATOR_API_URL}?action=prices&estimator=Titi%20Panen&province=${encodeURIComponent(province)}&regency=${encodeURIComponent(regency)}`;
-                    const response = await fetch(url);
-                    const data = await response.json();
+                    const data = await callEstimatorApi({
+                        action: 'prices',
+                        estimator: 'Titi Panen',
+                        province,
+                        regency
+                    });
                     if (!data.success || !data.prices || !data.count) throw new Error(data.error || 'Harga pusat tidak ditemukan.');
                     setPrices(normalizeCentralPrices(data.prices));
                     setCentralPriceSource('CENTRAL DATABASE');
@@ -1080,9 +1098,13 @@
                 setMarketLoading(true);
                 setMarketAnalysis(null);
                 try {
-                    const url = `${ESTIMATOR_API_URL}?action=market&estimator=Titi%20Panen&province=${encodeURIComponent(project.province)}&regency=${encodeURIComponent(project.regency)}&item=${encodeURIComponent(itemName)}`;
-                    const response = await fetch(url);
-                    const data = await response.json();
+                    const data = await callEstimatorApi({
+                        action: 'market',
+                        estimator: 'Titi Panen',
+                        province: project.province,
+                        regency: project.regency,
+                        item: itemName
+                    });
                     if (!data.success) throw new Error(data.error || 'Analisis market gagal.');
                     setMarketAnalysis(data);
                     showToast(`Analisis harga ${itemName} selesai.`);
