@@ -1356,37 +1356,37 @@
             const material = kpi.material || {};
             const quality = kpi.quality || {};
 
-            let health = "HEALTHY";
+            let health = "SEHAT";
             let healthClass = "badge-success";
             if (variance < -10 || (riskKpiCount(risks, 'Critical') > 0)) {
-                health = "CRITICAL";
+                health = "KRITIS";
                 healthClass = "badge-danger";
             } else if (variance < -5 || riskKpiCount(risks, 'High') > 0) {
-                health = "AT RISK";
+                health = "BERISIKO";
                 healthClass = "badge-warning";
             } else if (variance < 0) {
-                health = "WATCH";
+                health = "PERLU DIPANTAU";
                 healthClass = "badge-warning";
             }
 
             return {
                 healthStatus: health,
                 healthBadgeClass: healthClass,
-                keyFinding: variance < 0 ? `Actual progress is ${Math.abs(variance).toFixed(1)}% behind baseline schedule.` : "Project performance is aligned with schedule milestones.",
-                mainImpact: variance < -5 ? "Potential delay in project completion and increased productivity pressure." : "Low schedule variance with stable delivery.",
-                recommendedAction: "1. Review critical WBS productivity. \n2. Verify equipment availability and material supply capacity.",
+                keyFinding: variance < 0 ? `Progres aktual tertinggal ${Math.abs(variance).toFixed(1)}% dari jadwal baseline.` : "Kinerja proyek sudah sejalan dengan milestone jadwal.",
+                mainImpact: variance < -5 ? "Berpotensi menyebabkan keterlambatan penyelesaian proyek dan meningkatkan tekanan produktivitas." : "Variance jadwal rendah dengan penyelesaian yang stabil.",
+                recommendedAction: "1. Tinjau produktivitas WBS kritis. \n2. Verifikasi ketersediaan alat berat dan kapasitas pasokan material.",
                 alerts: [
-                    { type: variance < -5 ? "CRITICAL" : "GOOD", text: `Progress variance is currently at ${fmtPct(variance, true)}.` },
-                    { type: Number(material.installed || 0) < Number(material.planned || 1) ? "WARNING" : "GOOD", text: "Material installation versus plan requires continuous monitoring." },
-                    { type: risks.length > 0 ? "WARNING" : "GOOD", text: `${risks.length} active project risks logged in matrix.` }
+                    { type: variance < -5 ? "CRITICAL" : "GOOD", text: `Variance progres saat ini berada di ${fmtPct(variance, true)}.` },
+                    { type: Number(material.installed || 0) < Number(material.planned || 1) ? "WARNING" : "GOOD", text: "Instalasi material dibandingkan rencana perlu terus dipantau." },
+                    { type: risks.length > 0 ? "WARNING" : "GOOD", text: `${risks.length} risiko proyek aktif tercatat dalam matriks.` }
                 ],
                 recommendations: [
                     {
-                        priority: "Priority 01 — Schedule & Productivity",
-                        issue: "Progress variance negative trend.",
-                        reason: "Actual production rate is lagging behind planned baseline.",
-                        action: "Review critical WBS activities and establish recovery production targets.",
-                        outcome: "Improved schedule performance and restored baseline alignment."
+                        priority: "Prioritas 01 — Jadwal & Produktivitas",
+                        issue: "Tren variance progres negatif.",
+                        reason: "Laju produksi aktual tertinggal dari baseline yang direncanakan.",
+                        action: "Tinjau aktivitas WBS kritis dan tetapkan target produksi pemulihan.",
+                        outcome: "Kinerja jadwal membaik dan kembali sejalan dengan baseline."
                     }
                 ]
             };
@@ -1400,19 +1400,19 @@
             const timestampEl = document.getElementById("ai-last-timestamp");
             if (timestampEl) timestampEl.textContent = formatDateTime(new Date());
 
-            const healthStatus = aiData.healthStatus || aiData.health || "AT RISK";
+            const healthStatus = aiData.healthStatus || aiData.health || "BERISIKO";
             const badgeClass = aiData.healthBadgeClass || getStatusBadgeClass(healthStatus);
             
             document.getElementById("ai-exec-health").innerHTML = `<span class="badge-status ${badgeClass}">${escapeHtml(healthStatus)}</span>`;
-            document.getElementById("ai-exec-finding").textContent = aiData.keyFinding || "Actual progress shows variance requiring monitoring.";
-            document.getElementById("ai-exec-impact").textContent = aiData.mainImpact || "Schedule recovery may be required if current production pace continues.";
-            document.getElementById("ai-exec-action").textContent = aiData.recommendedAction || "1. Verify equipment allocation. 2. Review critical WBS.";
+            document.getElementById("ai-exec-finding").textContent = aiData.keyFinding || "Progres aktual menunjukkan variance yang perlu dipantau.";
+            document.getElementById("ai-exec-impact").textContent = aiData.mainImpact || "Pemulihan jadwal mungkin diperlukan jika laju produksi saat ini berlanjut.";
+            document.getElementById("ai-exec-action").textContent = aiData.recommendedAction || "1. Verifikasi alokasi alat berat. 2. Tinjau WBS kritis.";
 
             // Render Alerts
             const alertsList = document.getElementById("ai-alerts-list");
             const alerts = aiData.alerts || [
-                { type: "WARNING", text: "Progress variance requires continuous tracking." },
-                { type: "WATCH", text: "Ensure material supply matches installation requirement." }
+                { type: "WARNING", text: "Variance progres perlu terus dipantau." },
+                { type: "WATCH", text: "Pastikan pasokan material sesuai kebutuhan instalasi." }
             ];
             alertsList.innerHTML = "";
             alerts.forEach(alert => {
@@ -1428,11 +1428,11 @@
             const recList = document.getElementById("ai-recommendations-list");
             const recs = aiData.recommendations || [
                 {
-                    priority: "Priority 01 — Schedule Recovery",
-                    issue: "Actual progress behind baseline.",
-                    reason: "Negative variance detected in active WBS.",
-                    action: "Establish recovery targets and audit equipment availability.",
-                    outcome: "Stabilized project velocity."
+                    priority: "Prioritas 01 — Pemulihan Jadwal",
+                    issue: "Progres aktual tertinggal dari baseline.",
+                    reason: "Terdeteksi variance negatif pada WBS aktif.",
+                    action: "Tetapkan target pemulihan dan audit ketersediaan alat berat.",
+                    outcome: "Kecepatan proyek stabil kembali."
                 }
             ];
             recList.innerHTML = "";
@@ -1440,12 +1440,12 @@
                 const div = document.createElement("div");
                 div.className = "ai-rec-card";
                 div.innerHTML = `
-                    <div class="ai-rec-header"><span>${escapeHtml(rec.priority || "Priority Action")}</span></div>
+                    <div class="ai-rec-header"><span>${escapeHtml(rec.priority || "Aksi Prioritas")}</span></div>
                     <div class="ai-rec-body">
-                        <strong>Issue:</strong> ${escapeHtml(rec.issue || "—")}<br>
-                        <strong>Reason:</strong> ${escapeHtml(rec.reason || "—")}<br>
-                        <strong>Action:</strong> ${escapeHtml(rec.action || rec.recommendedAction || "—")}<br>
-                        <strong>Expected Outcome:</strong> ${escapeHtml(rec.outcome || "—")}
+                        <strong>Isu:</strong> ${escapeHtml(rec.issue || "—")}<br>
+                        <strong>Alasan:</strong> ${escapeHtml(rec.reason || "—")}<br>
+                        <strong>Tindakan:</strong> ${escapeHtml(rec.action || rec.recommendedAction || "—")}<br>
+                        <strong>Hasil yang Diharapkan:</strong> ${escapeHtml(rec.outcome || "—")}
                     </div>
                 `;
                 recList.appendChild(div);
@@ -1468,7 +1468,7 @@
 
             const question = input.value.trim();
             container.style.display = "block";
-            textEl.innerHTML = "CBS Agent is analyzing project data...";
+            textEl.innerHTML = "CBS Agent sedang menganalisis data proyek...";
 
             try {
                 const response = await fetch(API_URL, {
@@ -1499,12 +1499,12 @@
             const risks = data?.risks || [];
             const schedule = data?.schedule || [];
 
-            if (q.includes("behind schedule") || q.includes("progress")) {
-                return `ANSWER\nBased on current project data, the project actual progress is ${fmtPct(progress.actual)} against planned ${fmtPct(progress.planned)} (Variance: ${fmtPct(progress.variance, true)}).\n\nKEY DATA\n- Actual Progress: ${fmtPct(progress.actual)}\n- Planned Progress: ${fmtPct(progress.planned)}\n\nANALYSIS\nThe negative variance indicates that production velocity in active WBS items is lower than the baseline schedule.\n\nRECOMMENDATION\nReview critical WBS productivity and ensure equipment availability is maximized.\n\nDATA LIMITATION\nDetailed daily subcontractor logs are limited to aggregated update records.`;
-            } else if (q.includes("risk")) {
-                return `ANSWER\nThere are ${risks.length} active risks/issues logged in the current risk matrix.\n\nKEY DATA\n- Total Open Risks: ${risks.length}\n\nANALYSIS\nHigh-priority items require direct oversight by the Project Manager to mitigate schedule impact.\n\nRECOMMENDATION\nRe-assign unassigned mitigations and verify risk owners.\n\nDATA LIMITATION\nFinancial risk impact is excluded from this engineering control scope.`;
+            if (q.includes("behind schedule") || q.includes("progress") || q.includes("jadwal") || q.includes("progres")) {
+                return `JAWABAN\nBerdasarkan data proyek saat ini, progres aktual proyek berada di ${fmtPct(progress.actual)} terhadap rencana ${fmtPct(progress.planned)} (Variance: ${fmtPct(progress.variance, true)}).\n\nDATA KUNCI\n- Progres Aktual: ${fmtPct(progress.actual)}\n- Progres Rencana: ${fmtPct(progress.planned)}\n\nANALISIS\nVariance negatif menunjukkan bahwa kecepatan produksi pada item WBS aktif lebih rendah dari jadwal baseline.\n\nREKOMENDASI\nTinjau produktivitas WBS kritis dan pastikan ketersediaan alat berat dimaksimalkan.\n\nKETERBATASAN DATA\nLog harian subkontraktor secara detail terbatas pada catatan update yang teragregasi.`;
+            } else if (q.includes("risk") || q.includes("risiko")) {
+                return `JAWABAN\nTerdapat ${risks.length} risiko/isu aktif yang tercatat dalam matriks risiko saat ini.\n\nDATA KUNCI\n- Total Risiko Terbuka: ${risks.length}\n\nANALISIS\nItem prioritas tinggi memerlukan pengawasan langsung dari Project Manager untuk mitigasi dampak jadwal.\n\nREKOMENDASI\nTugaskan kembali mitigasi yang belum memiliki penanggung jawab dan verifikasi pemilik risiko.\n\nKETERBATASAN DATA\nDampak risiko finansial tidak termasuk dalam lingkup kontrol engineering ini.`;
             } else {
-                return `ANSWER\nAnalysis based on current CBS project datasets for Project P001.\n\nKEY DATA\n- Project Status: ${data?.project?.currentStatus || "Active"}\n- Current WBS: ${data?.project?.currentWbs || "—"}\n\nANALYSIS\nProject control metrics are being continuously monitored across schedule, material, equipment, and quality parameters.\n\nRECOMMENDATION\nConsult specific dashboard sections (Schedule Control, Material Control, Quality Control) for granular verification.\n\nDATA LIMITATION\nQuery requires specific domain parameters for deeper extraction.`;
+                return `JAWABAN\nAnalisis berdasarkan dataset proyek CBS saat ini untuk Project P001.\n\nDATA KUNCI\n- Status Proyek: ${data?.project?.currentStatus || "Aktif"}\n- WBS Saat Ini: ${data?.project?.currentWbs || "—"}\n\nANALISIS\nMetrik kontrol proyek terus dipantau di seluruh parameter jadwal, material, alat berat, dan kualitas.\n\nREKOMENDASI\nPeriksa bagian dashboard spesifik (Schedule Control, Material Control, Quality Control) untuk verifikasi lebih rinci.\n\nKETERBATASAN DATA\nPertanyaan memerlukan parameter domain spesifik untuk penggalian data lebih dalam.`;
             }
         }
 
