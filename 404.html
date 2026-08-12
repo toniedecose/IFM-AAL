@@ -5,21 +5,97 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>404 — Page Not Found</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#0b1118;color:#f4f7fa;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
-    .container{width:min(520px,100%);text-align:center}
-    .logo{width:110px;height:110px;object-fit:contain;margin-bottom:34px}
-    .code{font-size:clamp(76px,18vw,130px);line-height:.9;font-weight:800;letter-spacing:-6px;color:#d9a441;margin-bottom:22px}
-    h1{font-size:clamp(24px,5vw,34px);font-weight:700;margin-bottom:12px}
-    p{color:#9aa7b5;font-size:16px;line-height:1.7;margin:0 auto 30px;max-width:420px}
-    .home-btn{display:inline-flex;align-items:center;justify-content:center;min-width:150px;padding:13px 24px;border-radius:8px;background:#d9a441;color:#10161d;text-decoration:none;font-size:14px;font-weight:700;transition:transform .2s ease,opacity .2s ease}
-    .home-btn:hover{transform:translateY(-2px);opacity:.9}
-    @media(max-width:480px){.logo{width:90px;height:90px;margin-bottom:28px}.code{letter-spacing:-4px}}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: #f4f7fa;
+      color: #10243b;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    }
+
+    .container {
+      width: min(760px, 100%);
+      text-align: center;
+    }
+
+    .logo-wrap {
+      width: min(680px, 94vw);
+      margin: 0 auto 18px;
+      padding: 20px 30px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 14px 40px rgba(16, 36, 59, .12);
+    }
+
+    .logo {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .code {
+      font-size: clamp(72px, 14vw, 118px);
+      line-height: .9;
+      font-weight: 800;
+      letter-spacing: -6px;
+      color: #123b68;
+      margin: 12px 0 18px;
+    }
+
+    h1 {
+      font-size: clamp(24px, 5vw, 34px);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #667587;
+      font-size: 16px;
+      line-height: 1.7;
+      margin: 0 auto 28px;
+      max-width: 460px;
+    }
+
+    .home-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 160px;
+      padding: 14px 26px;
+      border-radius: 8px;
+      background: #123b68;
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 8px 20px rgba(18, 59, 104, .22);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .home-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(18, 59, 104, .28);
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 24px 16px; }
+      .logo-wrap { width: 100%; padding: 12px 14px; border-radius: 14px; }
+      .code { letter-spacing: -4px; }
+    }
   </style>
 </head>
 <body>
   <main class="container">
-    <img src="logo.png" alt="Infrastructure Management AAL" class="logo">
+    <div class="logo-wrap">
+      <img src="logo.png" alt="Infrastructure Management AAL" class="logo">
+    </div>
+
     <div class="code">404</div>
     <h1>Page Not Found</h1>
     <p>The page you are looking for doesn't exist or may have been moved.</p>
