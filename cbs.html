@@ -946,7 +946,7 @@
                     <div class="kpi-body">
                         <div>
                             <div class="kpi-value mono" id="kpi-forecast-finish" style="font-size: 1.125rem;">—</div>
-                            <div class="kpi-sub">Baseline: <span class="mono">14 Sep 2026</span></div>
+                            <div class="kpi-sub">Baseline: <span class="mono" id="kpi-baseline-finish">—</span></div>
                         </div>
                     </div>
                 </div>
@@ -1051,8 +1051,8 @@
                             <tr>
                                 <th>WBS</th>
                                 <th>Activity</th>
+                                <th>Start Date</th>
                                 <th>Baseline Finish</th>
-                                <th>Forecast Finish</th>
                                 <th>Variance</th>
                                 <th>Status</th>
                             </tr>
@@ -1263,7 +1263,8 @@
 
             <!-- Recent Project Updates Table -->
             <div class="card" style="margin-bottom: 32px;">
-                <div class="section-title" style="border:none; margin-bottom:16px;">Recent Project Updates (Progress Log)</div>
+                <div class="section-title" style="border:none; margin-bottom:4px;">Recent Project Updates (Progress Log)</div>
+                <div style="color:#64748b; font-size:0.8125rem; margin-bottom:16px;">Menampilkan WBS yang terakhir diupdate, maksimal 20 baris — bukan histori harian penuh.</div>
                 <div class="table-responsive">
                     <table id="updates-table">
                         <thead>
@@ -1377,6 +1378,11 @@
                     : "—"
             );
 
+            // Kartu "Schedule Finish": belum ada mesin forecast, jadi tampilkan
+            // target finish dari BASELINE (real), bukan placeholder statis.
+            setText("kpi-forecast-finish", project.finishDate ? formatDate(project.finishDate) : "—");
+            setText("kpi-baseline-finish", project.finishDate ? formatDate(project.finishDate) : "—");
+
             setText(
                 "info-volume",
                 project.totalFillVolume
@@ -1464,7 +1470,7 @@
             renderLogisticTable(data.logistic || []);
             renderQualityTable(data.quality || []);
             renderRiskTable(data.risks || []);
-            renderUpdatesTable(data.updates || [], data.schedule || []);
+            renderUpdatesTable(data.progress || [], data.schedule || []);
         }
 
         // ==========================================
@@ -2032,8 +2038,8 @@
                 tr.innerHTML = `
                     <td class="mono">${escapeHtml(wbs)}</td>
                     <td>${escapeHtml(item.activity || item.Activity || "—")}</td>
+                    <td class="mono">${formatDate(item.baselineStart || item["Start Date"])}</td>
                     <td class="mono">${formatDate(item.baselineFinish || item["Finish Date"])}</td>
-                    <td class="mono">${formatDate(item.forecastFinish || "")}</td>
                     <td class="mono">${variance === null ? "—" : fmtPct(variance, true)}</td>
                     <td>${statusBadge(item.status || (item.critical === "Yes" ? "Critical" : "—"))}</td>
                 `;
@@ -2144,19 +2150,40 @@
             });
         }
 
-        function renderUpdatesTable(list, scheduleFallback) {
+        // Recent Project Updates dibatasi jumlah barisnya supaya TIDAK terus
+        // membengkak seiring umur proyek (beda dengan histori mentah yang
+        // menambah baris tiap hari per WBS). Sumbernya sekarang data.progress
+        // (1 baris per WBS, arsitektur yang sama dengan sheet PROGRESS),
+        // diurutkan dari yang PALING BARU diupdate, dipotong ke N teratas.
+        // Ini menjaga tabel tetap ringkas untuk load cepat & rapi saat print/PPT.
+        const UPDATES_TABLE_LIMIT = 20;
+
+        function renderUpdatesTable(progressList, scheduleFallback) {
             const tbody = document.querySelector("#updates-table tbody");
             if (!tbody) return;
 
             tbody.innerHTML = "";
 
-            // Kalau PROGRESS_HISTORY belum punya snapshot (belum ada Actual Progress
-            // yang pernah diisi/berubah), tampilkan baseline langsung dari sheet
-            // BASELINE (via data.schedule) supaya tabel tidak kosong. Baris ini
-            // menunjukkan Start Date & Target Finish per WBS beserta status
-            // terhitung dari planned progress hari ini.
-            const usingFallback = !list.length && (scheduleFallback || []).length > 0;
-            const rows = usingFallback ? scheduleFallback : list;
+            // Hanya WBS yang PERNAH diupdate (punya Last Updated), diurutkan
+            // dari yang paling baru diupdate ke yang paling lama.
+            const updated = (progressList || [])
+                .filter(item => {
+                    const d = item.date || item.lastUpdated || item["Last Updated"];
+                    return d !== undefined && d !== null && d !== "";
+                })
+                .sort((a, b) => {
+                    const da = new Date(a.date || a.lastUpdated || a["Last Updated"]);
+                    const db = new Date(b.date || b.lastUpdated || b["Last Updated"]);
+                    return db - da;
+                })
+                .slice(0, UPDATES_TABLE_LIMIT);
+
+            // Kalau belum ada satupun WBS yang diupdate (proyek baru mulai),
+            // tampilkan baseline langsung dari sheet BASELINE (via data.schedule)
+            // supaya tabel tidak kosong — menunjukkan Start Date & Target Finish
+            // per WBS beserta status terhitung dari planned progress hari ini.
+            const usingFallback = !updated.length && (scheduleFallback || []).length > 0;
+            const rows = usingFallback ? scheduleFallback : updated;
 
             if (!rows.length) {
                 tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Belum ada log update.</td></tr>';
@@ -2178,15 +2205,16 @@
                     date = "—";
                     remarks = "Baseline (belum ada update aktual)";
                 } else {
-                    wbs = item.wbs || item.WBS;
-                    activity = item.activity || item.Activity;
-                    startDate = item.startDate || item["Start Date"];
-                    finishDate = item.finishDate || item["Finish Date"];
-                    status = item.status || item.Status;
-                    actualVolume = item.actualVolume ?? item["Actual Volume"];
-                    actual = item.actualProgress ?? item["Actual Progress (%)"];
-                    date = item.date || item.Date;
-                    remarks = item.remarks || item.Remarks;
+                    // Bentuk data dari data.progress (buildEnrichedProgress di Code.gs).
+                    wbs = item.wbs;
+                    activity = item.activity;
+                    startDate = item.startDate;
+                    finishDate = item.finishDate;
+                    status = item.status;
+                    actualVolume = item.actualVolume;
+                    actual = item.actualProgress;
+                    date = item.date;
+                    remarks = item.remarks;
                 }
 
                 const tr = document.createElement("tr");
