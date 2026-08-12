@@ -1923,7 +1923,7 @@
                                             <div className="flex items-end">
                                                 <button
                                                     onClick={analyzeMarketItem}
-                                                    disabled={marketLoading || !project.regency || !prices[marketItem]}
+                                                    disabled={marketLoading || !project.regency || !Object.prototype.hasOwnProperty.call(prices, marketItem)}
                                                     className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white rounded-lg font-bold text-xs flex items-center justify-center gap-2 shadow"
                                                 >
                                                     <i data-lucide={marketLoading ? 'loader-circle' : 'search'} className={`w-4 h-4 ${marketLoading ? 'animate-spin' : ''}`}></i>
@@ -1938,7 +1938,7 @@
                                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                                                     <p className="text-[10px] uppercase font-bold text-slate-400">Harga Internal</p>
-                                                    <p className="text-lg font-extrabold mt-1">Rp {(marketAnalysis.internalPrice || 0).toLocaleString('id-ID')}</p>
+                                                    <p className="text-lg font-extrabold mt-1">{Number(marketAnalysis.internalPrice) > 0 ? 'Rp ' + Number(marketAnalysis.internalPrice).toLocaleString('id-ID') : 'Belum ada'}</p>
                                                 </div>
                                                 <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
                                                     <p className="text-[10px] uppercase font-bold text-slate-400">External Range</p>
@@ -1951,6 +1951,17 @@
                                                 <div className="p-3 rounded-lg bg-brand-50 dark:bg-brand-950/30">
                                                     <p className="text-[10px] uppercase font-bold text-brand-600">Confidence</p>
                                                     <p className="text-lg font-extrabold text-brand-700 dark:text-brand-400 mt-1">{marketAnalysis.analysis.confidence || 'LOW'}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400">Status Data</p>
+                                                    <p className="text-lg font-extrabold mt-1">{marketAnalysis.analysis.status || 'NO_DATA'}</p>
+                                                </div>
+                                                <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50">
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400">Basis Harga</p>
+                                                    <p className="text-sm font-bold mt-1">{marketAnalysis.analysis.basis || 'Tidak tersedia'}</p>
                                                 </div>
                                             </div>
 
@@ -1980,7 +1991,7 @@
                                     )}
 
                                     <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
-                                        <p className="text-[11px] text-slate-500">Catatan: hasil market intelligence adalah referensi eksternal. Harga pada RAB tetap berasal dari harga yang sedang aktif di estimator sampai tombol <b>Gunakan Harga Rekomendasi</b> dipilih.</p>
+                                        <p className="text-[11px] text-slate-500">Catatan: hasil market intelligence adalah referensi eksternal. Jika Status Data = NO_DATA, jangan mengisi harga dengan asumsi; masukkan harga manual atau lakukan pencarian kembali. Harga pada RAB tetap berasal dari harga yang sedang aktif di estimator sampai tombol <b>Gunakan Harga Rekomendasi</b> dipilih.</p>
                                     </div>
                                 </div>
                             )}
