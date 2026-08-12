@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBS Refinery Plant — Project Intelligence Dashboard</title>
+    <title>CBS Plant — Project Intelligence Dashboard</title>
     <!-- Type system: Space Grotesk (display), Inter (body), JetBrains Mono (engineering data) -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Export libraries: PDF (html2pdf = html2canvas + jsPDF) & PPTX (PptxGenJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <style>
         /* =====================================================
            DESIGN TOKENS — "Site Survey" blueprint system, light mode
@@ -684,6 +687,23 @@
             font-size: 0.8125rem;
         }
 
+        /* Export mode: applied to <body> while capturing the dashboard for PDF export */
+        body.exporting aside,
+        body.exporting .mobile-toggle,
+        body.exporting .header-meta,
+        body.exporting .ask-ai-box,
+        body.exporting #ai-response-container {
+            display: none !important;
+        }
+        body.exporting .main-content { margin-left: 0 !important; }
+        body.exporting .card,
+        body.exporting .kpi-card,
+        body.exporting .health-card,
+        body.exporting .table-responsive {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             aside { transform: translateX(-100%); }
@@ -707,7 +727,7 @@
                 <line x1="17" y1="9" x2="17" y2="12" stroke="#e0a339" stroke-width="1.5"/>
             </svg>
             <div>
-                <h2>CBS Refinery PLANT</h2>
+                <h2>CBS PLANT</h2>
                 <p>Project Control System</p>
             </div>
         </div>
@@ -739,7 +759,7 @@
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <div class="header-title">
-                    <h1>CBS REFINERY PLANT — PROJECT INTELLIGENCE DASHBOARD</h1>
+                    <h1>CBS PLANT — PROJECT INTELLIGENCE DASHBOARD</h1>
                     <p>Pekerjaan Timbunan &bull; Project ID: <span class="mono">P001</span></p>
                 </div>
             </div>
@@ -747,6 +767,8 @@
                 <a href="index.html" class="btn" style="padding: 6px 12px; font-size: 0.75rem;">← Utama</a>
                 <div>Status: <span id="project-status-badge" class="badge-status badge-running">—</span></div>
                 <div>Last Update: <span id="last-data-update" class="mono">—</span></div>
+                <button class="btn" id="export-pdf-btn" onclick="exportDashboardPDF()">Save PDF</button>
+                <button class="btn" id="export-ppt-btn" onclick="exportDashboardPPT()">Save PPT</button>
                 <button class="btn btn-primary" onclick="loadDashboardData()">Refresh Now</button>
             </div>
         </header>
@@ -841,13 +863,13 @@
                     </div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-header">Fill Volume</div>
+                    <div class="kpi-header">Actual Volume (Progress)</div>
                     <div class="kpi-body">
                         <div>
                             <div class="kpi-value mono" id="kpi-actual-vol">—</div>
-                            <div class="kpi-sub">Target: <span class="mono">9,000 m³</span></div>
+                            <div class="kpi-sub">Target: <span class="mono" id="kpi-target-vol">—</span></div>
                         </div>
-                        <div class="kpi-sub">Rem: <span id="kpi-remaining-vol" class="mono">—</span></div>
+                        <div class="kpi-sub">Material Rem: <span id="kpi-remaining-vol" class="mono">—</span></div>
                     </div>
                 </div>
                 <div class="kpi-card">
@@ -869,11 +891,11 @@
                     </div>
                 </div>
                 <div class="kpi-card">
-                    <div class="kpi-header">Material Status</div>
+                    <div class="kpi-header">Material — TSL Received</div>
                     <div class="kpi-body">
                         <div>
                             <div class="kpi-value mono" id="kpi-mat-received">—</div>
-                            <div class="kpi-sub">Req: <span id="kpi-mat-required" class="mono">—</span></div>
+                            <div class="kpi-sub">Planned: <span id="kpi-mat-required" class="mono">—</span></div>
                         </div>
                     </div>
                 </div>
@@ -985,6 +1007,51 @@
                     <div class="section-title" style="border:none; margin-bottom:12px;">Logistic Monitoring (Daily Delivery)</div>
                     <div class="chart-container">
                         <canvas id="logisticChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="section-title" style="border:none; margin-bottom:16px;">Material Log</div>
+                    <div class="table-responsive">
+                        <table id="material-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Material</th>
+                                    <th>Source</th>
+                                    <th>Planned Volume</th>
+                                    <th>TSL Received</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="6" class="empty-state">Data belum tersedia.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="section-title" style="border:none; margin-bottom:16px;">Logistic Log</div>
+                    <div class="table-responsive">
+                        <table id="logistic-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Activity</th>
+                                    <th>Ritase</th>
+                                    <th>Volume</th>
+                                    <th>Cycle Time</th>
+                                    <th>Equipment</th>
+                                    <th>Status</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="8" class="empty-state">Data belum tersedia.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -1255,10 +1322,12 @@
             setText("kpi-planned-progress", fmtPct(progressKpi.planned));
             setText("kpi-progress-var", fmtPct(progressKpi.variance, true));
 
-            setText("kpi-actual-vol", fmtNumber(materialKpi.installed) + " m³");
+            setText("kpi-actual-vol", fmtNumber(progressKpi.totalActualVolume) + " m³");
+            setText("kpi-target-vol", fmtNumber(project.totalFillVolume) + " m³");
+            setText("kpi-remaining-vol", fmtNumber(materialKpi.remaining) + " m³");
             setText("kpi-target-prod", fmtNumber(project.totalFillVolume) + " m³");
 
-            setText("kpi-mat-received", fmtNumber(materialKpi.plantReceived) + " m³");
+            setText("kpi-mat-received", fmtNumber(materialKpi.tslReceived) + " m³");
             setText(
                 "kpi-mat-required",
                 fmtNumber(materialKpi.planned || project.totalFillVolume) + " m³"
@@ -1311,6 +1380,8 @@
             renderEquipmentDonut(equipmentKpi);
 
             renderScheduleTable(data.schedule || [], data.progress || []);
+            renderMaterialTable(data.material || []);
+            renderLogisticTable(data.logistic || []);
             renderQualityTable(data.quality || []);
             renderRiskTable(data.risks || []);
             renderUpdatesTable(data.updates || data.progress || []);
@@ -1356,37 +1427,37 @@
             const material = kpi.material || {};
             const quality = kpi.quality || {};
 
-            let health = "SEHAT";
+            let health = "HEALTHY";
             let healthClass = "badge-success";
             if (variance < -10 || (riskKpiCount(risks, 'Critical') > 0)) {
-                health = "KRITIS";
+                health = "CRITICAL";
                 healthClass = "badge-danger";
             } else if (variance < -5 || riskKpiCount(risks, 'High') > 0) {
-                health = "BERISIKO";
+                health = "AT RISK";
                 healthClass = "badge-warning";
             } else if (variance < 0) {
-                health = "PERLU DIPANTAU";
+                health = "WATCH";
                 healthClass = "badge-warning";
             }
 
             return {
                 healthStatus: health,
                 healthBadgeClass: healthClass,
-                keyFinding: variance < 0 ? `Progres aktual tertinggal ${Math.abs(variance).toFixed(1)}% dari jadwal baseline.` : "Kinerja proyek sudah sejalan dengan milestone jadwal.",
-                mainImpact: variance < -5 ? "Berpotensi menyebabkan keterlambatan penyelesaian proyek dan meningkatkan tekanan produktivitas." : "Variance jadwal rendah dengan penyelesaian yang stabil.",
-                recommendedAction: "1. Tinjau produktivitas WBS kritis. \n2. Verifikasi ketersediaan alat berat dan kapasitas pasokan material.",
+                keyFinding: variance < 0 ? `Actual progress is ${Math.abs(variance).toFixed(1)}% behind baseline schedule.` : "Project performance is aligned with schedule milestones.",
+                mainImpact: variance < -5 ? "Potential delay in project completion and increased productivity pressure." : "Low schedule variance with stable delivery.",
+                recommendedAction: "1. Review critical WBS productivity. \n2. Verify equipment availability and material supply capacity.",
                 alerts: [
-                    { type: variance < -5 ? "CRITICAL" : "GOOD", text: `Variance progres saat ini berada di ${fmtPct(variance, true)}.` },
-                    { type: Number(material.installed || 0) < Number(material.planned || 1) ? "WARNING" : "GOOD", text: "Instalasi material dibandingkan rencana perlu terus dipantau." },
-                    { type: risks.length > 0 ? "WARNING" : "GOOD", text: `${risks.length} risiko proyek aktif tercatat dalam matriks.` }
+                    { type: variance < -5 ? "CRITICAL" : "GOOD", text: `Progress variance is currently at ${fmtPct(variance, true)}.` },
+                    { type: Number(material.tslReceived || 0) < Number(material.planned || 1) ? "WARNING" : "GOOD", text: "Material TSL Received versus Planned Volume requires continuous monitoring." },
+                    { type: risks.length > 0 ? "WARNING" : "GOOD", text: `${risks.length} active project risks logged in matrix.` }
                 ],
                 recommendations: [
                     {
-                        priority: "Prioritas 01 — Jadwal & Produktivitas",
-                        issue: "Tren variance progres negatif.",
-                        reason: "Laju produksi aktual tertinggal dari baseline yang direncanakan.",
-                        action: "Tinjau aktivitas WBS kritis dan tetapkan target produksi pemulihan.",
-                        outcome: "Kinerja jadwal membaik dan kembali sejalan dengan baseline."
+                        priority: "Priority 01 — Schedule & Productivity",
+                        issue: "Progress variance negative trend.",
+                        reason: "Actual production rate is lagging behind planned baseline.",
+                        action: "Review critical WBS activities and establish recovery production targets.",
+                        outcome: "Improved schedule performance and restored baseline alignment."
                     }
                 ]
             };
@@ -1400,19 +1471,19 @@
             const timestampEl = document.getElementById("ai-last-timestamp");
             if (timestampEl) timestampEl.textContent = formatDateTime(new Date());
 
-            const healthStatus = aiData.healthStatus || aiData.health || "BERISIKO";
+            const healthStatus = aiData.healthStatus || aiData.health || "AT RISK";
             const badgeClass = aiData.healthBadgeClass || getStatusBadgeClass(healthStatus);
             
             document.getElementById("ai-exec-health").innerHTML = `<span class="badge-status ${badgeClass}">${escapeHtml(healthStatus)}</span>`;
-            document.getElementById("ai-exec-finding").textContent = aiData.keyFinding || "Progres aktual menunjukkan variance yang perlu dipantau.";
-            document.getElementById("ai-exec-impact").textContent = aiData.mainImpact || "Pemulihan jadwal mungkin diperlukan jika laju produksi saat ini berlanjut.";
-            document.getElementById("ai-exec-action").textContent = aiData.recommendedAction || "1. Verifikasi alokasi alat berat. 2. Tinjau WBS kritis.";
+            document.getElementById("ai-exec-finding").textContent = aiData.keyFinding || "Actual progress shows variance requiring monitoring.";
+            document.getElementById("ai-exec-impact").textContent = aiData.mainImpact || "Schedule recovery may be required if current production pace continues.";
+            document.getElementById("ai-exec-action").textContent = aiData.recommendedAction || "1. Verify equipment allocation. 2. Review critical WBS.";
 
             // Render Alerts
             const alertsList = document.getElementById("ai-alerts-list");
             const alerts = aiData.alerts || [
-                { type: "WARNING", text: "Variance progres perlu terus dipantau." },
-                { type: "WATCH", text: "Pastikan pasokan material sesuai kebutuhan instalasi." }
+                { type: "WARNING", text: "Progress variance requires continuous tracking." },
+                { type: "WATCH", text: "Ensure material supply matches installation requirement." }
             ];
             alertsList.innerHTML = "";
             alerts.forEach(alert => {
@@ -1428,11 +1499,11 @@
             const recList = document.getElementById("ai-recommendations-list");
             const recs = aiData.recommendations || [
                 {
-                    priority: "Prioritas 01 — Pemulihan Jadwal",
-                    issue: "Progres aktual tertinggal dari baseline.",
-                    reason: "Terdeteksi variance negatif pada WBS aktif.",
-                    action: "Tetapkan target pemulihan dan audit ketersediaan alat berat.",
-                    outcome: "Kecepatan proyek stabil kembali."
+                    priority: "Priority 01 — Schedule Recovery",
+                    issue: "Actual progress behind baseline.",
+                    reason: "Negative variance detected in active WBS.",
+                    action: "Establish recovery targets and audit equipment availability.",
+                    outcome: "Stabilized project velocity."
                 }
             ];
             recList.innerHTML = "";
@@ -1440,12 +1511,12 @@
                 const div = document.createElement("div");
                 div.className = "ai-rec-card";
                 div.innerHTML = `
-                    <div class="ai-rec-header"><span>${escapeHtml(rec.priority || "Aksi Prioritas")}</span></div>
+                    <div class="ai-rec-header"><span>${escapeHtml(rec.priority || "Priority Action")}</span></div>
                     <div class="ai-rec-body">
-                        <strong>Isu:</strong> ${escapeHtml(rec.issue || "—")}<br>
-                        <strong>Alasan:</strong> ${escapeHtml(rec.reason || "—")}<br>
-                        <strong>Tindakan:</strong> ${escapeHtml(rec.action || rec.recommendedAction || "—")}<br>
-                        <strong>Hasil yang Diharapkan:</strong> ${escapeHtml(rec.outcome || "—")}
+                        <strong>Issue:</strong> ${escapeHtml(rec.issue || "—")}<br>
+                        <strong>Reason:</strong> ${escapeHtml(rec.reason || "—")}<br>
+                        <strong>Action:</strong> ${escapeHtml(rec.action || rec.recommendedAction || "—")}<br>
+                        <strong>Expected Outcome:</strong> ${escapeHtml(rec.outcome || "—")}
                     </div>
                 `;
                 recList.appendChild(div);
@@ -1468,7 +1539,7 @@
 
             const question = input.value.trim();
             container.style.display = "block";
-            textEl.innerHTML = "CBS Agent sedang menganalisis data proyek...";
+            textEl.innerHTML = "CBS Agent is analyzing project data...";
 
             try {
                 const response = await fetch(API_URL, {
@@ -1499,12 +1570,12 @@
             const risks = data?.risks || [];
             const schedule = data?.schedule || [];
 
-            if (q.includes("behind schedule") || q.includes("progress") || q.includes("jadwal") || q.includes("progres")) {
-                return `JAWABAN\nBerdasarkan data proyek saat ini, progres aktual proyek berada di ${fmtPct(progress.actual)} terhadap rencana ${fmtPct(progress.planned)} (Variance: ${fmtPct(progress.variance, true)}).\n\nDATA KUNCI\n- Progres Aktual: ${fmtPct(progress.actual)}\n- Progres Rencana: ${fmtPct(progress.planned)}\n\nANALISIS\nVariance negatif menunjukkan bahwa kecepatan produksi pada item WBS aktif lebih rendah dari jadwal baseline.\n\nREKOMENDASI\nTinjau produktivitas WBS kritis dan pastikan ketersediaan alat berat dimaksimalkan.\n\nKETERBATASAN DATA\nLog harian subkontraktor secara detail terbatas pada catatan update yang teragregasi.`;
-            } else if (q.includes("risk") || q.includes("risiko")) {
-                return `JAWABAN\nTerdapat ${risks.length} risiko/isu aktif yang tercatat dalam matriks risiko saat ini.\n\nDATA KUNCI\n- Total Risiko Terbuka: ${risks.length}\n\nANALISIS\nItem prioritas tinggi memerlukan pengawasan langsung dari Project Manager untuk mitigasi dampak jadwal.\n\nREKOMENDASI\nTugaskan kembali mitigasi yang belum memiliki penanggung jawab dan verifikasi pemilik risiko.\n\nKETERBATASAN DATA\nDampak risiko finansial tidak termasuk dalam lingkup kontrol engineering ini.`;
+            if (q.includes("behind schedule") || q.includes("progress")) {
+                return `ANSWER\nBased on current project data, the project actual progress is ${fmtPct(progress.actual)} against planned ${fmtPct(progress.planned)} (Variance: ${fmtPct(progress.variance, true)}).\n\nKEY DATA\n- Actual Progress: ${fmtPct(progress.actual)}\n- Planned Progress: ${fmtPct(progress.planned)}\n\nANALYSIS\nThe negative variance indicates that production velocity in active WBS items is lower than the baseline schedule.\n\nRECOMMENDATION\nReview critical WBS productivity and ensure equipment availability is maximized.\n\nDATA LIMITATION\nDetailed daily subcontractor logs are limited to aggregated update records.`;
+            } else if (q.includes("risk")) {
+                return `ANSWER\nThere are ${risks.length} active risks/issues logged in the current risk matrix.\n\nKEY DATA\n- Total Open Risks: ${risks.length}\n\nANALYSIS\nHigh-priority items require direct oversight by the Project Manager to mitigate schedule impact.\n\nRECOMMENDATION\nRe-assign unassigned mitigations and verify risk owners.\n\nDATA LIMITATION\nFinancial risk impact is excluded from this engineering control scope.`;
             } else {
-                return `JAWABAN\nAnalisis berdasarkan dataset proyek CBS saat ini untuk Project P001.\n\nDATA KUNCI\n- Status Proyek: ${data?.project?.currentStatus || "Aktif"}\n- WBS Saat Ini: ${data?.project?.currentWbs || "—"}\n\nANALISIS\nMetrik kontrol proyek terus dipantau di seluruh parameter jadwal, material, alat berat, dan kualitas.\n\nREKOMENDASI\nPeriksa bagian dashboard spesifik (Schedule Control, Material Control, Quality Control) untuk verifikasi lebih rinci.\n\nKETERBATASAN DATA\nPertanyaan memerlukan parameter domain spesifik untuk penggalian data lebih dalam.`;
+                return `ANSWER\nAnalysis based on current CBS project datasets for Project P001.\n\nKEY DATA\n- Project Status: ${data?.project?.currentStatus || "Active"}\n- Current WBS: ${data?.project?.currentWbs || "—"}\n\nANALYSIS\nProject control metrics are being continuously monitored across schedule, material, equipment, and quality parameters.\n\nRECOMMENDATION\nConsult specific dashboard sections (Schedule Control, Material Control, Quality Control) for granular verification.\n\nDATA LIMITATION\nQuery requires specific domain parameters for deeper extraction.`;
             }
         }
 
@@ -1655,27 +1726,26 @@
             const ctx = canvas.getContext("2d");
             if (materialChartObj) materialChartObj.destroy();
 
+            const byMaterial = Array.isArray(mat.byMaterial) ? mat.byMaterial : [];
+
+            if (!byMaterial.length) {
+                clearCanvasWithMessage(canvas, "Data material belum tersedia.");
+                return;
+            }
+
             materialChartObj = new Chart(ctx, {
                 type: "bar",
                 data: {
-                    labels: ["Required", "Loaded", "TSL Received", "Plant Received", "Installed"],
-                    datasets: [{
-                        label: "Volume (m³)",
-                        data: [
-                            Number(mat.planned || project.totalFillVolume || 0),
-                            Number(mat.loaded || 0),
-                            Number(mat.tslReceived || 0),
-                            Number(mat.plantReceived || 0),
-                            Number(mat.installed || 0)
-                        ],
-                        backgroundColor: "#3f8f92",
-                        borderRadius: 4
-                    }]
+                    labels: byMaterial.map(m => m.material),
+                    datasets: [
+                        { label: "Planned Volume (m³)", data: byMaterial.map(m => Number(m.planned || 0)), backgroundColor: "#8996a6", borderRadius: 4 },
+                        { label: "TSL Received (m³)", data: byMaterial.map(m => Number(m.tslReceived || 0)), backgroundColor: "#3f8f92", borderRadius: 4 }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { labels: { color: "#8b96a5", font: { family: "Inter", size: 11 } } } },
                     scales: {
                         x: { grid: { display: false }, ticks: { color: "#8b96a5" } },
                         y: { grid: { color: "rgba(255,255,255,.06)" }, ticks: { color: "#8b96a5" } }
@@ -1764,10 +1834,10 @@
             if (materialDonutChartObj) materialDonutChartObj.destroy();
 
             const target = Number(mat.planned || project.totalFillVolume || 0);
-            const installed = Number(mat.installed || 0);
-            const remaining = Math.max(target - installed, 0);
+            const received = Number(mat.tslReceived || 0);
+            const remaining = Number(mat.remaining ?? Math.max(target - received, 0));
 
-            if (!target && !installed) {
+            if (!target && !received) {
                 clearCanvasWithMessage(canvas, "Data material belum tersedia.");
                 return;
             }
@@ -1775,8 +1845,8 @@
             materialDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
-                    labels: ["Installed (m³)", "Remaining (m³)"],
-                    datasets: [{ data: [installed, remaining], backgroundColor: ["#2c7a7f", "#dbe3ea"], borderWidth: 0 }]
+                    labels: ["TSL Received (m³)", "Remaining (m³)"],
+                    datasets: [{ data: [received, remaining], backgroundColor: ["#2c7a7f", "#dbe3ea"], borderWidth: 0 }]
                 },
                 options: donutOptions()
             });
@@ -1892,6 +1962,56 @@
             });
         }
 
+        function renderMaterialTable(list) {
+            const tbody = document.querySelector("#material-table tbody");
+            if (!tbody) return;
+
+            tbody.innerHTML = "";
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada data material.</td></tr>';
+                return;
+            }
+
+            list.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="mono">${escapeHtml(item.Date || item.date || "—")}</td>
+                    <td>${escapeHtml(item.Material || item.material || "—")}</td>
+                    <td>${escapeHtml(item.Source || item.source || "—")}</td>
+                    <td class="mono">${fmtNumber(item["Planned Volume"])}</td>
+                    <td class="mono">${fmtNumber(item["TSL Received"])}</td>
+                    <td>${escapeHtml(item.Remarks || item.remarks || "—")}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderLogisticTable(list) {
+            const tbody = document.querySelector("#logistic-table tbody");
+            if (!tbody) return;
+
+            tbody.innerHTML = "";
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Belum ada data logistik.</td></tr>';
+                return;
+            }
+
+            list.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="mono">${escapeHtml(item.Date || item.date || "—")}</td>
+                    <td>${escapeHtml(item.Activity || item.activity || "—")}</td>
+                    <td class="mono">${fmtNumber(item.Ritase)}</td>
+                    <td class="mono">${fmtNumber(item.Volume)}</td>
+                    <td class="mono">${fmtNumber(item["Cycle Time"])}</td>
+                    <td>${escapeHtml(item.Equipment || item.equipment || "—")}</td>
+                    <td>${statusBadge(item.Status || item.status || "—")}</td>
+                    <td>${escapeHtml(item.Remarks || item.remarks || "—")}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
         function renderQualityTable(list) {
             const tbody = document.querySelector("#quality-table tbody");
             if (!tbody) return;
@@ -1991,11 +2111,12 @@
 
         function materialHealth(mat, project) {
             const required = Number(mat.planned || project.totalFillVolume || 0);
-            const received = Number(mat.plantReceived || 0);
+            const received = Number(mat.tslReceived || 0);
             if (!required) return "UNKNOWN";
             if (received >= required) return "GREEN";
+            if (received >= required * 0.7) return "YELLOW";
             if (received > 0) return "YELLOW";
-            return "UNKNOWN";
+            return "RED";
         }
 
         function showApiError(error) {
@@ -2083,6 +2204,167 @@
         function statusBadge(status, forcedClass = null) {
             const cls = forcedClass || getStatusBadgeClass(status);
             return `<span class="badge-status ${cls}">${escapeHtml(status || "—")}</span>`;
+        }
+
+        // ==========================================
+        // EXPORT: SAVE AS PDF / SAVE AS PPT
+        // ==========================================
+
+        function exportDateStamp() {
+            const d = new Date();
+            const pad = n => String(n).padStart(2, "0");
+            return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+        }
+
+        async function exportDashboardPDF() {
+            const btn = document.getElementById("export-pdf-btn");
+            if (!btn) return;
+            const original = btn.textContent;
+
+            if (typeof html2pdf === "undefined") {
+                alert("Modul export PDF gagal dimuat. Periksa koneksi internet lalu coba lagi.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Membuat PDF...";
+            document.body.classList.add("exporting");
+
+            const target = document.querySelector(".main-content");
+            const options = {
+                margin: 6,
+                filename: `CBS_Dashboard_${exportDateStamp()}.pdf`,
+                image: { type: "jpeg", quality: 0.95 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: target ? target.scrollWidth : undefined },
+                jsPDF: { unit: "mm", format: "a3", orientation: "portrait" },
+                pagebreak: { mode: ["css", "legacy"] }
+            };
+
+            try {
+                await html2pdf().set(options).from(target).save();
+            } catch (error) {
+                console.error("PDF export failed:", error);
+                alert("Gagal membuat PDF: " + error.message);
+            } finally {
+                document.body.classList.remove("exporting");
+                btn.disabled = false;
+                btn.textContent = original;
+            }
+        }
+
+        async function exportDashboardPPT() {
+            const btn = document.getElementById("export-ppt-btn");
+            if (!btn) return;
+            const original = btn.textContent;
+
+            if (typeof PptxGenJS === "undefined") {
+                alert("Modul export PPT gagal dimuat. Periksa koneksi internet lalu coba lagi.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = "Membuat PPT...";
+
+            try {
+                const data = cachedData || {};
+                const project = data.project || {};
+                const kpi = data.kpi || {};
+                const progressKpi = kpi.progress || {};
+                const materialKpi = kpi.material || {};
+                const logisticKpi = kpi.logistic || {};
+                const equipmentKpi = kpi.equipment || {};
+                const qualityKpi = kpi.quality || {};
+                const riskKpi = kpi.risk || {};
+
+                const NAVY = "0F2530";
+                const TEAL = "2C7A7F";
+
+                const pptx = new PptxGenJS();
+                pptx.defineLayout({ name: "CBS_WIDE", width: 13.33, height: 7.5 });
+                pptx.layout = "CBS_WIDE";
+
+                // ---- Title Slide ----
+                let slide = pptx.addSlide();
+                slide.background = { color: NAVY };
+                slide.addText("CBS PLANT", { x: 0.6, y: 2.1, w: 12, h: 0.6, fontSize: 18, color: "5FB8BD", bold: true });
+                slide.addText("PROJECT INTELLIGENCE DASHBOARD", {
+                    x: 0.6, y: 2.6, w: 12, h: 1, fontSize: 30, bold: true, color: "FFFFFF"
+                });
+                slide.addText(`Project ID: ${project.projectId || "P001"}   |   Status: ${project.currentStatus || "-"}`, {
+                    x: 0.6, y: 3.55, w: 12, h: 0.5, fontSize: 15, color: "A9BAC4"
+                });
+                slide.addText(`Generated: ${new Date().toLocaleString("en-GB")}`, {
+                    x: 0.6, y: 4.0, w: 12, h: 0.4, fontSize: 11, color: "6F8592"
+                });
+
+                // ---- KPI Summary Slide ----
+                slide = pptx.addSlide();
+                slide.addText("Key Performance Indicators", { x: 0.4, y: 0.25, fontSize: 22, bold: true, color: NAVY });
+                const headerStyle = { bold: true, fill: { color: TEAL }, color: "FFFFFF", fontSize: 12 };
+                const kpiRows = [
+                    [{ text: "Metric", options: headerStyle }, { text: "Value", options: headerStyle }],
+                    ["Actual Progress (%)", fmtPct(progressKpi.actual)],
+                    ["Planned Progress (%)", fmtPct(progressKpi.planned)],
+                    ["Progress Variance", fmtPct(progressKpi.variance, true)],
+                    ["Actual Volume (Progress)", fmtNumber(progressKpi.totalActualVolume) + " m³"],
+                    ["Material — Planned Volume", fmtNumber(materialKpi.planned) + " m³"],
+                    ["Material — TSL Received", fmtNumber(materialKpi.tslReceived) + " m³"],
+                    ["Material — Remaining", fmtNumber(materialKpi.remaining) + " m³"],
+                    ["Logistic — Total Ritase", fmtNumber(logisticKpi.totalTrips)],
+                    ["Logistic — Total Volume", fmtNumber(logisticKpi.totalVolume) + " m³"],
+                    ["Logistic — Avg Cycle Time", fmtNumber(logisticKpi.averageCycleTime)],
+                    ["Equipment Utilization", fmtPct(equipmentKpi.utilization)],
+                    ["Quality Pass Rate", fmtPct(qualityKpi.passRate)],
+                    ["Open Risks", fmtNumber(riskKpi.open)]
+                ];
+                slide.addTable(kpiRows, {
+                    x: 0.4, y: 0.9, w: 12.5, colW: [7.5, 5],
+                    fontSize: 12, border: { type: "solid", color: "CDD5E0", pt: 0.5 },
+                    autoPage: false
+                });
+
+                // ---- Chart Slides ----
+                addChartSlide(pptx, "Project S-Curve & WBS Progress", ["sCurveChart", "wbsProgressChart"]);
+                addChartSlide(pptx, "Material & Logistic Monitoring", ["materialChart", "logisticChart"]);
+                addChartSlide(pptx, "Equipment Utilization & Material Distribution", ["equipmentChart", "materialDonutChart"]);
+                addChartSlide(pptx, "Quality & Risk Overview", ["qualityDonutChart", "riskDonutChart"]);
+
+                // ---- Data Table Slides (auto-paged straight from the HTML tables) ----
+                const titleTextOpts = (text) => ({ addText: { text, options: { x: 0.4, y: 0.2, w: 12, h: 0.5, fontSize: 18, bold: true, color: NAVY } } });
+
+                if (document.getElementById("schedule-table")) pptx.tableToSlides("schedule-table", { x: 0.4, y: 0.8, w: 12.5, ...titleTextOpts("Schedule Control & Critical Activities") });
+                if (document.getElementById("material-table")) pptx.tableToSlides("material-table", { x: 0.4, y: 0.8, w: 12.5, ...titleTextOpts("Material Log") });
+                if (document.getElementById("logistic-table")) pptx.tableToSlides("logistic-table", { x: 0.4, y: 0.8, w: 12.5, ...titleTextOpts("Logistic Log") });
+                if (document.getElementById("quality-table")) pptx.tableToSlides("quality-table", { x: 0.4, y: 0.8, w: 12.5, ...titleTextOpts("Quality Control Inspection Results") });
+                if (document.getElementById("risk-table")) pptx.tableToSlides("risk-table", { x: 0.4, y: 0.8, w: 12.5, ...titleTextOpts("Risk & Issue Monitoring Matrix") });
+                if (document.getElementById("updates-table")) pptx.tableToSlides("updates-table", { x: 0.4, y: 0.8, w: 12.5, ...titleTextOpts("Recent Project Updates") });
+
+                await pptx.writeFile({ fileName: `CBS_Dashboard_${exportDateStamp()}.pptx` });
+            } catch (error) {
+                console.error("PPT export failed:", error);
+                alert("Gagal membuat PPT: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = original;
+            }
+        }
+
+        function addChartSlide(pptx, title, canvasIds) {
+            const images = canvasIds
+                .map(id => document.getElementById(id))
+                .filter(c => c && c.toDataURL && c.width > 0 && c.height > 0)
+                .map(c => c.toDataURL("image/png"));
+
+            if (!images.length) return;
+
+            const slide = pptx.addSlide();
+            slide.addText(title, { x: 0.4, y: 0.25, w: 12, h: 0.5, fontSize: 20, bold: true, color: "16212E" });
+
+            const w = images.length > 1 ? 6.05 : 11.5;
+            const h = 5.7;
+            images.forEach((img, i) => {
+                slide.addImage({ data: img, x: 0.4 + i * (w + 0.35), y: 1.0, w: w, h: h, sizing: { type: "contain", w: w, h: h } });
+            });
         }
 
         function escapeHtml(value) {
