@@ -8,8 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Export libraries: PDF (html2pdf = html2canvas + jsPDF) & PPTX (PptxGenJS) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Export library: PPTX (PptxGenJS). PDF export uses the browser's native print-to-PDF for pixel-accurate pagination. -->
     <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <style>
         /* =====================================================
@@ -687,21 +686,91 @@
             font-size: 0.8125rem;
         }
 
-        /* Export mode: applied to <body> while capturing the dashboard for PDF export */
-        body.exporting aside,
-        body.exporting .mobile-toggle,
-        body.exporting .header-meta,
-        body.exporting .ask-ai-box,
-        body.exporting #ai-response-container {
-            display: none !important;
-        }
-        body.exporting .main-content { margin-left: 0 !important; }
-        body.exporting .card,
-        body.exporting .kpi-card,
-        body.exporting .health-card,
-        body.exporting .table-responsive {
-            break-inside: avoid;
-            page-break-inside: avoid;
+        /* =====================================================
+           PRINT / SAVE AS PDF
+           Uses the browser's native print engine instead of a
+           screenshot library — far more reliable for a dashboard
+           built from CSS Grid, tables and Chart.js canvases.
+           Triggered by exportDashboardPDF() -> window.print().
+        ===================================================== */
+        @media print {
+            @page {
+                size: A3 landscape;
+                margin: 10mm;
+            }
+            html, body {
+                background: #fff !important;
+                background-image: none !important;
+                display: block !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            aside,
+            .mobile-toggle,
+            .header-meta,
+            .ask-ai-box,
+            #ai-response-container,
+            .chip {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+            header {
+                position: static !important;
+            }
+            .content-body {
+                padding: 12px 0 !important;
+            }
+            /* Collapse multi-column grids to a single column so nothing
+               gets sliced by a page break mid-card. */
+            .dashboard-grid,
+            .kpi-grid,
+            .donut-grid,
+            .health-grid,
+            .project-info-grid {
+                display: block !important;
+            }
+            .dashboard-grid > *,
+            .kpi-grid > *,
+            .donut-grid > *,
+            .health-grid > *,
+            .project-info-grid > * {
+                margin-bottom: 10px !important;
+                width: 100% !important;
+            }
+            .card,
+            .kpi-card,
+            .health-card,
+            .info-card,
+            .table-responsive,
+            .chart-container {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                box-shadow: none !important;
+            }
+            tr, thead {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .table-responsive {
+                overflow: visible !important;
+            }
+            table {
+                width: 100% !important;
+                font-size: 9.5pt;
+            }
+            canvas {
+                max-width: 100% !important;
+            }
+            .chart-container {
+                height: 260px !important;
+            }
+            .chart-container-donut {
+                height: 220px !important;
+            }
         }
 
         /* Responsive */
@@ -1233,6 +1302,15 @@
         let cachedData = null;
 
         document.addEventListener("DOMContentLoaded", loadDashboardData);
+
+        // Suggest a clean filename when the person picks "Save as PDF" in the print dialog.
+        const _originalDocTitle = document.title;
+        window.addEventListener("beforeprint", () => {
+            document.title = `CBS_Dashboard_${exportDateStamp()}`;
+        });
+        window.addEventListener("afterprint", () => {
+            document.title = _originalDocTitle;
+        });
 
         async function loadDashboardData() {
             try {
@@ -2219,37 +2297,24 @@
         async function exportDashboardPDF() {
             const btn = document.getElementById("export-pdf-btn");
             if (!btn) return;
-            const original = btn.textContent;
 
-            if (typeof html2pdf === "undefined") {
-                alert("Modul export PDF gagal dimuat. Periksa koneksi internet lalu coba lagi.");
+            if (typeof window.print !== "function") {
+                alert("Browser ini tidak mendukung fitur print/Save as PDF.");
                 return;
             }
 
+            const original = btn.textContent;
             btn.disabled = true;
-            btn.textContent = "Membuat PDF...";
-            document.body.classList.add("exporting");
+            btn.textContent = "Menyiapkan...";
 
-            const target = document.querySelector(".main-content");
-            const options = {
-                margin: 6,
-                filename: `CBS_Dashboard_${exportDateStamp()}.pdf`,
-                image: { type: "jpeg", quality: 0.95 },
-                html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: target ? target.scrollWidth : undefined },
-                jsPDF: { unit: "mm", format: "a3", orientation: "portrait" },
-                pagebreak: { mode: ["css", "legacy"] }
-            };
-
-            try {
-                await html2pdf().set(options).from(target).save();
-            } catch (error) {
-                console.error("PDF export failed:", error);
-                alert("Gagal membuat PDF: " + error.message);
-            } finally {
-                document.body.classList.remove("exporting");
+            // Give the browser a tick to finish any pending chart redraw,
+            // then open the native print dialog. Choose "Save as PDF" as
+            // the destination printer to export the file.
+            setTimeout(() => {
+                window.print();
                 btn.disabled = false;
                 btn.textContent = original;
-            }
+            }, 150);
         }
 
         async function exportDashboardPPT() {
