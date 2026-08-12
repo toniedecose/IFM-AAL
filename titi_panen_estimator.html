@@ -969,6 +969,15 @@
             const [selectedSpan, setSelectedSpan] = React.useState(4);
             const [quantity, setQuantity] = React.useState(1);
 
+            // =====================================================
+            // CENTRAL ESTIMATOR DATABASE - GOOGLE APPS SCRIPT
+            // =====================================================
+            const ESTIMATOR_API_URL = 'https://script.google.com/macros/s/AKfycbz-HlgiUnb9m9xXHOiC7fW9fN5cZPOWLMOCQ0ogSk_nKO1Qgw78k9D5dmiRg8oGbf-g/exec';
+            const ESTIMATOR_NAME = 'Titi Panen';
+            const [centralLocations, setCentralLocations] = React.useState(null);
+            const [priceLoading, setPriceLoading] = React.useState(false);
+            const [priceSource, setPriceSource] = React.useState('LOCAL');
+
             // Dynamic Regional Price Database with LocalStorage persistence
             const [regionalDb, setRegionalDb] = React.useState(() => {
                 const saved = localStorage.getItem('titi_panen_regional_db');
@@ -1003,37 +1012,149 @@
                 setTimeout(() => setToast(null), 3500);
             };
 
-            // Update prices when Location changes
-            const handleLocationChange = (newIsland, newProvince, newRegency) => {
+            // =====================================================
+            // CENTRAL DATABASE HELPERS
+            // =====================================================
+
+            const fetchCentralPrices = async (province, regency) => {
+                if (!province || !regency) return null;
+
+                setPriceLoading(true);
+
+                try {
+                    const url = ESTIMATOR_API_URL
+                        + '?action=estimatorprices'
+                        + '&estimator=' + encodeURIComponent(ESTIMATOR_NAME)
+                        + '&province=' + encodeURIComponent(province)
+                        + '&regency=' + encodeURIComponent(regency);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        cache: 'no-store'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+
+                    const data = await response.json();
+
+                    if (!data.success || !data.prices || !data.count) {
+                        throw new Error(data.error || 'Harga pusat tidak ditemukan.');
+                    }
+
+                    const mapped = {};
+                    Object.entries(data.prices).forEach(([item, value]) => {
+                        mapped[item] = Number(value.price) || 0;
+                    });
+
+                    setPrices(prev => ({ ...prev, ...mapped }));
+                    setPriceSource('CENTRAL DATABASE');
+
+                    return mapped;
+                } catch (error) {
+                    console.error('Central estimator database error:', error);
+                    setPriceSource('LOCAL FALLBACK');
+                    showToast('Harga pusat tidak dapat diambil. Menggunakan harga lokal sementara.', 'error');
+                    return null;
+                } finally {
+                    setPriceLoading(false);
+                }
+            };
+
+            const loadCentralLocations = async () => {
+                try {
+                    const url = ESTIMATOR_API_URL + '?action=estimatorlocations&estimator=' + encodeURIComponent(ESTIMATOR_NAME);
+                    const response = await fetch(url, { method: 'GET', cache: 'no-store' });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+
+                    const data = await response.json();
+                    if (!data.success || !Array.isArray(data.locations)) {
+                        throw new Error(data.error || 'Lokasi pusat tidak tersedia.');
+                    }
+
+                    setCentralLocations(data.locations);
+
+                    // Pilih lokasi pertama yang tersedia bila lokasi default belum ada.
+                    const islands = [...new Set(data.locations.map(x => x.island).filter(Boolean))];
+                    const currentIsland = data.locations.some(x => x.island === project.island)
+                        ? project.island : (islands[0] || project.island);
+                    const provinces = data.locations.filter(x => x.island === currentIsland);
+                    const currentProvince = provinces.some(x => x.province === project.province)
+                        ? project.province : (provinces[0]?.province || project.province);
+                    const regencies = provinces.filter(x => x.province === currentProvince);
+                    const currentRegency = regencies.some(x => x.regency === project.regency)
+                        ? project.regency : (regencies[0]?.regency || project.regency);
+
+                    setProject(prev => ({
+                        ...prev,
+                        island: currentIsland,
+                        province: currentProvince,
+                        regency: currentRegency
+                    }));
+
+                    await fetchCentralPrices(currentProvince, currentRegency);
+                } catch (error) {
+                    console.warn('Central location database unavailable:', error);
+                    setPriceSource('LOCAL FALLBACK');
+                }
+            };
+
+            // Load central location database once when the page starts.
+            React.useEffect(() => {
+                loadCentralLocations();
+                // eslint-disable-next-line react-hooks/exhaustive-deps
+            }, []);
+
+            // Update project location and prices when Location changes.
+            const handleLocationChange = async (newIsland, newProvince, newRegency) => {
+                const locations = centralLocations;
+
+                if (locations && locations.length) {
+                    let updatedIsland = newIsland || project.island;
+                    let provinceRows = locations.filter(x => x.island === updatedIsland);
+                    let updatedProvince = newProvince || (provinceRows.some(x => x.province === project.province) ? project.province : provinceRows[0]?.province);
+                    let regencyRows = provinceRows.filter(x => x.province === updatedProvince);
+                    let updatedRegency = newRegency || (regencyRows.some(x => x.regency === project.regency) ? project.regency : regencyRows[0]?.regency);
+
+                    setProject(prev => ({
+                        ...prev,
+                        island: updatedIsland,
+                        province: updatedProvince || '',
+                        regency: updatedRegency || ''
+                    }));
+
+                    if (updatedProvince && updatedRegency) {
+                        await fetchCentralPrices(updatedProvince, updatedRegency);
+                    }
+                    return;
+                }
+
+                // Fallback ke database lama jika API belum tersedia.
                 let updatedIsland = newIsland || project.island;
                 let availableProvinces = Object.keys(regionalDb[updatedIsland] || {});
                 let updatedProvince = newProvince || (availableProvinces.includes(project.province) ? project.province : availableProvinces[0]);
-                
                 let availableRegencies = Object.keys((regionalDb[updatedIsland] && regionalDb[updatedIsland][updatedProvince]) || {});
                 let updatedRegency = newRegency || (availableRegencies.includes(project.regency) ? project.regency : availableRegencies[0]);
 
-                setProject({
-                    ...project,
+                setProject(prev => ({
+                    ...prev,
                     island: updatedIsland,
                     province: updatedProvince,
                     regency: updatedRegency
-                });
+                }));
 
-                if (regionalDb[updatedIsland] && regionalDb[updatedIsland][updatedProvince] && regionalDb[updatedIsland][updatedProvince][updatedRegency]) {
+                if (regionalDb[updatedIsland]?.[updatedProvince]?.[updatedRegency]) {
                     setPrices(regionalDb[updatedIsland][updatedProvince][updatedRegency]);
                 }
             };
 
-            // Save/Update Market Price Database for active regency
-            const handleUpdateMarketPrice = () => {
-                const updated = { ...regionalDb };
-                if (!updated[project.island]) updated[project.island] = {};
-                if (!updated[project.island][project.province]) updated[project.island][project.province] = {};
-                updated[project.island][project.province][project.regency] = { ...prices };
-
-                setRegionalDb(updated);
-                localStorage.setItem('titi_panen_regional_db', JSON.stringify(updated));
-                showToast(`Harga pasar untuk Kabupaten ${project.regency} berhasil diperbarui di database!`);
+            // Refresh harga dari database pusat.
+            const handleUpdateMarketPrice = async () => {
+                const result = await fetchCentralPrices(project.province, project.regency);
+                if (result) {
+                    showToast(`Harga pusat ${project.regency} berhasil diperbarui.`);
+                }
             };
 
             const currentRAB = React.useMemo(() => {
@@ -1472,7 +1593,7 @@
                                                             onChange={e => handleLocationChange(e.target.value, null, null)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
                                                         >
-                                                            {Object.keys(regionalDb).map(isl => (
+                                                            {[...(centralLocations ? [...new Set(centralLocations.map(x => x.island))] : Object.keys(regionalDb))].map(isl => (
                                                                 <option key={isl} value={isl}>{isl}</option>
                                                             ))}
                                                         </select>
@@ -1485,7 +1606,10 @@
                                                             onChange={e => handleLocationChange(project.island, e.target.value, null)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
                                                         >
-                                                            {Object.keys(regionalDb[project.island] || {}).map(prov => (
+                                                            {(centralLocations
+                                                                ? [...new Set(centralLocations.filter(x => x.island === project.island).map(x => x.province))]
+                                                                : Object.keys(regionalDb[project.island] || {})
+                                                            ).map(prov => (
                                                                 <option key={prov} value={prov}>{prov}</option>
                                                             ))}
                                                         </select>
@@ -1498,7 +1622,10 @@
                                                             onChange={e => handleLocationChange(project.island, project.province, e.target.value)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-extrabold text-emerald-700 dark:text-emerald-400"
                                                         >
-                                                            {Object.keys((regionalDb[project.island] && regionalDb[project.island][project.province]) || {}).map(reg => (
+                                                            {(centralLocations
+                                                                ? [...new Set(centralLocations.filter(x => x.island === project.island && x.province === project.province).map(x => x.regency))]
+                                                                : Object.keys((regionalDb[project.island] && regionalDb[project.island][project.province]) || {})
+                                                            ).map(reg => (
                                                                 <option key={reg} value={reg}>{reg}</option>
                                                             ))}
                                                         </select>
@@ -1583,14 +1710,14 @@
                                             <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-700/60 p-3 rounded-lg">
                                                 <div>
                                                     <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">3. Harga Pasar Kabupaten: <span className="text-emerald-600 dark:text-emerald-400">{project.regency}</span></h3>
-                                                    <p className="text-xs text-slate-500">Harga otomatis disesuaikan dari lokasi {project.province} ({project.island}). Bebas diedit!</p>
+                                                    <p className="text-xs text-slate-500">Harga otomatis disesuaikan dari {project.province} ({project.island}). Sumber: <span className="font-bold text-emerald-600">{priceLoading ? 'Mengambil harga...' : priceSource}</span></p>
                                                 </div>
                                                 <button 
                                                     onClick={handleUpdateMarketPrice}
                                                     className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow"
                                                 >
                                                     <i data-lucide="refresh-cw" className="w-3.5 h-3.5"></i>
-                                                    <span>Update Harga Pasar</span>
+                                                    <span>{priceLoading ? 'Mengambil Harga...' : 'Refresh Harga Pusat'}</span>
                                                 </button>
                                             </div>
 
@@ -1794,14 +1921,14 @@
                                     <div className="flex justify-between items-center border-b pb-4 border-slate-200 dark:border-slate-700">
                                         <div>
                                             <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Market Price Engine Database</h2>
-                                            <p className="text-xs text-slate-500">Atur & simpan harga pasar regional per Kabupaten ({project.regency}, {project.province})</p>
+                                            <p className="text-xs text-slate-500">Harga pusat regional per Kabupaten ({project.regency}, {project.province}). Nilai dapat diedit untuk simulasi lokal; sumber utama tetap database ESTIMATOR.</p>
                                         </div>
                                         <button 
                                             onClick={handleUpdateMarketPrice}
                                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow"
                                         >
                                             <i data-lucide="save" className="w-4 h-4"></i>
-                                            <span>Update Harga Pasar Kabupaten</span>
+                                            <span>{priceLoading ? 'Mengambil Harga...' : 'Refresh Harga Pusat'}</span>
                                         </button>
                                     </div>
 
