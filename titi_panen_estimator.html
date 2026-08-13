@@ -1051,10 +1051,10 @@
             // Falls back to the old JSONP <script> trick only if fetch itself fails to reach the network
             // (e.g. very old browser). Note: JSONP can be blocked by Chrome's ORB feature when the
             // redirect chain's final Content-Type isn't recognised as a script, so fetch is the primary path.
-            const callEstimatorApiViaFetch = async (params = {}) => {
+            const callEstimatorApiViaFetch = async (params = {}, timeoutMs = 15000) => {
                 const query = new URLSearchParams({ ...params, _: Date.now().toString() });
                 const controller = new AbortController();
-                const timer = setTimeout(() => controller.abort(), 15000);
+                const timer = setTimeout(() => controller.abort(), timeoutMs);
                 try {
                     const response = await fetch(ESTIMATOR_API_URL + '?' + query.toString(), {
                         method: 'GET',
@@ -1067,7 +1067,7 @@
                 }
             };
 
-            const callEstimatorApiViaJsonp = (params = {}) => new Promise((resolve, reject) => {
+            const callEstimatorApiViaJsonp = (params = {}, timeoutMs = 15000) => new Promise((resolve, reject) => {
                 const callbackName = '__estimator_cb_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
                 const script = document.createElement('script');
                 const query = new URLSearchParams({ ...params, callback: callbackName, _: Date.now().toString() });
@@ -1075,19 +1075,22 @@
                     try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
                     if (script.parentNode) script.parentNode.removeChild(script);
                 };
-                const timer = setTimeout(() => { cleanup(); reject(new Error('Database pusat timeout.')); }, 15000);
+                const timer = setTimeout(() => { cleanup(); reject(new Error('Database pusat timeout.')); }, timeoutMs);
                 window[callbackName] = (data) => { clearTimeout(timer); cleanup(); resolve(data); };
                 script.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('Database pusat tidak dapat diakses.')); };
                 script.src = ESTIMATOR_API_URL + '?' + query.toString();
                 document.body.appendChild(script);
             });
 
+            // action=market runs live web search + page scraping + a Gemini call on the backend,
+            // which routinely takes well over 15s - give it a much longer budget than simple lookups.
             const callEstimatorApi = async (params = {}) => {
+                const timeoutMs = params.action === 'market' ? 90000 : 15000;
                 try {
-                    return await callEstimatorApiViaFetch(params);
+                    return await callEstimatorApiViaFetch(params, timeoutMs);
                 } catch (fetchError) {
                     console.warn('Fetch ke database pusat gagal, mencoba JSONP sebagai fallback:', fetchError);
-                    return await callEstimatorApiViaJsonp(params);
+                    return await callEstimatorApiViaJsonp(params, timeoutMs);
                 }
             };
 
