@@ -1013,8 +1013,22 @@
                 if (province === 'Riau' || province === 'Jambi') return 'Sumatera';
                 if (province && province.startsWith('Kalimantan')) return 'Kalimantan';
                 if (province && province.startsWith('Sulawesi')) return 'Sulawesi';
-                return project.island || 'Sumatera';
+                return 'Sumatera';
             };
+
+            // Group all provinces returned by the central database by island,
+            // so the Pulau dropdown can actually be selected (previously hardcoded to 1 option).
+            const islandProvinceMap = React.useMemo(() => {
+                const map = {};
+                (centralLocations.provinceList || []).forEach(prov => {
+                    const isl = provinceIsland(prov);
+                    if (!map[isl]) map[isl] = [];
+                    map[isl].push(prov);
+                });
+                return map;
+            }, [centralLocations.provinceList]);
+
+            const islandList = React.useMemo(() => Object.keys(islandProvinceMap).sort(), [islandProvinceMap]);
 
             const priceKeyMap = {
                 Cement: 'cement', Sand: 'sand', Gravel: 'gravel',
@@ -1082,7 +1096,7 @@
                 try {
                     const data = await callEstimatorApi();
                     if (!data.success) throw new Error(data.error || 'Gagal mengambil lokasi.');
-                    setCentralLocations({ provinces: data.provinces || {}, provinceList: data.provinceList || [] });
+                    setCentralLocations({ provinces: data.provinces || data.locations || {}, provinceList: data.provinceList || [] });
                     setCentralPriceSource('CENTRAL DATABASE');
 
                     const provinces = data.provinceList || [];
@@ -1157,15 +1171,26 @@
                 setTimeout(() => setToast(null), 3500);
             };
 
-            // Update location from the CENTRAL ESTIMATOR database
+            // Update location from the CENTRAL ESTIMATOR database.
+            // newIsland/newProvince/newRegency: pass null for whichever the user didn't just change.
             const handleLocationChange = async (newIsland, newProvince, newRegency) => {
-                const updatedProvince = newProvince || project.province;
+                let updatedProvince = newProvince;
+
+                if (!updatedProvince) {
+                    // Province wasn't changed directly (e.g. user changed Pulau instead) -
+                    // keep current province if it still belongs to the chosen island, otherwise pick the island's first province.
+                    const targetIsland = newIsland || project.island;
+                    const provincesForIsland = islandProvinceMap[targetIsland] || [];
+                    updatedProvince = provincesForIsland.includes(project.province) ? project.province : (provincesForIsland[0] || project.province);
+                }
+
+                const updatedIsland = provinceIsland(updatedProvince);
                 const availableRegencies = centralLocations.provinces[updatedProvince] || [];
                 const updatedRegency = newRegency || (availableRegencies.includes(project.regency) ? project.regency : availableRegencies[0]);
 
                 setProject(prev => ({
                     ...prev,
-                    island: provinceIsland(updatedProvince),
+                    island: updatedIsland,
                     province: updatedProvince,
                     regency: updatedRegency || ''
                 }));
@@ -1629,7 +1654,9 @@
                                                             onChange={e => handleLocationChange(e.target.value, null, null)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
                                                         >
-                                                            <option value={project.island}>{project.island}</option>
+                                                            {islandList.map(isl => (
+                                                                <option key={isl} value={isl}>{isl}</option>
+                                                            ))}
                                                         </select>
                                                     </div>
 
@@ -1640,7 +1667,7 @@
                                                             onChange={e => handleLocationChange(project.island, e.target.value, null)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
                                                         >
-                                                            {centralLocations.provinceList.map(prov => (
+                                                            {(islandProvinceMap[project.island] || centralLocations.provinceList).map(prov => (
                                                                 <option key={prov} value={prov}>{prov}</option>
                                                             ))}
                                                         </select>
