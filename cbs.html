@@ -2277,9 +2277,12 @@
             const ctx = canvas.getContext("2d");
             if (materialDonutChartObj) materialDonutChartObj.destroy();
 
+            // Material distribution must compare total TSL Received against the
+            // total Planned Volume. Do not trust a stale/independent `remaining`
+            // value from the backend because it can make the donut appear 100%.
             const target = Number(mat.planned || project.totalFillVolume || 0);
             const received = Number(mat.tslReceived || 0);
-            const remaining = Number(mat.remaining ?? Math.max(target - received, 0));
+            const remaining = Math.max(target - received, 0);
 
             if (!target && !received) {
                 clearCanvasWithMessage(canvas, "Data material belum tersedia.");
