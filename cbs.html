@@ -796,7 +796,7 @@
                 <line x1="17" y1="9" x2="17" y2="12" stroke="#e0a339" stroke-width="1.5"/>
             </svg>
             <div>
-                <h2>CBS Refinery PLANT</h2>
+                <h2>CBS REFINERY PLANT</h2>
                 <p>Project Control System</p>
             </div>
         </div>
@@ -929,16 +929,6 @@
                             <div class="kpi-sub">Planned: <span id="kpi-planned-progress" class="mono">—</span></div>
                         </div>
                         <div class="kpi-sub">Var: <span id="kpi-progress-var" class="mono">—</span></div>
-                    </div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-header">Actual Volume (Progress)</div>
-                    <div class="kpi-body">
-                        <div>
-                            <div class="kpi-value mono" id="kpi-actual-vol">—</div>
-                            <div class="kpi-sub">Target: <span class="mono" id="kpi-target-vol">—</span></div>
-                        </div>
-                        <div class="kpi-sub">Material Rem: <span id="kpi-remaining-vol" class="mono">—</span></div>
                     </div>
                 </div>
                 <div class="kpi-card">
@@ -2277,26 +2267,99 @@
             const ctx = canvas.getContext("2d");
             if (materialDonutChartObj) materialDonutChartObj.destroy();
 
-            // Material distribution must compare total TSL Received against the
-            // total Planned Volume. Do not trust a stale/independent `remaining`
-            // value from the backend because it can make the donut appear 100%.
+            // Compare cumulative TSL Received with the total Planned Volume.
+            // Remaining is always calculated here so the chart cannot become
+            // 100% because of a stale backend `remaining` value.
             const target = Number(mat.planned || project.totalFillVolume || 0);
-            const received = Number(mat.tslReceived || 0);
+            const received = Math.max(Number(mat.tslReceived || 0), 0);
             const remaining = Math.max(target - received, 0);
+            const total = received + remaining;
+            const receivedPct = total > 0 ? (received / total) * 100 : 0;
+            const remainingPct = total > 0 ? (remaining / total) * 100 : 0;
 
             if (!target && !received) {
                 clearCanvasWithMessage(canvas, "Data material belum tersedia.");
                 return;
             }
 
+            const materialValuePlugin = {
+                id: "materialValuePlugin",
+                afterDatasetsDraw(chart) {
+                    const meta = chart.getDatasetMeta(0);
+                    const data = chart.data.datasets[0].data;
+                    const totalValue = data.reduce((a, b) => a + Number(b || 0), 0);
+                    const c = chart.ctx;
+                    c.save();
+                    c.font = "600 11px Inter, sans-serif";
+                    c.textAlign = "center";
+                    c.textBaseline = "middle";
+
+                    meta.data.forEach((arc, i) => {
+                        const value = Number(data[i] || 0);
+                        if (!value || !arc) return;
+                        const angle = (arc.startAngle + arc.endAngle) / 2;
+                        const radius = (arc.outerRadius + arc.innerRadius) / 2;
+                        const x = arc.x + Math.cos(angle) * radius;
+                        const y = arc.y + Math.sin(angle) * radius;
+                        const pct = totalValue ? (value / totalValue) * 100 : 0;
+
+                        // Keep labels readable; the remaining segment can be small.
+                        if (pct < 4) return;
+                        c.fillStyle = i === 0 ? "#ffffff" : "#334155";
+                        c.fillText(fmtNumber(value) + " m³", x, y - 6);
+                        c.font = "500 10px Inter, sans-serif";
+                        c.fillText(pct.toFixed(1) + "%", x, y + 8);
+                        c.font = "600 11px Inter, sans-serif";
+                    });
+
+                    // Center label: received percentage against the planned volume.
+                    const firstArc = meta.data[0];
+                    if (firstArc) {
+                        c.fillStyle = "#1f2937";
+                        c.font = "700 17px Inter, sans-serif";
+                        c.fillText(receivedPct.toFixed(1) + "%", firstArc.x, firstArc.y - 5);
+                        c.fillStyle = "#718096";
+                        c.font = "500 9px Inter, sans-serif";
+                        c.fillText("Received", firstArc.x, firstArc.y + 11);
+                    }
+                    c.restore();
+                }
+            };
+
             materialDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
-                    labels: ["TSL Received (m³)", "Remaining (m³)"],
-                    datasets: [{ data: [received, remaining], backgroundColor: ["#2c7a7f", "#dbe3ea"], borderWidth: 0 }]
+                    labels: [
+                        `TSL Received — ${fmtNumber(received)} m³ (${receivedPct.toFixed(1)}%)`,
+                        `Remaining — ${fmtNumber(remaining)} m³ (${remainingPct.toFixed(1)}%)`
+                    ],
+                    datasets: [{
+                        data: [received, remaining],
+                        backgroundColor: ["#2c7a7f", "#dbe3ea"],
+                        borderWidth: 0
+                    }]
                 },
-                options: donutOptions()
+                options: {
+                    ...donutOptions(),
+                    plugins: {
+                        ...donutOptions().plugins,
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const value = Number(ctx.raw || 0);
+                                    const pct = totalValueSafe([received, remaining]) > 0 ? (value / totalValueSafe([received, remaining])) * 100 : 0;
+                                    return `${ctx.dataIndex === 0 ? "TSL Received" : "Remaining"}: ${fmtNumber(value)} m³ (${pct.toFixed(1)}%)`;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [materialValuePlugin]
             });
+        }
+
+        function totalValueSafe(values) {
+            return values.reduce((sum, value) => sum + Number(value || 0), 0);
         }
 
         function renderQualityDonut(quality) {
