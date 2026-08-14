@@ -1240,7 +1240,7 @@
                     <div class="section-title" style="border:none; margin-bottom:0;">CBS Project Intelligence Agent</div>
                     <div style="display: flex; gap: 12px; align-items: center; font-size: 0.75rem; color: var(--text-secondary);">
                         <span>Last AI Analysis: <strong id="ai-last-timestamp" class="mono">—</strong></span>
-                        <button class="btn btn-primary" onclick="triggerAIAnalysis()">Analyze Project with AI</button>
+                        <button class="btn btn-primary" onclick="triggerAIAnalysis()">Re-analyze with AI</button>
                     </div>
                 </div>
 
@@ -1376,9 +1376,15 @@
                 cachedData = data;
 
                 renderDashboard(data, json);
-                
-                // Automatically run client-side AI analysis baseline or load existing aiAnalysis
+
+                // Show an immediate local intelligence baseline so the AI panel is never blank.
                 renderAIIntelligence(data.aiAnalysis || generateClientAIAnalysis(data));
+
+                // Run the full AI analysis asynchronously after the dashboard has rendered.
+                // Deliberately NOT awaited: AI/API latency must never block the main dashboard.
+                setTimeout(() => {
+                    triggerAIAnalysis();
+                }, 0);
             } catch (error) {
                 console.error("CBS Dashboard API Error:", error);
                 showApiError(error);
@@ -1518,7 +1524,11 @@
         // ==========================================
         // CBS PROJECT INTELLIGENCE & AI FUNCTIONS
         // ==========================================
+        let aiAnalysisRunning = false;
+
         async function triggerAIAnalysis() {
+            if (aiAnalysisRunning || !cachedData) return;
+            aiAnalysisRunning = true;
             const healthEl = document.getElementById("ai-exec-health");
             if (healthEl) healthEl.innerHTML = '<span class="badge-status badge-running">AI Agent is analyzing project data...</span>';
 
@@ -1544,6 +1554,8 @@
                 } else {
                     document.getElementById("ai-exec-health").innerHTML = '<span class="badge-status badge-danger">AI Agent temporarily unavailable.</span>';
                 }
+            } finally {
+                aiAnalysisRunning = false;
             }
         }
 
