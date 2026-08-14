@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CBS Refinery Plant — Project Intelligence Dashboard</title>
+    <title>CBS Plant — Project Intelligence Dashboard</title>
     <!-- Type system: Space Grotesk (display), Inter (body), JetBrains Mono (engineering data) -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Export library: PPTX (PptxGenJS). PDF export uses the browser's native print-to-PDF for pixel-accurate pagination. -->
-    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <style>
         /* =====================================================
            DESIGN TOKENS — "Site Survey" blueprint system, light mode
@@ -796,7 +794,7 @@
                 <line x1="17" y1="9" x2="17" y2="12" stroke="#e0a339" stroke-width="1.5"/>
             </svg>
             <div>
-                <h2>CBS REFINERY PLANT</h2>
+                <h2>CBS PLANT</h2>
                 <p>Project Control System</p>
             </div>
         </div>
@@ -828,7 +826,7 @@
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
                 <div class="header-title">
-                    <h1>CBS REFINERY PLANT — PROJECT INTELLIGENCE DASHBOARD</h1>
+                    <h1>CBS PLANT — PROJECT INTELLIGENCE DASHBOARD</h1>
                     <p>Pekerjaan Timbunan &bull; Project ID: <span class="mono">P001</span></p>
                 </div>
             </div>
@@ -1317,30 +1315,7 @@
                 </div>
             </div>
 
-            <!-- Recent Project Updates Table -->
-            <div class="card" style="margin-bottom: 32px;">
-                <div class="section-title" style="border:none; margin-bottom:4px;">Recent Project Updates (Progress Log)</div>
-                <div style="color:#64748b; font-size:0.8125rem; margin-bottom:16px;">Menampilkan WBS yang terakhir diupdate, maksimal 20 baris — bukan histori harian penuh.</div>
-                <div class="table-responsive">
-                    <table id="updates-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>WBS</th>
-                                <th>Activity</th>
-                                <th>Start Date</th>
-                                <th>Target Finish</th>
-                                <th>Status</th>
-                                <th>Actual Vol (m³)</th>
-                                <th>Actual Prog (%)</th>
-                                <th>Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td colspan="9" class="empty-state">Data belum tersedia.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+
             </div>
 
         </div>
@@ -1538,7 +1513,6 @@
             renderLogisticTable(data.logistic || []);
             renderQualityTable(data.quality || []);
             renderRiskTable(data.risks || []);
-            renderUpdatesTable(data.progress || [], data.schedule || []);
         }
 
         // ==========================================
@@ -2274,7 +2248,7 @@
             const received = Math.max(Number(mat.tslReceived || 0), 0);
             const remaining = Math.max(target - received, 0);
             const total = received + remaining;
-            const receivedPct = total > 0 ? (received / total) * 100 : 0;
+            const receivedPct = target > 0 ? Math.min((received / target) * 100, 100) : 0;
             const remainingPct = total > 0 ? (remaining / total) * 100 : 0;
 
             if (!target && !received) {
@@ -2582,81 +2556,6 @@
         // Ini menjaga tabel tetap ringkas untuk load cepat & rapi saat print/PPT.
         const UPDATES_TABLE_LIMIT = 20;
 
-        function renderUpdatesTable(progressList, scheduleFallback) {
-            const tbody = document.querySelector("#updates-table tbody");
-            if (!tbody) return;
-
-            tbody.innerHTML = "";
-
-            // Hanya WBS yang PERNAH diupdate (punya Last Updated), diurutkan
-            // dari yang paling baru diupdate ke yang paling lama.
-            const updated = (progressList || [])
-                .filter(item => {
-                    const d = item.date || item.lastUpdated || item["Last Updated"];
-                    return d !== undefined && d !== null && d !== "";
-                })
-                .sort((a, b) => {
-                    const da = new Date(a.date || a.lastUpdated || a["Last Updated"]);
-                    const db = new Date(b.date || b.lastUpdated || b["Last Updated"]);
-                    return db - da;
-                })
-                .slice(0, UPDATES_TABLE_LIMIT);
-
-            // Kalau belum ada satupun WBS yang diupdate (proyek baru mulai),
-            // tampilkan baseline langsung dari sheet BASELINE (via data.schedule)
-            // supaya tabel tidak kosong — menunjukkan Start Date & Target Finish
-            // per WBS beserta status terhitung dari planned progress hari ini.
-            const usingFallback = !updated.length && (scheduleFallback || []).length > 0;
-            const rows = usingFallback ? scheduleFallback : updated;
-
-            if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Belum ada log update.</td></tr>';
-                return;
-            }
-
-            rows.forEach(item => {
-                let date, wbs, activity, startDate, finishDate, status, actualVolume, actual, remarks;
-
-                if (usingFallback) {
-                    // Bentuk data dari buildScheduleControl() di Code.gs (baseline-driven).
-                    wbs = item.wbs;
-                    activity = item.activity;
-                    startDate = item.baselineStart;
-                    finishDate = item.baselineFinish;
-                    status = item.status;
-                    actualVolume = null;
-                    actual = item.actualProgress;
-                    date = "—";
-                    remarks = "Baseline (belum ada update aktual)";
-                } else {
-                    // Bentuk data dari data.progress (buildEnrichedProgress di Code.gs).
-                    wbs = item.wbs;
-                    activity = item.activity;
-                    startDate = item.startDate;
-                    finishDate = item.finishDate;
-                    status = item.status;
-                    actualVolume = item.actualVolume;
-                    actual = item.actualProgress;
-                    date = item.date;
-                    remarks = item.remarks;
-                }
-
-                const tr = document.createElement("tr");
-                tr.innerHTML = `
-                    <td class="mono">${escapeHtml(date || "—")}</td>
-                    <td class="mono">${escapeHtml(wbs || "—")}</td>
-                    <td>${escapeHtml(activity || "—")}</td>
-                    <td class="mono">${formatDate(startDate)}</td>
-                    <td class="mono">${formatDate(finishDate)}</td>
-                    <td>${statusBadge(status || "—")}</td>
-                    <td class="mono">${actualVolume === undefined || actualVolume === null || actualVolume === "" ? "—" : escapeHtml(actualVolume)}</td>
-                    <td class="mono">${actual === undefined || actual === null || actual === "" ? "—" : fmtPct(actual)}</td>
-                    <td>${escapeHtml(remarks || "—")}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
         function updateHealthBadge(id, status) {
             const el = document.getElementById(id);
             if (!el) return;
@@ -2805,13 +2704,30 @@
             }, 150);
         }
 
+        async function ensurePptxGenJS() {
+            if (typeof PptxGenJS !== "undefined") return true;
+            return new Promise((resolve) => {
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js";
+                script.onload = () => resolve(typeof PptxGenJS !== "undefined");
+                script.onerror = () => resolve(false);
+                document.head.appendChild(script);
+            });
+        }
+
         async function exportDashboardPPT() {
             const btn = document.getElementById("export-ppt-btn");
             if (!btn) return;
             const original = btn.textContent;
 
-            if (typeof PptxGenJS === "undefined") {
+            btn.disabled = true;
+            btn.textContent = "Memuat modul PPT...";
+
+            const pptReady = await ensurePptxGenJS();
+            if (!pptReady) {
                 alert("Modul export PPT gagal dimuat. Periksa koneksi internet lalu coba lagi.");
+                btn.disabled = false;
+                btn.textContent = original;
                 return;
             }
 
