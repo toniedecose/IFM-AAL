@@ -1133,7 +1133,8 @@
                         <div style="min-width:120px;">
                             <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">View</label>
                             <select id="equipment-date-mode" style="width:100%; min-width:120px; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
-                                <option value="range" selected>Periode</option>
+                                <option value="all" selected>Semua Data</option>
+                                <option value="range">Periode</option>
                                 <option value="date">Tanggal</option>
                             </select>
                         </div>
@@ -1141,16 +1142,18 @@
                             <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">Tanggal</label>
                             <input id="equipment-date-single" type="date" style="width:100%; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
                         </div>
-                        <div id="equipment-date-start-wrap" style="min-width:145px;">
+                        <div id="equipment-date-start-wrap" style="display:none; min-width:145px;">
                             <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">Dari</label>
                             <input id="equipment-date-start" type="date" style="width:100%; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
                         </div>
-                        <div id="equipment-date-end-wrap" style="min-width:145px;">
+                        <div id="equipment-date-end-wrap" style="display:none; min-width:145px;">
                             <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">Sampai</label>
                             <input id="equipment-date-end" type="date" style="width:100%; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
                         </div>
+                        <button id="equipment-date-apply" type="button" style="display:none; padding:7px 14px; border:1px solid #2c7a7f; border-radius:4px; background:#2c7a7f; color:#fff; font-size:.75rem; cursor:pointer;">Lihat</button>
                         <div style="font-size:.68rem; color:#7b8896; padding:7px 0; margin-left:2px;">5 aktivitas utama · data harian</div>
                     </div>
+                    <div id="equipment-activity-summary" style="display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin:0 0 14px;"></div>
                     <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:14px;">
                         <div class="kpi-card">
                             <div class="kpi-header">Total Usage</div>
@@ -1947,6 +1950,34 @@
             });
         }
 
+        function equipmentDateKey(value) {
+            if (value === null || value === undefined || value === "") return "";
+
+            const raw = String(value).trim();
+
+            // Common Google Sheet/display formats: DD/MM/YYYY, DD-MM-YYYY.
+            let m = raw.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})/);
+            if (m) {
+                const dd = String(m[1]).padStart(2, "0");
+                const mm = String(m[2]).padStart(2, "0");
+                return `${m[3]}-${mm}-${dd}`;
+            }
+
+            // ISO / YYYY-MM-DD.
+            m = raw.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+            if (m) {
+                return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+            }
+
+            // Date object / other parseable values.
+            const d = new Date(value);
+            if (!Number.isNaN(d.getTime())) {
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            }
+
+            return "";
+        }
+
         function normalizeEquipmentRows(rows) {
             const activityMap = new Map(EQUIPMENT_ACTIVITIES.map(name => [name.toLowerCase(), name]));
             return (Array.isArray(rows) ? rows : []).map(r => {
@@ -1978,41 +2009,67 @@
             const single = document.getElementById("equipment-date-single");
             const start = document.getElementById("equipment-date-start");
             const end = document.getElementById("equipment-date-end");
-            if (!mode || !single || !start || !end) return;
+            const button = document.getElementById("equipment-date-apply");
+            const singleWrap = document.getElementById("equipment-date-single-wrap");
+            const startWrap = document.getElementById("equipment-date-start-wrap");
+            const endWrap = document.getElementById("equipment-date-end-wrap");
+            if (!mode || !single || !start || !end || !button) return;
 
             const dates = [...new Set(rows.map(r => r.dateKey).filter(Boolean))].sort();
-            if (!dates.length) return;
+            if (dates.length) {
+                const minDate = dates[0];
+                const maxDate = dates[dates.length - 1];
 
-            const minDate = dates[0];
-            const maxDate = dates[dates.length - 1];
-            [single, start, end].forEach(el => {
-                el.min = minDate;
-                el.max = maxDate;
-            });
+                [single, start, end].forEach(el => {
+                    el.min = minDate;
+                    el.max = maxDate;
+                });
 
-            // Default to the complete available period.
-            if (!start.value || !dates.includes(start.value)) start.value = minDate;
-            if (!end.value || !dates.includes(end.value)) end.value = maxDate;
-            if (!single.value || !dates.includes(single.value)) single.value = maxDate;
+                // Default controls are prepared, but NOT applied automatically.
+                single.value = maxDate;
+                start.value = minDate;
+                end.value = maxDate;
+            }
+
+            const updateControls = () => {
+                const isDate = mode.value === "date";
+                const isRange = mode.value === "range";
+                singleWrap.style.display = isDate ? "block" : "none";
+                startWrap.style.display = isRange ? "block" : "none";
+                endWrap.style.display = isRange ? "block" : "none";
+                button.style.display = (isDate || isRange) ? "block" : "none";
+            };
+
+            updateControls();
 
             if (!equipmentDateFilterBound) {
-                const refresh = () => applyEquipmentDateFilter();
                 mode.addEventListener("change", () => {
-                    const isDate = mode.value === "date";
-                    document.getElementById("equipment-date-single-wrap").style.display = isDate ? "block" : "none";
-                    document.getElementById("equipment-date-start-wrap").style.display = isDate ? "none" : "block";
-                    document.getElementById("equipment-date-end-wrap").style.display = isDate ? "none" : "block";
-                    refresh();
+                    updateControls();
+                    if (mode.value === "all") {
+                        applyEquipmentDateFilter();
+                    }
                 });
-                single.addEventListener("change", refresh);
-                start.addEventListener("change", refresh);
-                end.addEventListener("change", refresh);
+
+                button.addEventListener("click", () => {
+                    applyEquipmentDateFilter();
+                });
+
                 equipmentDateFilterBound = true;
             }
         }
 
         function applyEquipmentDateFilter() {
-            const mode = document.getElementById("equipment-date-mode")?.value || "range";
+            const mode = document.getElementById("equipment-date-mode")?.value || "all";
+
+            // Initial dashboard state: show ALL available equipment data.
+            if (mode === "all") {
+                renderEquipmentSummary(equipmentRowsCache, null);
+                renderEquipmentActivitySummary(equipmentRowsCache);
+                renderEquipmentChart(equipmentRowsCache);
+                renderEquipmentTable(equipmentRowsCache);
+                return;
+            }
+
             const single = document.getElementById("equipment-date-single")?.value || "";
             let start = document.getElementById("equipment-date-start")?.value || "";
             let end = document.getElementById("equipment-date-end")?.value || "";
@@ -2021,6 +2078,7 @@
                 start = single;
                 end = single;
             }
+
             if (start && end && start > end) [start, end] = [end, start];
 
             const filtered = equipmentRowsCache.filter(r => {
@@ -2031,8 +2089,39 @@
             });
 
             renderEquipmentSummary(filtered, null);
+            renderEquipmentActivitySummary(filtered);
             renderEquipmentChart(filtered);
             renderEquipmentTable(filtered);
+        }
+
+        function renderEquipmentActivitySummary(rows) {
+            const container = document.getElementById("equipment-activity-summary");
+            if (!container) return;
+
+            container.innerHTML = EQUIPMENT_ACTIVITIES.map(activity => {
+                const activityRows = rows.filter(r => r.activity === activity);
+                const outputUnits = [...new Set(activityRows.map(r => r.outputUnit).filter(Boolean))];
+                const usageUnits = [...new Set(activityRows.map(r => r.unit).filter(Boolean))];
+
+                const totalOutput = activityRows.reduce((sum, r) => sum + r.output, 0);
+                const totalFuel = activityRows.reduce((sum, r) => sum + r.fuel, 0);
+                const totalUsage = activityRows.reduce((sum, r) => sum + r.usage, 0);
+
+                const outputUnit = outputUnits.length === 1 ? outputUnits[0] : (outputUnits.length ? "Mixed" : "");
+                const usageUnit = usageUnits.length === 1 ? usageUnits[0] : (usageUnits.length ? "Mixed" : "");
+
+                return `
+                    <div style="border:1px solid #dbe3ea; border-radius:5px; padding:9px 10px; background:#fff; min-width:0;">
+                        <div style="font-size:.62rem; color:#68798a; text-transform:uppercase; letter-spacing:.04em; line-height:1.25; min-height:28px;">${escapeHtml(activity)}</div>
+                        <div class="mono" style="font-size:1rem; font-weight:600; color:#233242; margin-top:5px;">
+                            ${activityRows.length ? fmtNumber(totalOutput) : "—"} ${escapeHtml(outputUnit)}
+                        </div>
+                        <div style="font-size:.62rem; color:#7b8896; margin-top:3px;">
+                            ${activityRows.length ? `${fmtNumber(totalUsage)} ${escapeHtml(usageUnit)} · ${fmtNumber(totalFuel)} L` : "Belum ada data"}
+                        </div>
+                    </div>
+                `;
+            }).join("");
         }
 
         function renderEquipmentSummary(rows, project) {
