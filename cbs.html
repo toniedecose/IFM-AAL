@@ -1128,7 +1128,29 @@
             <!-- Equipment & Quality Section -->
             <div class="dashboard-grid" id="equipment-section">
                 <div class="card">
-                    <div class="section-title" style="border:none; margin-bottom:12px;">Equipment Utilization</div>
+                    <div class="section-title" style="border:none; margin-bottom:10px;">Equipment Utilization</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:14px; padding:10px 0 2px;">
+                        <div style="min-width:120px;">
+                            <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">View</label>
+                            <select id="equipment-date-mode" style="width:100%; min-width:120px; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
+                                <option value="range" selected>Periode</option>
+                                <option value="date">Tanggal</option>
+                            </select>
+                        </div>
+                        <div id="equipment-date-single-wrap" style="display:none; min-width:145px;">
+                            <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">Tanggal</label>
+                            <input id="equipment-date-single" type="date" style="width:100%; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
+                        </div>
+                        <div id="equipment-date-start-wrap" style="min-width:145px;">
+                            <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">Dari</label>
+                            <input id="equipment-date-start" type="date" style="width:100%; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
+                        </div>
+                        <div id="equipment-date-end-wrap" style="min-width:145px;">
+                            <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">Sampai</label>
+                            <input id="equipment-date-end" type="date" style="width:100%; padding:7px 9px; border:1px solid #d7e0e8; border-radius:4px; background:#fff; font-size:.75rem;">
+                        </div>
+                        <div style="font-size:.68rem; color:#7b8896; padding:7px 0; margin-left:2px;">5 aktivitas utama · data harian</div>
+                    </div>
                     <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:14px;">
                         <div class="kpi-card">
                             <div class="kpi-header">Total Usage</div>
@@ -1339,6 +1361,15 @@
         let materialChartObj = null;
         let logisticChartObj = null;
         let equipmentChartObj = null;
+        let equipmentRowsCache = [];
+        const EQUIPMENT_ACTIVITIES = [
+            "Persiapan Area",
+            "Unloading Material",
+            "Angkut Material",
+            "Hampar Material",
+            "Compaction"
+        ];
+        let equipmentDateFilterBound = false;
         let materialDonutChartObj = null;
         let qualityDonutChartObj = null;
         let riskDonutChartObj = null;
@@ -1500,9 +1531,9 @@
             renderMaterialChart(materialKpi, project);
             renderLogisticChart(data.logistic || [], logisticKpi);
             const equipmentRows = normalizeEquipmentRows(data.equipment || []);
-            renderEquipmentSummary(equipmentRows, project);
-            renderEquipmentChart(equipmentRows, equipmentKpi);
-            renderEquipmentTable(equipmentRows);
+            equipmentRowsCache = equipmentRows;
+            setupEquipmentDateFilter(equipmentRows);
+            applyEquipmentDateFilter();
 
             renderMaterialDonut(materialKpi, project);
             renderQualityDonut(qualityKpi);
@@ -1917,7 +1948,10 @@
         }
 
         function normalizeEquipmentRows(rows) {
+            const activityMap = new Map(EQUIPMENT_ACTIVITIES.map(name => [name.toLowerCase(), name]));
             return (Array.isArray(rows) ? rows : []).map(r => {
+                const rawActivity = String(r.Activity ?? r.activity ?? "").trim();
+                const activity = activityMap.get(rawActivity.toLowerCase()) || "";
                 const usage = Number(r.Usage ?? r.usage ?? 0);
                 const fuel = Number(r.Fuel ?? r.fuel ?? 0);
                 const output = Number(r.Output ?? r.output ?? 0);
@@ -1925,7 +1959,8 @@
                 const outputUnit = String(r["Output Unit"] ?? r.outputUnit ?? r.OutputUnit ?? "").trim();
                 return {
                     date: r.Date ?? r.date ?? "",
-                    activity: r.Activity ?? r.activity ?? "",
+                    dateKey: equipmentDateKey(r.Date ?? r.date ?? ""),
+                    activity,
                     equipment: r.Equipment ?? r.equipment ?? r.type ?? r.name ?? "Equipment",
                     unit,
                     usage,
@@ -1935,7 +1970,69 @@
                     remark: r.Remark ?? r.remark ?? r.Remarks ?? r.remarks ?? "",
                     productivity: usage > 0 ? output / usage : 0
                 };
-            }).filter(r => r.equipment || r.activity || r.usage || r.fuel || r.output);
+            }).filter(r => EQUIPMENT_ACTIVITIES.includes(r.activity));
+        }
+
+        function setupEquipmentDateFilter(rows) {
+            const mode = document.getElementById("equipment-date-mode");
+            const single = document.getElementById("equipment-date-single");
+            const start = document.getElementById("equipment-date-start");
+            const end = document.getElementById("equipment-date-end");
+            if (!mode || !single || !start || !end) return;
+
+            const dates = [...new Set(rows.map(r => r.dateKey).filter(Boolean))].sort();
+            if (!dates.length) return;
+
+            const minDate = dates[0];
+            const maxDate = dates[dates.length - 1];
+            [single, start, end].forEach(el => {
+                el.min = minDate;
+                el.max = maxDate;
+            });
+
+            // Default to the complete available period.
+            if (!start.value || !dates.includes(start.value)) start.value = minDate;
+            if (!end.value || !dates.includes(end.value)) end.value = maxDate;
+            if (!single.value || !dates.includes(single.value)) single.value = maxDate;
+
+            if (!equipmentDateFilterBound) {
+                const refresh = () => applyEquipmentDateFilter();
+                mode.addEventListener("change", () => {
+                    const isDate = mode.value === "date";
+                    document.getElementById("equipment-date-single-wrap").style.display = isDate ? "block" : "none";
+                    document.getElementById("equipment-date-start-wrap").style.display = isDate ? "none" : "block";
+                    document.getElementById("equipment-date-end-wrap").style.display = isDate ? "none" : "block";
+                    refresh();
+                });
+                single.addEventListener("change", refresh);
+                start.addEventListener("change", refresh);
+                end.addEventListener("change", refresh);
+                equipmentDateFilterBound = true;
+            }
+        }
+
+        function applyEquipmentDateFilter() {
+            const mode = document.getElementById("equipment-date-mode")?.value || "range";
+            const single = document.getElementById("equipment-date-single")?.value || "";
+            let start = document.getElementById("equipment-date-start")?.value || "";
+            let end = document.getElementById("equipment-date-end")?.value || "";
+
+            if (mode === "date") {
+                start = single;
+                end = single;
+            }
+            if (start && end && start > end) [start, end] = [end, start];
+
+            const filtered = equipmentRowsCache.filter(r => {
+                if (!r.dateKey) return false;
+                if (start && r.dateKey < start) return false;
+                if (end && r.dateKey > end) return false;
+                return true;
+            });
+
+            renderEquipmentSummary(filtered, null);
+            renderEquipmentChart(filtered);
+            renderEquipmentTable(filtered);
         }
 
         function renderEquipmentSummary(rows, project) {
@@ -1944,19 +2041,14 @@
             const singleUsageUnit = usageUnits.length === 1 ? usageUnits[0] : "";
             const singleOutputUnit = outputUnits.length === 1 ? outputUnits[0] : "";
 
-            const totalUsage = singleUsageUnit
-                ? rows.reduce((sum, r) => sum + r.usage, 0)
-                : 0;
+            const totalUsage = singleUsageUnit ? rows.reduce((sum, r) => sum + r.usage, 0) : 0;
             const totalFuel = rows.reduce((sum, r) => sum + r.fuel, 0);
-            const totalOutput = singleOutputUnit
-                ? rows.reduce((sum, r) => sum + r.output, 0)
-                : 0;
-
+            const totalOutput = singleOutputUnit ? rows.reduce((sum, r) => sum + r.output, 0) : 0;
             const productivity = singleUsageUnit && singleOutputUnit && totalUsage > 0
                 ? totalOutput / totalUsage
                 : 0;
 
-            setText("equipment-total-usage", singleUsageUnit ? fmtNumber(totalUsage) : "Mixed");
+            setText("equipment-total-usage", singleUsageUnit ? fmtNumber(totalUsage) : (usageUnits.length ? "Mixed" : "—"));
             setText("equipment-usage-unit", singleUsageUnit || (usageUnits.length ? "Mixed Unit" : "Usage"));
             setText("equipment-total-fuel", fmtNumber(totalFuel));
             setText("equipment-total-output", singleOutputUnit ? fmtNumber(totalOutput) : (outputUnits.length ? "Mixed" : "—"));
@@ -1965,54 +2057,88 @@
             setText("equipment-productivity-unit", productivity ? `${singleOutputUnit} / ${singleUsageUnit}` : "Output / Usage");
         }
 
-        function renderEquipmentChart(rows, kpi) {
+        function renderEquipmentChart(rows) {
             const canvas = document.getElementById("equipmentChart");
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
             if (equipmentChartObj) equipmentChartObj.destroy();
 
             if (!rows.length) {
-                clearCanvasWithMessage(canvas, "Belum ada data equipment.");
+                clearCanvasWithMessage(canvas, "Belum ada data equipment pada periode terpilih.");
                 return;
             }
 
-            // Aggregate daily output by date. This keeps the sheet daily while the dashboard
-            // shows cumulative production, so equipment data does not replace project progress.
-            const outputUnits = [...new Set(rows.map(r => r.outputUnit).filter(Boolean))];
-            const chartUnit = outputUnits.length === 1
-                ? outputUnits[0]
-                : (outputUnits.sort((a,b) => rows.filter(r => r.outputUnit === b).length - rows.filter(r => r.outputUnit === a).length)[0] || "");
-            const chartRows = chartUnit ? rows.filter(r => r.outputUnit === chartUnit) : rows;
+            const dateKeys = [...new Set(rows.map(r => r.dateKey).filter(Boolean))].sort();
+            const activityColors = ["#2c7a7f", "#4778a8", "#7a5c9e", "#b07a3f", "#5d8b57"];
+            const datasets = EQUIPMENT_ACTIVITIES.map((activity, index) => {
+                let cumulative = 0;
+                const values = dateKeys.map(date => {
+                    const daily = rows
+                        .filter(r => r.activity === activity && r.dateKey === date)
+                        .reduce((sum, r) => sum + r.output, 0);
+                    cumulative += daily;
+                    return cumulative;
+                });
+                const units = [...new Set(rows.filter(r => r.activity === activity).map(r => r.outputUnit).filter(Boolean))];
+                const unit = units.length === 1 ? units[0] : (units.length ? units.join(" / ") : "");
+                return {
+                    label: unit ? `${activity} (${unit})` : activity,
+                    data: values,
+                    borderColor: activityColors[index],
+                    backgroundColor: "transparent",
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    tension: 0.2,
+                    fill: false,
+                    yAxisID: unit.toLowerCase().includes("m²") || unit.toLowerCase().includes("m2") ? "yM2" : "yM3"
+                };
+            }).filter(ds => ds.data.some(v => v > 0));
 
-            const grouped = {};
-            chartRows.forEach(r => {
-                const key = r.date || "Unknown";
-                if (!grouped[key]) grouped[key] = { output: 0 };
-                grouped[key].output += r.output;
-            });
-
-            const labels = Object.keys(grouped).sort((a,b) => {
-                const da = new Date(a), db = new Date(b);
-                return (isNaN(da) ? a : da) - (isNaN(db) ? b : db);
-            });
-            let cumulative = 0;
-            const values = labels.map(d => { cumulative += grouped[d].output; return cumulative; });
+            if (!datasets.length) {
+                clearCanvasWithMessage(canvas, "Belum ada output equipment pada periode terpilih.");
+                return;
+            }
 
             equipmentChartObj = new Chart(ctx, {
                 type: "line",
-                data: {
-                    labels,
-                    datasets: [{
-                        label: chartUnit ? `Cumulative Output (${chartUnit})` : "Cumulative Equipment Output",
-                        data: values,
-                        borderColor: "#2c7a7f",
-                        backgroundColor: "rgba(44,122,127,.10)",
-                        fill: true,
-                        tension: 0.2,
-                        borderWidth: 2
-                    }]
-                },
-                options: chartOptions()
+                data: { labels: dateKeys.map(d => formatDate(d)), datasets },
+                options: {
+                    ...chartOptions(),
+                    plugins: {
+                        ...chartOptions().plugins,
+                        legend: {
+                            position: "bottom",
+                            labels: { color: "#5b6b7d", boxWidth: 10, boxHeight: 10, padding: 10, font: { family: "Inter", size: 10.5 } }
+                        },
+                        tooltip: {
+                            mode: "index",
+                            intersect: false,
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: ${fmtNumber(ctx.parsed.y)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ...((chartOptions().scales || {}).x || {}), ticks: { color: "#708090", font: { size: 10 } }, grid: { display: false } },
+                        yM3: {
+                            type: "linear",
+                            position: "left",
+                            beginAtZero: true,
+                            title: { display: true, text: "Output (m³)", color: "#5b6b7d", font: { size: 10 } },
+                            ticks: { color: "#708090", font: { size: 10 } },
+                            grid: { color: "rgba(100,120,140,.10)" }
+                        },
+                        yM2: {
+                            type: "linear",
+                            position: "right",
+                            beginAtZero: true,
+                            title: { display: true, text: "Output (m²)", color: "#5b6b7d", font: { size: 10 } },
+                            ticks: { color: "#708090", font: { size: 10 } },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
             });
         }
 
