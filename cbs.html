@@ -1129,8 +1129,49 @@
             <div class="dashboard-grid" id="equipment-section">
                 <div class="card">
                     <div class="section-title" style="border:none; margin-bottom:12px;">Equipment Utilization</div>
+                    <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr); margin-bottom:14px;">
+                        <div class="kpi-card">
+                            <div class="kpi-header">Total Usage</div>
+                            <div class="kpi-value mono" id="equipment-total-usage">—</div>
+                            <div class="kpi-sub" id="equipment-usage-unit">—</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-header">Total Fuel</div>
+                            <div class="kpi-value mono" id="equipment-total-fuel">—</div>
+                            <div class="kpi-sub">Liter</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-header">Total Output</div>
+                            <div class="kpi-value mono" id="equipment-total-output">—</div>
+                            <div class="kpi-sub" id="equipment-output-unit">—</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-header">Productivity</div>
+                            <div class="kpi-value mono" id="equipment-productivity">—</div>
+                            <div class="kpi-sub" id="equipment-productivity-unit">Output / Usage</div>
+                        </div>
+                    </div>
                     <div class="chart-container">
                         <canvas id="equipmentChart"></canvas>
+                    </div>
+                    <div class="table-responsive" style="margin-top:14px;">
+                        <table id="equipment-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Activity</th>
+                                    <th>Equipment</th>
+                                    <th>Usage</th>
+                                    <th>Fuel</th>
+                                    <th>Output</th>
+                                    <th>Productivity</th>
+                                    <th>Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="8" class="empty-state">Data equipment belum tersedia.</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 <div class="card" id="quality-section">
@@ -1458,7 +1499,10 @@
             renderWbsChart(data.schedule || [], data.progress || []);
             renderMaterialChart(materialKpi, project);
             renderLogisticChart(data.logistic || [], logisticKpi);
-            renderEquipmentChart(data.equipment || [], equipmentKpi);
+            const equipmentRows = normalizeEquipmentRows(data.equipment || []);
+            renderEquipmentSummary(equipmentRows, project);
+            renderEquipmentChart(equipmentRows, equipmentKpi);
+            renderEquipmentTable(equipmentRows);
 
             renderMaterialDonut(materialKpi, project);
             renderQualityDonut(qualityKpi);
@@ -1872,28 +1916,127 @@
             });
         }
 
+        function normalizeEquipmentRows(rows) {
+            return (Array.isArray(rows) ? rows : []).map(r => {
+                const usage = Number(r.Usage ?? r.usage ?? 0);
+                const fuel = Number(r.Fuel ?? r.fuel ?? 0);
+                const output = Number(r.Output ?? r.output ?? 0);
+                const unit = String(r.Unit ?? r.unit ?? "").trim();
+                const outputUnit = String(r["Output Unit"] ?? r.outputUnit ?? r.OutputUnit ?? "").trim();
+                return {
+                    date: r.Date ?? r.date ?? "",
+                    activity: r.Activity ?? r.activity ?? "",
+                    equipment: r.Equipment ?? r.equipment ?? r.type ?? r.name ?? "Equipment",
+                    unit,
+                    usage,
+                    fuel,
+                    output,
+                    outputUnit,
+                    remark: r.Remark ?? r.remark ?? r.Remarks ?? r.remarks ?? "",
+                    productivity: usage > 0 ? output / usage : 0
+                };
+            }).filter(r => r.equipment || r.activity || r.usage || r.fuel || r.output);
+        }
+
+        function renderEquipmentSummary(rows, project) {
+            const usageUnits = [...new Set(rows.map(r => r.unit).filter(Boolean))];
+            const outputUnits = [...new Set(rows.map(r => r.outputUnit).filter(Boolean))];
+            const singleUsageUnit = usageUnits.length === 1 ? usageUnits[0] : "";
+            const singleOutputUnit = outputUnits.length === 1 ? outputUnits[0] : "";
+
+            const totalUsage = singleUsageUnit
+                ? rows.reduce((sum, r) => sum + r.usage, 0)
+                : 0;
+            const totalFuel = rows.reduce((sum, r) => sum + r.fuel, 0);
+            const totalOutput = singleOutputUnit
+                ? rows.reduce((sum, r) => sum + r.output, 0)
+                : 0;
+
+            const productivity = singleUsageUnit && singleOutputUnit && totalUsage > 0
+                ? totalOutput / totalUsage
+                : 0;
+
+            setText("equipment-total-usage", singleUsageUnit ? fmtNumber(totalUsage) : "Mixed");
+            setText("equipment-usage-unit", singleUsageUnit || (usageUnits.length ? "Mixed Unit" : "Usage"));
+            setText("equipment-total-fuel", fmtNumber(totalFuel));
+            setText("equipment-total-output", singleOutputUnit ? fmtNumber(totalOutput) : (outputUnits.length ? "Mixed" : "—"));
+            setText("equipment-output-unit", singleOutputUnit || (outputUnits.length ? "Mixed Unit" : "Output"));
+            setText("equipment-productivity", productivity ? fmtNumber(productivity) : "—");
+            setText("equipment-productivity-unit", productivity ? `${singleOutputUnit} / ${singleUsageUnit}` : "Output / Usage");
+        }
+
         function renderEquipmentChart(rows, kpi) {
             const canvas = document.getElementById("equipmentChart");
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
             if (equipmentChartObj) equipmentChartObj.destroy();
 
-            if (!rows.length && kpi.quantity === 0) {
+            if (!rows.length) {
                 clearCanvasWithMessage(canvas, "Belum ada data equipment.");
                 return;
             }
 
-            const labels = rows.length ? rows.map(r => r.equipment || r.type || r.name || "Equipment") : ["Working", "Available", "Downtime"];
-            const values = rows.length ? rows.map(r => Number(r["Utilization (%)"] || r.utilization || 0)) : [Number(kpi.working || 0), Number(kpi.available || 0), Number(kpi.downtime || 0)];
+            // Aggregate daily output by date. This keeps the sheet daily while the dashboard
+            // shows cumulative production, so equipment data does not replace project progress.
+            const outputUnits = [...new Set(rows.map(r => r.outputUnit).filter(Boolean))];
+            const chartUnit = outputUnits.length === 1
+                ? outputUnits[0]
+                : (outputUnits.sort((a,b) => rows.filter(r => r.outputUnit === b).length - rows.filter(r => r.outputUnit === a).length)[0] || "");
+            const chartRows = chartUnit ? rows.filter(r => r.outputUnit === chartUnit) : rows;
+
+            const grouped = {};
+            chartRows.forEach(r => {
+                const key = r.date || "Unknown";
+                if (!grouped[key]) grouped[key] = { output: 0 };
+                grouped[key].output += r.output;
+            });
+
+            const labels = Object.keys(grouped).sort((a,b) => {
+                const da = new Date(a), db = new Date(b);
+                return (isNaN(da) ? a : da) - (isNaN(db) ? b : db);
+            });
+            let cumulative = 0;
+            const values = labels.map(d => { cumulative += grouped[d].output; return cumulative; });
 
             equipmentChartObj = new Chart(ctx, {
-                type: "bar",
+                type: "line",
                 data: {
                     labels,
-                    datasets: [{ label: "Equipment", data: values, backgroundColor: "#6b8fae", borderRadius: 4 }]
+                    datasets: [{
+                        label: chartUnit ? `Cumulative Output (${chartUnit})` : "Cumulative Equipment Output",
+                        data: values,
+                        borderColor: "#2c7a7f",
+                        backgroundColor: "rgba(44,122,127,.10)",
+                        fill: true,
+                        tension: 0.2,
+                        borderWidth: 2
+                    }]
                 },
                 options: chartOptions()
             });
+        }
+
+        function renderEquipmentTable(rows) {
+            const tbody = document.querySelector("#equipment-table tbody");
+            if (!tbody) return;
+
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Data equipment belum tersedia.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = rows.slice().sort((a,b) => String(b.date).localeCompare(String(a.date))).map(r => `
+                <tr>
+                    <td>${escapeHtml(formatDate(r.date))}</td>
+                    <td>${escapeHtml(r.activity || "—")}</td>
+                    <td>${escapeHtml(r.equipment || "—")}</td>
+                    <td>${fmtNumber(r.usage)} ${escapeHtml(r.unit || "")}</td>
+                    <td>${fmtNumber(r.fuel)} L</td>
+                    <td>${fmtNumber(r.output)} ${escapeHtml(r.outputUnit || "")}</td>
+                    <td>${r.productivity ? fmtNumber(r.productivity) : "—"} ${escapeHtml(r.outputUnit || "")} / ${escapeHtml(r.unit || "Usage")}</td>
+                    <td>${escapeHtml(r.remark || "—")}</td>
+                </tr>
+            `).join("");
         }
 
         function donutOptions() {
