@@ -319,6 +319,8 @@
             max-width: 1700px;
             width: 100%;
             margin: 0 auto;
+            box-sizing: border-box;
+            min-width: 0;
         }
 
         .btn {
@@ -536,9 +538,21 @@
 
         .donut-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
             margin-bottom: 32px;
+            width: 100%;
+            min-width: 0;
+        }
+        .donut-grid > .card {
+            min-width: 0;
+            width: 100%;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .donut-grid .section-title {
+            min-width: 0;
+            overflow: hidden;
         }
         .donut-grid .card:nth-child(1) { border-top: 3px solid var(--accent-teal-bright); }
         .donut-grid .card:nth-child(2) { border-top: 3px solid var(--success-bright); }
@@ -548,7 +562,7 @@
             height: 220px;
         }
         @media (max-width: 1200px) {
-            .donut-grid { grid-template-columns: repeat(2, 1fr); }
+            .donut-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 560px) {
             .donut-grid { grid-template-columns: 1fr; }
@@ -2475,18 +2489,14 @@
 
             const allRows = Array.isArray(rows) ? rows : [];
 
-            // LOGISTIC: total Volume khusus aktivitas Angkut/Hauling Material.
-            // Sheet LOGISTIC saat ini tidak memiliki kolom destination terpisah,
-            // sehingga "To CBS Plant Location" digunakan sebagai label dashboard.
+            // LOGISTIC: Activity pada sheet saat ini menggunakan "Material Hauling".
+            // Ambil total seluruh Volume untuk aktivitas hauling.
             const haulingRows = allRows.filter(r => {
                 const activity = String(r.Activity ?? r.activity ?? "").trim().toLowerCase();
-                return activity === "angkut material" || activity === "hauling material";
+                return activity.includes("hauling") || activity.includes("angkut material");
             });
 
-            // Jika Activity kosong pada data LOGISTIC, gunakan seluruh baris Volume.
-            const sourceRows = haulingRows.length
-                ? haulingRows
-                : allRows.filter(r => String(r.Activity ?? r.activity ?? "").trim() === "");
+            const sourceRows = haulingRows.length ? haulingRows : allRows;
 
             const totalVolume = sourceRows.reduce((sum, r) => {
                 return sum + Math.max(Number(r.Volume ?? r.volume ?? 0) || 0, 0);
@@ -2523,7 +2533,7 @@
             haulingMaterialDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
-                    labels: [`Hauling Material — ${fmtNumber(totalVolume)} m³`],
+                    labels: [`Total Volume — ${fmtNumber(totalVolume)} m³`],
                     datasets: [{
                         data: [totalVolume],
                         backgroundColor: ["#16b3ab"],
@@ -2534,9 +2544,19 @@
                     ...donutOptions(),
                     plugins: {
                         ...donutOptions().plugins,
+                        legend: {
+                            position: "bottom",
+                            labels: {
+                                color: "#5b6b7d",
+                                boxWidth: 10,
+                                boxHeight: 10,
+                                padding: 8,
+                                font: { family: "Inter", size: 10 }
+                            }
+                        },
                         tooltip: {
                             callbacks: {
-                                label: () => `Hauling Material: ${fmtNumber(totalVolume)} m³`
+                                label: () => `Total Hauling Volume: ${fmtNumber(totalVolume)} m³`
                             }
                         }
                     }
@@ -2551,24 +2571,25 @@
             const ctx = canvas.getContext("2d");
             if (compactionProgressDonutChartObj) compactionProgressDonutChartObj.destroy();
 
-            // EQUIPMENT: column B = Activity, column G = Output.
-            // Backend exposes these fields as Activity and Output.
+            // EQUIPMENT:
+            // Column B = Activity, Column G = Output.
+            // Target total timbunan = 8,700 m³.
+            const TARGET_TIMBUNAN = 8700;
+
             const normalizedRows = normalizeEquipmentRows(Array.isArray(rows) ? rows : []);
             const compactionRows = normalizedRows.filter(r => r.activity === "Compaction");
 
-            const totalOutput = compactionRows.reduce((sum, r) => {
+            const actual = compactionRows.reduce((sum, r) => {
                 return sum + Math.max(Number(r.output || 0) || 0, 0);
             }, 0);
 
-            const outputUnits = [...new Set(
-                compactionRows.map(r => String(r.outputUnit || "").trim()).filter(Boolean)
-            )];
-            const outputUnit = outputUnits.length === 1
-                ? outputUnits[0]
-                : (outputUnits.length ? outputUnits.join(" / ") : "m²");
+            const remaining = Math.max(TARGET_TIMBUNAN - actual, 0);
+            const progressPct = TARGET_TIMBUNAN > 0
+                ? Math.min((actual / TARGET_TIMBUNAN) * 100, 100)
+                : 0;
 
-            if (!totalOutput) {
-                clearCanvasWithMessage(canvas, "Data Compaction belum tersedia.");
+            if (!actual && !TARGET_TIMBUNAN) {
+                clearCanvasWithMessage(canvas, "Data Progress Timbunan belum tersedia.");
                 return;
             }
 
@@ -2586,11 +2607,11 @@
 
                     c.fillStyle = "#1f2937";
                     c.font = "700 17px Inter, sans-serif";
-                    c.fillText(fmtNumber(totalOutput), arc.x, arc.y - 5);
+                    c.fillText(progressPct.toFixed(1) + "%", arc.x, arc.y - 5);
 
                     c.fillStyle = "#718096";
                     c.font = "500 9px Inter, sans-serif";
-                    c.fillText("Compaction Output", arc.x, arc.y + 11);
+                    c.fillText("Compaction", arc.x, arc.y + 11);
                     c.restore();
                 }
             };
@@ -2598,10 +2619,13 @@
             compactionProgressDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
-                    labels: [`Compaction Output — ${fmtNumber(totalOutput)} ${outputUnit}`],
+                    labels: [
+                        `Actual — ${fmtNumber(actual)} m³`,
+                        `Remaining — ${fmtNumber(remaining)} m³`
+                    ],
                     datasets: [{
-                        data: [totalOutput],
-                        backgroundColor: ["#3563c9"],
+                        data: [actual, remaining],
+                        backgroundColor: ["#3563c9", "#e2e7ee"],
                         borderWidth: 0
                     }]
                 },
@@ -2611,7 +2635,10 @@
                         ...donutOptions().plugins,
                         tooltip: {
                             callbacks: {
-                                label: () => `Compaction Output: ${fmtNumber(totalOutput)} ${outputUnit}`
+                                label: ctx => {
+                                    const value = Number(ctx.raw || 0);
+                                    return `${ctx.dataIndex === 0 ? "Actual Timbunan" : "Remaining"}: ${fmtNumber(value)} m³`;
+                                }
                             }
                         }
                     }
