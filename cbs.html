@@ -1083,9 +1083,9 @@
                     </div>
                 </div>
                 <div class="card">
-                    <div class="section-title" style="border:none; margin-bottom:10px; font-size:0.8125rem;">Quality Pass Rate</div>
+                    <div class="section-title" style="border:none; margin-bottom:10px; font-size:0.8125rem;">Loading Material</div>
                     <div class="chart-container chart-container-donut">
-                        <canvas id="qualityDonutChart"></canvas>
+                        <canvas id="loadingMaterialChart"></canvas>
                     </div>
                 </div>
                 <div class="card">
@@ -1427,7 +1427,7 @@
         ];
         let equipmentDateFilterBound = false;
         let materialDonutChartObj = null;
-        let qualityDonutChartObj = null;
+        let loadingMaterialChartObj = null;
         let riskDonutChartObj = null;
         let equipmentDonutChartObj = null;
         let cachedData = null;
@@ -1598,7 +1598,7 @@
             applyEquipmentDateFilter();
 
             renderMaterialDonut(materialKpi, project);
-            renderQualityDonut(qualityKpi);
+            renderLoadingMaterialDonut(data.progress || []);
             renderRiskDonut(riskKpi);
             renderEquipmentDonut(equipmentKpi);
 
@@ -2436,27 +2436,65 @@
             return values.reduce((sum, value) => sum + Number(value || 0), 0);
         }
 
-        function renderQualityDonut(quality) {
-            const canvas = document.getElementById("qualityDonutChart");
+        // Loading Material donut: WBS 6.1 "Loading Material" Actual Volume vs
+        // total planned volume (8,700 m³), replacing the old Quality Pass Rate donut.
+        const LOADING_MATERIAL_WBS = "6.1";
+        const LOADING_MATERIAL_TARGET = 8700; // m³, total planned
+
+        function renderLoadingMaterialDonut(progress) {
+            const canvas = document.getElementById("loadingMaterialChart");
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
-            if (qualityDonutChartObj) qualityDonutChartObj.destroy();
+            if (loadingMaterialChartObj) loadingMaterialChartObj.destroy();
 
-            const pass = Number(quality.pass || 0);
-            const fail = Number(quality.fail || 0);
+            const rows = Array.isArray(progress) ? progress : [];
+            const row = rows.find(r => String(r.wbs ?? r.WBS ?? "").trim() === LOADING_MATERIAL_WBS);
+            const actual = Math.max(Number(row?.actualVolume ?? row?.["Actual Volume"] ?? 0) || 0, 0);
+            const target = LOADING_MATERIAL_TARGET;
+            const remaining = Math.max(target - actual, 0);
+            const pct = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
+            const remainingPct = 100 - pct;
 
-            if (!pass && !fail) {
-                clearCanvasWithMessage(canvas, "Data quality belum tersedia.");
+            if (!actual && !target) {
+                clearCanvasWithMessage(canvas, "Data Loading Material belum tersedia.");
                 return;
             }
 
-            qualityDonutChartObj = new Chart(ctx, {
+            const loadingValuePlugin = {
+                id: "loadingValuePlugin",
+                afterDatasetsDraw(chart) {
+                    const meta = chart.getDatasetMeta(0);
+                    const firstArc = meta.data[0];
+                    if (!firstArc) return;
+                    const c = chart.ctx;
+                    c.save();
+                    c.textAlign = "center";
+                    c.textBaseline = "middle";
+                    c.fillStyle = "#1f2937";
+                    c.font = "700 17px Inter, sans-serif";
+                    c.fillText(pct.toFixed(1) + "%", firstArc.x, firstArc.y - 5);
+                    c.fillStyle = "#718096";
+                    c.font = "500 9px Inter, sans-serif";
+                    c.fillText("Actual", firstArc.x, firstArc.y + 11);
+                    c.restore();
+                }
+            };
+
+            loadingMaterialChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
-                    labels: ["Pass", "Fail"],
-                    datasets: [{ data: [pass, fail], backgroundColor: ["#22b876", "#d13d34"], borderWidth: 0 }]
+                    labels: [
+                        `Actual Volume — ${fmtNumber(actual)} m³ (${pct.toFixed(1)}%)`,
+                        `Remaining — ${fmtNumber(remaining)} m³ (${remainingPct.toFixed(1)}%)`
+                    ],
+                    datasets: [{
+                        data: [actual, remaining],
+                        backgroundColor: ["#16b3ab", "#e2e7ee"],
+                        borderWidth: 0
+                    }]
                 },
-                options: donutOptions()
+                options: donutOptions(),
+                plugins: [loadingValuePlugin]
             });
         }
 
@@ -2896,7 +2934,7 @@
                 addChartSlide(pptx, "Project S-Curve & WBS Progress", ["sCurveChart", "wbsProgressChart"]);
                 addChartSlide(pptx, "Material & Logistic Monitoring", ["materialChart", "logisticChart"]);
                 addChartSlide(pptx, "Equipment Utilization & Material Distribution", ["equipmentChart", "materialDonutChart"]);
-                addChartSlide(pptx, "Quality & Risk Overview", ["qualityDonutChart", "riskDonutChart"]);
+                addChartSlide(pptx, "Loading Material & Risk Overview", ["loadingMaterialChart", "riskDonutChart"]);
 
                 // ---- Data Table Slides (auto-paged straight from the HTML tables) ----
                 const titleTextOpts = (text) => ({ addText: { text, options: { x: 0.4, y: 0.2, w: 12, h: 0.5, fontSize: 18, bold: true, color: NAVY } } });
