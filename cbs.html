@@ -1101,15 +1101,15 @@
                     </div>
                 </div>
                 <div class="card">
-                    <div class="section-title" style="border:none; margin-bottom:10px; font-size:0.8125rem;">Risk by Severity</div>
+                    <div class="section-title" style="border:none; margin-bottom:10px; font-size:0.8125rem;">Hauling Material To CBS Plant Location</div>
                     <div class="chart-container chart-container-donut">
-                        <canvas id="riskDonutChart"></canvas>
+                        <canvas id="haulingMaterialDonutChart"></canvas>
                     </div>
                 </div>
                 <div class="card">
-                    <div class="section-title" style="border:none; margin-bottom:10px; font-size:0.8125rem;">Equipment Status</div>
+                    <div class="section-title" style="border:none; margin-bottom:10px; font-size:0.8125rem;">Progress Timbunan</div>
                     <div class="chart-container chart-container-donut">
-                        <canvas id="equipmentDonutChart"></canvas>
+                        <canvas id="compactionProgressDonutChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -1450,8 +1450,8 @@
         let equipmentDateFilterBound = false;
         let materialDonutChartObj = null;
         let loadingMaterialChartObj = null;
-        let riskDonutChartObj = null;
-        let equipmentDonutChartObj = null;
+        let haulingMaterialDonutChartObj = null;
+        let compactionProgressDonutChartObj = null;
         let cachedData = null;
 
         document.addEventListener("DOMContentLoaded", loadDashboardData);
@@ -1620,8 +1620,8 @@
 
             renderMaterialDonut(materialKpi, project);
             renderLoadingMaterialDonut(data.progress || []);
-            renderRiskDonut(riskKpi);
-            renderEquipmentDonut(equipmentKpi);
+            renderHaulingMaterialDonut(data.logistic || []);
+            renderCompactionProgressDonut(data.equipment || []);
 
             renderScheduleTable(data.schedule || [], data.progress || []);
             renderMaterialTable(data.material || []);
@@ -2467,54 +2467,156 @@
             });
         }
 
-        function renderRiskDonut(risk) {
-            const canvas = document.getElementById("riskDonutChart");
+        function renderHaulingMaterialDonut(rows) {
+            const canvas = document.getElementById("haulingMaterialDonutChart");
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
-            if (riskDonutChartObj) riskDonutChartObj.destroy();
+            if (haulingMaterialDonutChartObj) haulingMaterialDonutChartObj.destroy();
 
-            const critical = Number(risk.critical || 0);
-            const high = Number(risk.high || 0);
-            const open = Number(risk.open || 0);
-            const moderate = Math.max(open - critical - high, 0);
+            const allRows = Array.isArray(rows) ? rows : [];
 
-            if (!open && !critical && !high) {
-                clearCanvasWithMessage(canvas, "Data risiko belum tersedia.");
+            // LOGISTIC: total Volume khusus aktivitas Angkut/Hauling Material.
+            // Sheet LOGISTIC saat ini tidak memiliki kolom destination terpisah,
+            // sehingga "To CBS Plant Location" digunakan sebagai label dashboard.
+            const haulingRows = allRows.filter(r => {
+                const activity = String(r.Activity ?? r.activity ?? "").trim().toLowerCase();
+                return activity === "angkut material" || activity === "hauling material";
+            });
+
+            // Jika Activity kosong pada data LOGISTIC, gunakan seluruh baris Volume.
+            const sourceRows = haulingRows.length
+                ? haulingRows
+                : allRows.filter(r => String(r.Activity ?? r.activity ?? "").trim() === "");
+
+            const totalVolume = sourceRows.reduce((sum, r) => {
+                return sum + Math.max(Number(r.Volume ?? r.volume ?? 0) || 0, 0);
+            }, 0);
+
+            if (!totalVolume) {
+                clearCanvasWithMessage(canvas, "Data Hauling Material belum tersedia.");
                 return;
             }
 
-            riskDonutChartObj = new Chart(ctx, {
-                type: "pie",
+            const centerValuePlugin = {
+                id: "haulingMaterialCenterValuePlugin",
+                afterDatasetsDraw(chart) {
+                    const meta = chart.getDatasetMeta(0);
+                    const arc = meta.data[0];
+                    if (!arc) return;
+
+                    const c = chart.ctx;
+                    c.save();
+                    c.textAlign = "center";
+                    c.textBaseline = "middle";
+
+                    c.fillStyle = "#1f2937";
+                    c.font = "700 17px Inter, sans-serif";
+                    c.fillText(fmtNumber(totalVolume), arc.x, arc.y - 5);
+
+                    c.fillStyle = "#718096";
+                    c.font = "500 9px Inter, sans-serif";
+                    c.fillText("m³ Hauled", arc.x, arc.y + 11);
+                    c.restore();
+                }
+            };
+
+            haulingMaterialDonutChartObj = new Chart(ctx, {
+                type: "doughnut",
                 data: {
-                    labels: ["Critical", "High", "Moderate / Low"],
-                    datasets: [{ data: [critical, high, moderate], backgroundColor: ["#d13d34", "#f0a52e", "#94a3b8"], borderWidth: 0 }]
+                    labels: [`Hauling Material — ${fmtNumber(totalVolume)} m³`],
+                    datasets: [{
+                        data: [totalVolume],
+                        backgroundColor: ["#16b3ab"],
+                        borderWidth: 0
+                    }]
                 },
-                options: donutOptions()
+                options: {
+                    ...donutOptions(),
+                    plugins: {
+                        ...donutOptions().plugins,
+                        tooltip: {
+                            callbacks: {
+                                label: () => `Hauling Material: ${fmtNumber(totalVolume)} m³`
+                            }
+                        }
+                    }
+                },
+                plugins: [centerValuePlugin]
             });
         }
 
-        function renderEquipmentDonut(eq) {
-            const canvas = document.getElementById("equipmentDonutChart");
+        function renderCompactionProgressDonut(rows) {
+            const canvas = document.getElementById("compactionProgressDonutChart");
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
-            if (equipmentDonutChartObj) equipmentDonutChartObj.destroy();
+            if (compactionProgressDonutChartObj) compactionProgressDonutChartObj.destroy();
 
-            const working = Number(eq.working || 0);
-            const available = Number(eq.available || 0);
-            const downtime = Number(eq.downtime || 0);
+            // EQUIPMENT: column B = Activity, column G = Output.
+            // Backend exposes these fields as Activity and Output.
+            const normalizedRows = normalizeEquipmentRows(Array.isArray(rows) ? rows : []);
+            const compactionRows = normalizedRows.filter(r => r.activity === "Compaction");
 
-            if (!working && !available && !downtime) {
-                clearCanvasWithMessage(canvas, "Data equipment belum tersedia.");
+            const totalOutput = compactionRows.reduce((sum, r) => {
+                return sum + Math.max(Number(r.output || 0) || 0, 0);
+            }, 0);
+
+            const outputUnits = [...new Set(
+                compactionRows.map(r => String(r.outputUnit || "").trim()).filter(Boolean)
+            )];
+            const outputUnit = outputUnits.length === 1
+                ? outputUnits[0]
+                : (outputUnits.length ? outputUnits.join(" / ") : "m²");
+
+            if (!totalOutput) {
+                clearCanvasWithMessage(canvas, "Data Compaction belum tersedia.");
                 return;
             }
 
-            equipmentDonutChartObj = new Chart(ctx, {
+            const centerValuePlugin = {
+                id: "compactionProgressCenterValuePlugin",
+                afterDatasetsDraw(chart) {
+                    const meta = chart.getDatasetMeta(0);
+                    const arc = meta.data[0];
+                    if (!arc) return;
+
+                    const c = chart.ctx;
+                    c.save();
+                    c.textAlign = "center";
+                    c.textBaseline = "middle";
+
+                    c.fillStyle = "#1f2937";
+                    c.font = "700 17px Inter, sans-serif";
+                    c.fillText(fmtNumber(totalOutput), arc.x, arc.y - 5);
+
+                    c.fillStyle = "#718096";
+                    c.font = "500 9px Inter, sans-serif";
+                    c.fillText("Compaction Output", arc.x, arc.y + 11);
+                    c.restore();
+                }
+            };
+
+            compactionProgressDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
-                    labels: ["Working", "Available", "Downtime"],
-                    datasets: [{ data: [working, available, downtime], backgroundColor: ["#16b3ab", "#3563c9", "#f0a52e"], borderWidth: 0 }]
+                    labels: [`Compaction Output — ${fmtNumber(totalOutput)} ${outputUnit}`],
+                    datasets: [{
+                        data: [totalOutput],
+                        backgroundColor: ["#3563c9"],
+                        borderWidth: 0
+                    }]
                 },
-                options: donutOptions()
+                options: {
+                    ...donutOptions(),
+                    plugins: {
+                        ...donutOptions().plugins,
+                        tooltip: {
+                            callbacks: {
+                                label: () => `Compaction Output: ${fmtNumber(totalOutput)} ${outputUnit}`
+                            }
+                        }
+                    }
+                },
+                plugins: [centerValuePlugin]
             });
         }
 
@@ -2903,7 +3005,7 @@
                 addChartSlide(pptx, "Project S-Curve & WBS Progress", ["sCurveChart", "wbsProgressChart"]);
                 addChartSlide(pptx, "Material Received & Logistic Monitoring", ["materialDonutChart", "logisticChart"]);
                 addChartSlide(pptx, "Equipment Utilization", ["equipmentChart"]);
-                addChartSlide(pptx, "Loading Material & Risk Overview", ["loadingMaterialChart", "riskDonutChart"]);
+                addChartSlide(pptx, "Loading Material & Distribution Overview", ["loadingMaterialChart", "haulingMaterialDonutChart", "compactionProgressDonutChart"]);
 
                 // ---- Data Table Slides (auto-paged straight from the HTML tables) ----
                 const titleTextOpts = (text) => ({ addText: { text, options: { x: 0.4, y: 0.2, w: 12, h: 0.5, fontSize: 18, bold: true, color: NAVY } } });
