@@ -1140,19 +1140,12 @@
                 </div>
             </div>
 
-            <!-- Material & Logistic Monitoring -->
-            <div class="dashboard-grid" id="material-section">
-                <div class="card">
-                    <div class="section-title" style="border:none; margin-bottom:12px;">Material Control & Flow</div>
-                    <div class="chart-container">
-                        <canvas id="materialChart"></canvas>
-                    </div>
-                </div>
-                <div class="card" id="logistic-section">
-                    <div class="section-title" style="border:none; margin-bottom:12px;">Logistic Monitoring (Daily Delivery)</div>
-                    <div class="chart-container">
-                        <canvas id="logisticChart"></canvas>
-                    </div>
+            <!-- Logistic Monitoring -->
+            <div class="card" id="material-section" style="margin-bottom: 32px;" data-anchor="logistic-section">
+                <div id="logistic-section"></div>
+                <div class="section-title" style="border:none; margin-bottom:12px;">Logistic Monitoring (Daily Delivery)</div>
+                <div class="chart-container">
+                    <canvas id="logisticChart"></canvas>
                 </div>
             </div>
 
@@ -1414,7 +1407,6 @@
 
         let sCurveChartObj = null;
         let wbsChartObj = null;
-        let materialChartObj = null;
         let logisticChartObj = null;
         let equipmentChartObj = null;
         let equipmentRowsCache = [];
@@ -1590,7 +1582,6 @@
 
             renderSCurveChart(data.sCurve || []);
             renderWbsChart(data.schedule || [], data.progress || []);
-            renderMaterialChart(materialKpi, project);
             renderLogisticChart(data.logistic || [], logisticKpi);
             const equipmentRows = normalizeEquipmentRows(data.equipment || []);
             equipmentRowsCache = equipmentRows;
@@ -1943,40 +1934,6 @@
                     scales: {
                         x: { min: 0, max: 100, grid: { color: "rgba(255,255,255,.06)" }, ticks: { color: "#8b96a5", callback: value => value + "%" } },
                         y: { grid: { display: false }, ticks: { color: "#8b96a5", font: { size: 10 } } }
-                    }
-                }
-            });
-        }
-
-        function renderMaterialChart(mat, project) {
-            const canvas = document.getElementById("materialChart");
-            if (!canvas) return;
-            const ctx = canvas.getContext("2d");
-            if (materialChartObj) materialChartObj.destroy();
-
-            const byMaterial = Array.isArray(mat.byMaterial) ? mat.byMaterial : [];
-
-            if (!byMaterial.length) {
-                clearCanvasWithMessage(canvas, "Data material belum tersedia.");
-                return;
-            }
-
-            materialChartObj = new Chart(ctx, {
-                type: "bar",
-                data: {
-                    labels: byMaterial.map(m => m.material),
-                    datasets: [
-                        { label: "Planned Volume (m³)", data: byMaterial.map(m => Number(m.planned || 0)), backgroundColor: "#94a3b8", borderRadius: 5 },
-                        { label: "TSL Received (m³)", data: byMaterial.map(m => Number(m.tslReceived || 0)), backgroundColor: "#16b3ab", borderRadius: 5 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: "#8b96a5", font: { family: "Inter", size: 11 } } } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: "#8b96a5" } },
-                        y: { grid: { color: "rgba(255,255,255,.06)" }, ticks: { color: "#8b96a5" } }
                     }
                 }
             });
@@ -2356,50 +2313,9 @@
                 return;
             }
 
-            const materialValuePlugin = {
-                id: "materialValuePlugin",
-                afterDatasetsDraw(chart) {
-                    const meta = chart.getDatasetMeta(0);
-                    const data = chart.data.datasets[0].data;
-                    const totalValue = data.reduce((a, b) => a + Number(b || 0), 0);
-                    const c = chart.ctx;
-                    c.save();
-                    c.font = "600 11px Inter, sans-serif";
-                    c.textAlign = "center";
-                    c.textBaseline = "middle";
-
-                    meta.data.forEach((arc, i) => {
-                        const value = Number(data[i] || 0);
-                        if (!value || !arc) return;
-                        const angle = (arc.startAngle + arc.endAngle) / 2;
-                        const radius = (arc.outerRadius + arc.innerRadius) / 2;
-                        const x = arc.x + Math.cos(angle) * radius;
-                        const y = arc.y + Math.sin(angle) * radius;
-                        const pct = totalValue ? (value / totalValue) * 100 : 0;
-
-                        // Keep labels readable; the remaining segment can be small.
-                        if (pct < 4) return;
-                        c.fillStyle = i === 0 ? "#ffffff" : "#334155";
-                        c.fillText(fmtNumber(value) + " m³", x, y - 6);
-                        c.font = "500 10px Inter, sans-serif";
-                        c.fillText(pct.toFixed(1) + "%", x, y + 8);
-                        c.font = "600 11px Inter, sans-serif";
-                    });
-
-                    // Center label: received percentage against the planned volume.
-                    const firstArc = meta.data[0];
-                    if (firstArc) {
-                        c.fillStyle = "#1f2937";
-                        c.font = "700 17px Inter, sans-serif";
-                        c.fillText(receivedPct.toFixed(1) + "%", firstArc.x, firstArc.y - 5);
-                        c.fillStyle = "#718096";
-                        c.font = "500 9px Inter, sans-serif";
-                        c.fillText("Received", firstArc.x, firstArc.y + 11);
-                    }
-                    c.restore();
-                }
-            };
-
+            // Clean donut: no in-chart text. Values are surfaced only via the
+            // legend below the chart (labels already carry m³ + %) and via
+            // the hover tooltip — keeps the chart visually uncluttered.
             materialDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
@@ -2427,8 +2343,7 @@
                             }
                         }
                     }
-                },
-                plugins: [materialValuePlugin]
+                }
             });
         }
 
@@ -2932,8 +2847,8 @@
 
                 // ---- Chart Slides ----
                 addChartSlide(pptx, "Project S-Curve & WBS Progress", ["sCurveChart", "wbsProgressChart"]);
-                addChartSlide(pptx, "Material & Logistic Monitoring", ["materialChart", "logisticChart"]);
-                addChartSlide(pptx, "Equipment Utilization & Material Distribution", ["equipmentChart", "materialDonutChart"]);
+                addChartSlide(pptx, "Material Received & Logistic Monitoring", ["materialDonutChart", "logisticChart"]);
+                addChartSlide(pptx, "Equipment Utilization", ["equipmentChart"]);
                 addChartSlide(pptx, "Loading Material & Risk Overview", ["loadingMaterialChart", "riskDonutChart"]);
 
                 // ---- Data Table Slides (auto-paged straight from the HTML tables) ----
