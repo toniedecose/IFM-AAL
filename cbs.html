@@ -10,49 +10,64 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* =====================================================
-           DESIGN TOKENS — "Site Survey" blueprint system, light mode
-           Light content canvas + navy-teal command sidebar
-           + survey-stake amber (signal / actual data)
+           DESIGN TOKENS — "Executive Site Survey" system
+           Deep navy/teal command sidebar + luminous content canvas
+           + a warm gold signal accent + a full engineering palette
+           (teal / blue / violet / amber / rose) used per data-domain
+           so the dashboard reads as rich, deliberate and boardroom-ready.
         ===================================================== */
         :root {
-            --bg-canvas: #f2f4f7;
+            --bg-canvas: #eef1f6;
             --bg-surface: #ffffff;
             --bg-card: #ffffff;
-            --bg-card-raised: #f7f9fb;
-            --border-subtle: #e2e7ee;
-            --border-color: #cdd5e0;
-            --text-primary: #16212e;
-            --text-secondary: #5b6b7d;
-            --text-muted: #8996a6;
+            --bg-card-raised: #f6f8fc;
+            --border-subtle: #e3e8f0;
+            --border-color: #ccd4e0;
+            --text-primary: #101a27;
+            --text-secondary: #576579;
+            --text-muted: #8994a8;
 
-            --sidebar-bg: #0f2530;
-            --sidebar-bg-raised: #163342;
+            --sidebar-bg: #0a1f2c;
+            --sidebar-bg-raised: #163449;
             --sidebar-border: rgba(255, 255, 255, 0.08);
-            --sidebar-text: #a9bac4;
-            --sidebar-text-dim: #6f8592;
+            --sidebar-text: #a9bbcb;
+            --sidebar-text-dim: #6f88a0;
 
-            --accent-teal: #2c7a7f;
-            --accent-teal-dim: rgba(44, 122, 127, 0.10);
+            /* Core brand accents */
+            --accent-teal: #1c7f88;
+            --accent-teal-bright: #16b3ab;
+            --accent-teal-dim: rgba(28, 127, 136, 0.11);
             --accent-amber: #c9821f;
-            --accent-amber-dim: rgba(201, 130, 31, 0.12);
+            --accent-amber-bright: #f0a52e;
+            --accent-amber-dim: rgba(201, 130, 31, 0.13);
+            --accent-blue: #3563c9;
+            --accent-blue-dim: rgba(53, 99, 201, 0.11);
+            --accent-violet: #7551c9;
+            --accent-violet-dim: rgba(117, 81, 201, 0.11);
+            --accent-rose: #c33d72;
+            --accent-rose-dim: rgba(195, 61, 114, 0.11);
 
-            --success: #2f9e6e;
-            --success-dim: rgba(47, 158, 110, 0.11);
-            --warning: #c9821f;
-            --warning-dim: rgba(201, 130, 31, 0.12);
-            --danger: #c94a3f;
-            --danger-dim: rgba(201, 74, 63, 0.11);
-            --neutral-dim: rgba(91, 107, 125, 0.09);
+            --success: #1c9d63;
+            --success-bright: #22b876;
+            --success-dim: rgba(28, 157, 99, 0.12);
+            --warning: #d1890f;
+            --warning-dim: rgba(209, 137, 15, 0.13);
+            --danger: #d13d34;
+            --danger-dim: rgba(209, 61, 52, 0.12);
+            --neutral-dim: rgba(87, 101, 121, 0.09);
 
             --font-display: 'Space Grotesk', 'Inter', sans-serif;
             --font-body: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
 
             --sidebar-width: 272px;
-            --header-height: 72px;
-            --radius: 8px;
-            --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
+            --header-height: 76px;
+            --radius: 10px;
+            --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 18px -6px rgba(16, 40, 60, 0.10);
+            --shadow-card-hover: 0 4px 10px rgba(16, 24, 40, 0.06), 0 16px 32px -12px rgba(16, 40, 60, 0.16);
             --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+            --gradient-signal: linear-gradient(90deg, #16b3ab 0%, #3563c9 32%, #7551c9 62%, #f0a52e 100%);
         }
 
         * {
@@ -65,9 +80,12 @@
             font-family: var(--font-body);
             background-color: var(--bg-canvas);
             background-image:
-                linear-gradient(rgba(16,37,48,0.025) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(16,37,48,0.025) 1px, transparent 1px);
-            background-size: 32px 32px;
+                radial-gradient(circle at 6% 0%, rgba(28, 127, 136, 0.07), transparent 42%),
+                radial-gradient(circle at 96% 12%, rgba(201, 130, 31, 0.06), transparent 38%),
+                radial-gradient(circle at 50% 100%, rgba(117, 81, 201, 0.045), transparent 45%),
+                linear-gradient(rgba(16,37,48,0.028) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(16,37,48,0.028) 1px, transparent 1px);
+            background-size: auto, auto, auto, 32px 32px, 32px 32px;
             color: var(--text-primary);
             display: flex;
             min-height: 100vh;
@@ -97,29 +115,35 @@
             width: 10px;
             height: 10px;
             pointer-events: none;
-            opacity: 0.8;
+            opacity: 0.85;
             transition: var(--transition);
         }
         .card::before, .kpi-card::before, .info-card::before, .health-card::before {
             top: -1px; left: -1px;
-            border-top: 1.5px solid var(--accent-teal);
-            border-left: 1.5px solid var(--accent-teal);
+            border-top: 1.5px solid var(--accent-teal-bright);
+            border-left: 1.5px solid var(--accent-teal-bright);
         }
         .card::after, .kpi-card::after, .info-card::after, .health-card::after {
             bottom: -1px; right: -1px;
-            border-bottom: 1.5px solid var(--accent-teal);
-            border-right: 1.5px solid var(--accent-teal);
+            border-bottom: 1.5px solid var(--accent-teal-bright);
+            border-right: 1.5px solid var(--accent-teal-bright);
+        }
+        .card:hover, .kpi-card:hover, .info-card:hover, .health-card:hover {
+            box-shadow: var(--shadow-card-hover);
+            transform: translateY(-1px);
         }
         .card:hover::before, .card:hover::after,
         .kpi-card:hover::before, .kpi-card:hover::after {
-            border-color: var(--accent-amber);
+            border-color: var(--accent-amber-bright);
             opacity: 1;
         }
 
         /* Sidebar — command panel, deliberately distinct from light content area */
         aside {
             width: var(--sidebar-width);
-            background-color: var(--sidebar-bg);
+            background:
+                radial-gradient(circle at 15% 0%, rgba(22, 179, 171, 0.16), transparent 40%),
+                linear-gradient(190deg, #0a1f2c 0%, #0d2836 55%, #123646 100%);
             border-right: 1px solid var(--sidebar-border);
             display: flex;
             flex-direction: column;
@@ -129,6 +153,14 @@
             left: 0;
             z-index: 100;
             transition: var(--transition);
+        }
+        aside::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            width: 3px;
+            background: var(--gradient-signal);
+            opacity: 0.9;
         }
 
         .sidebar-brand {
@@ -143,6 +175,7 @@
             width: 34px;
             height: 34px;
             flex-shrink: 0;
+            filter: drop-shadow(0 2px 6px rgba(22, 179, 171, 0.35));
         }
 
         .sidebar-brand h2 {
@@ -151,11 +184,15 @@
             font-weight: 700;
             letter-spacing: 0.04em;
             line-height: 1.2;
+            background: linear-gradient(90deg, #ffffff, #bfe9e6);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .sidebar-brand p {
             font-size: 0.625rem;
-            color: var(--accent-amber);
+            color: var(--accent-amber-bright);
             margin-top: 3px;
             text-transform: uppercase;
             letter-spacing: 0.12em;
@@ -183,7 +220,7 @@
             font-size: 0.8125rem;
             font-weight: 500;
             letter-spacing: 0.01em;
-            border-radius: 6px;
+            border-radius: 7px;
             border-left: 2px solid transparent;
             transition: var(--transition);
         }
@@ -195,8 +232,8 @@
 
         .sidebar-menu li.active a {
             color: #ffffff;
-            background-color: var(--sidebar-bg-raised);
-            border-left: 2px solid var(--accent-amber);
+            background: linear-gradient(90deg, rgba(22, 179, 171, 0.22), rgba(22, 179, 171, 0.02));
+            border-left: 2px solid var(--accent-amber-bright);
             font-weight: 600;
         }
 
@@ -212,8 +249,8 @@
         /* Header */
         header {
             height: var(--header-height);
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(14px);
             border-bottom: 1px solid var(--border-subtle);
             padding: 0 32px;
             display: flex;
@@ -222,6 +259,13 @@
             position: sticky;
             top: 0;
             z-index: 50;
+        }
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--gradient-signal);
         }
 
         .header-title h1 {
@@ -248,7 +292,7 @@
 
         .badge-status {
             padding: 4px 11px;
-            border-radius: 4px;
+            border-radius: 5px;
             font-weight: 600;
             font-size: 0.6875rem;
             font-family: var(--font-mono);
@@ -279,7 +323,7 @@
 
         .btn {
             padding: 9px 18px;
-            border-radius: 6px;
+            border-radius: 7px;
             font-size: 0.8125rem;
             font-weight: 600;
             letter-spacing: 0.01em;
@@ -295,11 +339,12 @@
         }
 
         .btn-primary {
-            background: var(--accent-amber);
-            color: #191307;
+            background: linear-gradient(135deg, var(--accent-amber-bright), var(--accent-amber));
+            color: #201304;
             border-color: var(--accent-amber);
+            box-shadow: 0 2px 8px rgba(201, 130, 31, 0.28);
         }
-        .btn-primary:hover { background: #eeb556; }
+        .btn-primary:hover { background: linear-gradient(135deg, #f6b64c, #dd9530); box-shadow: 0 4px 14px rgba(201, 130, 31, 0.38); transform: translateY(-1px); }
         .btn:hover { background: var(--bg-card-raised); border-color: var(--border-color); }
 
         /* Project Snapshot Strip */
@@ -312,12 +357,18 @@
             border-radius: var(--radius);
             background: var(--border-subtle);
             overflow: hidden;
+            box-shadow: var(--shadow-card);
         }
         .project-snapshot > div {
             min-width: 0;
             background: var(--bg-surface);
             padding: 14px 18px;
+            border-top: 2px solid transparent;
         }
+        .project-snapshot > div:nth-child(1) { border-top-color: var(--accent-teal-bright); }
+        .project-snapshot > div:nth-child(2) { border-top-color: var(--accent-blue); }
+        .project-snapshot > div:nth-child(3) { border-top-color: var(--accent-violet); }
+        .project-snapshot > div:nth-child(4) { border-top-color: var(--accent-amber-bright); }
         .snapshot-label {
             display: block;
             font-size: 10px;
@@ -388,6 +439,14 @@
             align-items: center;
             gap: 12px;
         }
+        .section-title::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            background: var(--gradient-signal);
+            flex-shrink: 0;
+        }
 
         .section-title::after {
             content: '';
@@ -407,10 +466,18 @@
         .kpi-card {
             background: var(--bg-surface);
             border: 1px solid var(--border-subtle);
+            border-top: 3px solid var(--accent-teal-bright);
             border-radius: var(--radius);
             padding: 20px;
             transition: var(--transition);
         }
+        .kpi-grid .kpi-card:nth-child(1) { border-top-color: var(--accent-teal-bright); }
+        .kpi-grid .kpi-card:nth-child(2) { border-top-color: var(--accent-blue); }
+        .kpi-grid .kpi-card:nth-child(3) { border-top-color: var(--accent-violet); }
+        .kpi-grid .kpi-card:nth-child(4) { border-top-color: var(--accent-amber-bright); }
+        .kpi-grid .kpi-card:nth-child(5) { border-top-color: var(--accent-rose); }
+        .kpi-grid .kpi-card:nth-child(6) { border-top-color: var(--success-bright); }
+        .kpi-grid .kpi-card:nth-child(7) { border-top-color: var(--accent-blue); }
 
         .kpi-card:hover {
             border-color: var(--border-color);
@@ -419,7 +486,7 @@
 
         .kpi-header {
             font-size: 0.6875rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-secondary);
             text-transform: uppercase;
             margin-bottom: 14px;
@@ -433,8 +500,8 @@
         }
 
         .kpi-value {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.625rem;
+            font-weight: 700;
             color: var(--text-primary);
             letter-spacing: -0.01em;
         }
@@ -473,6 +540,10 @@
             gap: 16px;
             margin-bottom: 32px;
         }
+        .donut-grid .card:nth-child(1) { border-top: 3px solid var(--accent-teal-bright); }
+        .donut-grid .card:nth-child(2) { border-top: 3px solid var(--success-bright); }
+        .donut-grid .card:nth-child(3) { border-top: 3px solid var(--accent-rose); }
+        .donut-grid .card:nth-child(4) { border-top: 3px solid var(--accent-violet); }
         .chart-container-donut {
             height: 220px;
         }
@@ -510,14 +581,24 @@
         }
 
         .health-indicator {
-            display: inline-block;
-            padding: 4px 13px;
-            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            border-radius: 20px;
             font-family: var(--font-mono);
             font-size: 0.6875rem;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
+        }
+        .health-indicator::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 0 3px currentColor22;
         }
         .health-green   { background: var(--success-dim); color: var(--success); }
         .health-yellow  { background: var(--warning-dim); color: var(--warning); }
@@ -538,14 +619,14 @@
         }
 
         th {
-            background: var(--bg-card);
+            background: var(--bg-card-raised);
             color: var(--text-secondary);
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
             font-size: 0.6875rem;
             letter-spacing: 0.06em;
             padding: 12px 16px;
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 2px solid var(--border-subtle);
             position: sticky;
             top: 0;
         }
@@ -557,18 +638,23 @@
             font-size: 0.8125rem;
         }
 
+        tbody tr:nth-child(even) td {
+            background: rgba(28, 127, 136, 0.025);
+        }
+
         tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--accent-teal-dim);
         }
 
         /* AI Intelligence Panel Components */
         .ai-intelligence-wrapper {
-            background: var(--bg-surface);
+            background: linear-gradient(180deg, #ffffff, #fbfaf7);
             border: 1px solid var(--border-subtle);
-            border-left: 4px solid var(--accent-amber);
+            border-left: 4px solid var(--accent-amber-bright);
             border-radius: var(--radius);
             padding: 24px;
             margin-bottom: 32px;
+            box-shadow: var(--shadow-card);
         }
         .ai-exec-summary-box {
             background: var(--bg-card-raised);
@@ -586,12 +672,12 @@
         .ai-exec-item {
             background: var(--bg-surface);
             padding: 14px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: 1px solid var(--border-subtle);
         }
         .ai-exec-item label {
             font-size: 0.6875rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-muted);
             text-transform: uppercase;
             display: block;
@@ -604,7 +690,7 @@
         }
         .ai-alert-item {
             padding: 12px 14px;
-            border-radius: 6px;
+            border-radius: 8px;
             margin-bottom: 8px;
             font-size: 0.8125rem;
             display: flex;
@@ -620,12 +706,13 @@
         .ai-rec-card {
             background: var(--bg-card-raised);
             border: 1px solid var(--border-subtle);
-            border-radius: 6px;
+            border-left: 3px solid var(--accent-violet);
+            border-radius: 8px;
             padding: 14px 16px;
             margin-bottom: 12px;
         }
         .ai-rec-header {
-            font-weight: 600;
+            font-weight: 700;
             font-size: 0.8125rem;
             color: var(--accent-amber);
             margin-bottom: 6px;
@@ -662,13 +749,14 @@
             transition: var(--transition);
         }
         .chip:hover {
-            border-color: var(--accent-amber);
+            border-color: var(--accent-amber-bright);
             color: var(--text-primary);
+            background: var(--accent-amber-dim);
         }
         .ai-response-output {
             background: var(--bg-surface);
             border: 1px solid var(--border-subtle);
-            border-radius: 6px;
+            border-radius: 8px;
             padding: 16px;
             margin-top: 12px;
             font-size: 0.8125rem;
@@ -1747,7 +1835,7 @@
                         {
                             label: "Planned",
                             data: planned,
-                            borderColor: "#5f6b7c",
+                            borderColor: "#94a3b8",
                             backgroundColor: "transparent",
                             borderWidth: 2,
                             borderDash: [4, 3],
@@ -1757,7 +1845,7 @@
                         {
                             label: "Actual",
                             data: actual,
-                            borderColor: "#e0a339",
+                            borderColor: "#f0a52e",
                             backgroundColor: "transparent",
                             borderWidth: 2.5,
                             tension: 0.15,
@@ -1835,8 +1923,8 @@
                 data: {
                     labels,
                     datasets: [
-                        { label: "Planned", data: plannedData, backgroundColor: "#2a3441", borderRadius: 3 },
-                        { label: "Actual", data: actualData, backgroundColor: "#e0a339", borderRadius: 3 }
+                        { label: "Planned", data: plannedData, backgroundColor: "#3563c9", borderRadius: 4 },
+                        { label: "Actual", data: actualData, backgroundColor: "#f0a52e", borderRadius: 4 }
                     ]
                 },
                 options: {
@@ -1878,8 +1966,8 @@
                 data: {
                     labels: byMaterial.map(m => m.material),
                     datasets: [
-                        { label: "Planned Volume (m³)", data: byMaterial.map(m => Number(m.planned || 0)), backgroundColor: "#8996a6", borderRadius: 4 },
-                        { label: "TSL Received (m³)", data: byMaterial.map(m => Number(m.tslReceived || 0)), backgroundColor: "#3f8f92", borderRadius: 4 }
+                        { label: "Planned Volume (m³)", data: byMaterial.map(m => Number(m.planned || 0)), backgroundColor: "#94a3b8", borderRadius: 5 },
+                        { label: "TSL Received (m³)", data: byMaterial.map(m => Number(m.tslReceived || 0)), backgroundColor: "#16b3ab", borderRadius: 5 }
                     ]
                 },
                 options: {
@@ -1915,8 +2003,8 @@
                     datasets: [{
                         label: "Delivery (m³)",
                         data: values,
-                        borderColor: "#4fae83",
-                        backgroundColor: "rgba(79,174,131,.1)",
+                        borderColor: "#22b876",
+                        backgroundColor: "rgba(34,184,118,.12)",
                         fill: true,
                         tension: 0.2,
                         borderWidth: 2
@@ -1932,7 +2020,7 @@
             const raw = String(value).trim();
 
             // Common Google Sheet/display formats: DD/MM/YYYY, DD-MM-YYYY.
-            let m = raw.match(/^(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{4})/);
+            let m = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
             if (m) {
                 const dd = String(m[1]).padStart(2, "0");
                 const mm = String(m[2]).padStart(2, "0");
@@ -1940,7 +2028,7 @@
             }
 
             // ISO / YYYY-MM-DD.
-            m = raw.match(/^(\\d{4})-(\\d{1,2})-(\\d{1,2})/);
+            m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
             if (m) {
                 return `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
             }
@@ -2134,7 +2222,7 @@
             }
 
             const dateKeys = [...new Set(rows.map(r => r.dateKey).filter(Boolean))].sort();
-            const activityColors = ["#2c7a7f", "#4778a8", "#7a5c9e", "#b07a3f", "#5d8b57"];
+            const activityColors = ["#16b3ab", "#3563c9", "#7551c9", "#f0a52e", "#c33d72"];
             const datasets = EQUIPMENT_ACTIVITIES.map((activity, index) => {
                 let cumulative = 0;
                 const values = dateKeys.map(date => {
@@ -2321,7 +2409,7 @@
                     ],
                     datasets: [{
                         data: [received, remaining],
-                        backgroundColor: ["#2c7a7f", "#dbe3ea"],
+                        backgroundColor: ["#16b3ab", "#e2e7ee"],
                         borderWidth: 0
                     }]
                 },
@@ -2366,7 +2454,7 @@
                 type: "doughnut",
                 data: {
                     labels: ["Pass", "Fail"],
-                    datasets: [{ data: [pass, fail], backgroundColor: ["#2f9e6e", "#c94a3f"], borderWidth: 0 }]
+                    datasets: [{ data: [pass, fail], backgroundColor: ["#22b876", "#d13d34"], borderWidth: 0 }]
                 },
                 options: donutOptions()
             });
@@ -2392,7 +2480,7 @@
                 type: "pie",
                 data: {
                     labels: ["Critical", "High", "Moderate / Low"],
-                    datasets: [{ data: [critical, high, moderate], backgroundColor: ["#c94a3f", "#c9821f", "#8996a6"], borderWidth: 0 }]
+                    datasets: [{ data: [critical, high, moderate], backgroundColor: ["#d13d34", "#f0a52e", "#94a3b8"], borderWidth: 0 }]
                 },
                 options: donutOptions()
             });
@@ -2417,7 +2505,7 @@
                 type: "doughnut",
                 data: {
                     labels: ["Working", "Available", "Downtime"],
-                    datasets: [{ data: [working, available, downtime], backgroundColor: ["#2c7a7f", "#6b8fae", "#c9821f"], borderWidth: 0 }]
+                    datasets: [{ data: [working, available, downtime], backgroundColor: ["#16b3ab", "#3563c9", "#f0a52e"], borderWidth: 0 }]
                 },
                 options: donutOptions()
             });
