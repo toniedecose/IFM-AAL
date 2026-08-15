@@ -859,6 +859,18 @@
             }
         }
 
+        /* Sections whose tables carry many columns (Logistic Log, Quality
+           Control, etc.) get squeezed and visually "cut off" when forced
+           into a 2-column dashboard-grid on typical laptop widths
+           (~1280–1440px), because table-responsive's horizontal scrollbar
+           isn't obvious at a glance. Fix: these sections always render as
+           a single full-width column, so every table gets the full card
+           width and only needs to scroll horizontally on very narrow
+           screens (handled by table-responsive's overflow-x already). */
+        .dashboard-grid-stacked {
+            grid-template-columns: 1fr;
+        }
+
         /* Responsive */
         @media (max-width: 1024px) {
             aside { transform: translateX(-100%); }
@@ -1149,7 +1161,7 @@
                 </div>
             </div>
 
-            <div class="dashboard-grid">
+            <div class="dashboard-grid dashboard-grid-stacked">
                 <div class="card">
                     <div class="section-title" style="border:none; margin-bottom:16px;">Material Log</div>
                     <div class="table-responsive">
@@ -1195,9 +1207,9 @@
             </div>
 
             <!-- Equipment & Quality Section -->
-            <div class="dashboard-grid" id="equipment-section">
+            <div class="dashboard-grid dashboard-grid-stacked" id="equipment-section">
                 <div class="card">
-                    <div class="section-title" style="border:none; margin-bottom:10px;">Equipment Utilization</div>
+                    <div class="section-title" style="border:none; margin-bottom:10px;">Internal Equipment Utilization</div>
                     <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:14px; padding:10px 0 2px;">
                         <div style="min-width:120px;">
                             <label style="display:block; font-size:.68rem; color:#6b7b8c; margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;">View</label>
@@ -1410,6 +1422,9 @@
         let logisticChartObj = null;
         let equipmentChartObj = null;
         let equipmentRowsCache = [];
+        // Kept identical to the raw "Activity" value stored in the EQUIPMENT
+        // sheet — this array is used to MATCH incoming rows, so its values
+        // must not change even if the on-screen label changes.
         const EQUIPMENT_ACTIVITIES = [
             "Persiapan Area",
             "Unloading Material",
@@ -1417,6 +1432,21 @@
             "Hampar Material",
             "Compaction"
         ];
+
+        // Display-only labels shown in the UI (cards, chart legend, table).
+        // Kept separate from EQUIPMENT_ACTIVITIES so renaming a label here
+        // never breaks matching against the backend/sheet's raw values.
+        const EQUIPMENT_ACTIVITY_LABELS = {
+            "Persiapan Area": "Persiapan Area",
+            "Unloading Material": "Unloading Material",
+            "Angkut Material": "Hauling Material",
+            "Hampar Material": "Hampar Material",
+            "Compaction": "Compaction"
+        };
+
+        function equipmentActivityLabel(activity) {
+            return EQUIPMENT_ACTIVITY_LABELS[activity] || activity;
+        }
         let equipmentDateFilterBound = false;
         let materialDonutChartObj = null;
         let loadingMaterialChartObj = null;
@@ -2133,7 +2163,7 @@
 
                 return `
                     <div style="border:1px solid #dbe3ea; border-radius:5px; padding:9px 10px; background:#fff; min-width:0;">
-                        <div style="font-size:.62rem; color:#68798a; text-transform:uppercase; letter-spacing:.04em; line-height:1.25; min-height:28px;">${escapeHtml(activity)}</div>
+                        <div style="font-size:.62rem; color:#68798a; text-transform:uppercase; letter-spacing:.04em; line-height:1.25; min-height:28px;">${escapeHtml(equipmentActivityLabel(activity))}</div>
                         <div class="mono" style="font-size:1rem; font-weight:600; color:#233242; margin-top:5px;">
                             ${activityRows.length ? fmtNumber(totalOutput) : "—"} ${escapeHtml(outputUnit)}
                         </div>
@@ -2191,8 +2221,9 @@
                 });
                 const units = [...new Set(rows.filter(r => r.activity === activity).map(r => r.outputUnit).filter(Boolean))];
                 const unit = units.length === 1 ? units[0] : (units.length ? units.join(" / ") : "");
+                const label = equipmentActivityLabel(activity);
                 return {
-                    label: unit ? `${activity} (${unit})` : activity,
+                    label: unit ? `${label} (${unit})` : label,
                     data: values,
                     borderColor: activityColors[index],
                     backgroundColor: "transparent",
@@ -2264,7 +2295,7 @@
             tbody.innerHTML = rows.slice().sort((a,b) => String(b.date).localeCompare(String(a.date))).map(r => `
                 <tr>
                     <td>${escapeHtml(formatDate(r.date))}</td>
-                    <td>${escapeHtml(r.activity || "—")}</td>
+                    <td>${escapeHtml(equipmentActivityLabel(r.activity) || "—")}</td>
                     <td>${escapeHtml(r.equipment || "—")}</td>
                     <td>${fmtNumber(r.usage)} ${escapeHtml(r.unit || "")}</td>
                     <td>${fmtNumber(r.fuel)} L</td>
@@ -2313,9 +2344,31 @@
                 return;
             }
 
-            // Clean donut: no in-chart text. Values are surfaced only via the
-            // legend below the chart (labels already carry m³ + %) and via
-            // the hover tooltip — keeps the chart visually uncluttered.
+            // Center label plugin: mirrors the "Loading Material" donut so both
+            // charts show their headline % consistently in the middle of the ring.
+            const materialValuePlugin = {
+                id: "materialValuePlugin",
+                afterDatasetsDraw(chart) {
+                    const meta = chart.getDatasetMeta(0);
+                    const firstArc = meta.data[0];
+                    if (!firstArc) return;
+                    const c = chart.ctx;
+                    c.save();
+                    c.textAlign = "center";
+                    c.textBaseline = "middle";
+                    c.fillStyle = "#1f2937";
+                    c.font = "700 17px Inter, sans-serif";
+                    c.fillText(receivedPct.toFixed(1) + "%", firstArc.x, firstArc.y - 5);
+                    c.fillStyle = "#718096";
+                    c.font = "500 9px Inter, sans-serif";
+                    c.fillText("Received", firstArc.x, firstArc.y + 11);
+                    c.restore();
+                }
+            };
+
+            // Clean donut: value % now rendered in the center via the plugin
+            // above (matching Loading Material). Legend below still carries
+            // the full m³ + % breakdown, and hover tooltip gives exact values.
             materialDonutChartObj = new Chart(ctx, {
                 type: "doughnut",
                 data: {
@@ -2343,7 +2396,8 @@
                             }
                         }
                     }
-                }
+                },
+                plugins: [materialValuePlugin]
             });
         }
 
