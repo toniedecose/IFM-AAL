@@ -1465,6 +1465,9 @@
         let logisticChartObj = null;
         let equipmentChartObj = null;
         let equipmentRowsCache = [];
+        // LOGISTIC is the source of truth for Hauling Material volume.
+        // Keep it separate from EQUIPMENT so the date filter can combine both datasets.
+        let logisticRowsCache = [];
         // Kept identical to the raw "Activity" value stored in the EQUIPMENT
         // sheet — this array is used to MATCH incoming rows, so its values
         // must not change even if the on-screen label changes.
@@ -1657,8 +1660,10 @@
             renderWbsChart(data.schedule || [], data.progress || []);
             renderLogisticChart(data.logistic || [], logisticKpi);
             const equipmentRows = normalizeEquipmentRows(data.equipment || []);
+            const logisticRows = normalizeLogisticRowsForEquipment(data.logistic || []);
             equipmentRowsCache = equipmentRows;
-            setupEquipmentDateFilter(equipmentRows);
+            logisticRowsCache = logisticRows;
+            setupEquipmentDateFilter(equipmentRows, logisticRows);
             applyEquipmentDateFilter();
 
             renderMaterialDonut(materialKpi, project);
@@ -2098,7 +2103,28 @@
             }).filter(r => EQUIPMENT_ACTIVITIES.includes(r.activity));
         }
 
-        function setupEquipmentDateFilter(rows) {
+
+        // LOGISTIC date/volume normalization used by the Internal Equipment Utilization
+        // section. The LOGISTIC sheet is the source of truth for Hauling Material.
+        function normalizeLogisticRowsForEquipment(rows) {
+            return (Array.isArray(rows) ? rows : []).map(r => {
+                const date = r.Date ?? r.date ?? "";
+                const activity = String(r.Activity ?? r.activity ?? "").trim();
+                const volume = Number(r.Volume ?? r.volume ?? 0);
+                return {
+                    date,
+                    dateKey: equipmentDateKey(date),
+                    activity,
+                    volume: Number.isFinite(volume) ? Math.max(volume, 0) : 0
+                };
+            }).filter(r => r.dateKey);
+        }
+
+        function getLogisticVolumeForEquipmentView(rows) {
+            return (Array.isArray(rows) ? rows : []).reduce((sum, r) => sum + (Number(r.volume) || 0), 0);
+        }
+
+        function setupEquipmentDateFilter(rows, logisticRows = logisticRowsCache) {
             const mode = document.getElementById("equipment-date-mode");
             const single = document.getElementById("equipment-date-single");
             const start = document.getElementById("equipment-date-start");
@@ -2109,7 +2135,15 @@
             const endWrap = document.getElementById("equipment-date-end-wrap");
             if (!mode || !single || !start || !end || !button) return;
 
-            const dates = [...new Set(rows.map(r => r.dateKey).filter(Boolean))].sort();
+            // IMPORTANT:
+            // The date selector must include dates from BOTH EQUIPMENT and LOGISTIC.
+            // Hauling Material comes from LOGISTIC, so using EQUIPMENT dates alone
+            // can incorrectly make the selector show only one date (e.g. the 17th).
+            const dates = [...new Set([
+                ...(Array.isArray(rows) ? rows.map(r => r.dateKey) : []),
+                ...(Array.isArray(logisticRows) ? logisticRows.map(r => r.dateKey) : [])
+            ].filter(Boolean))].sort();
+
             if (dates.length) {
                 const minDate = dates[0];
                 const maxDate = dates[dates.length - 1];
@@ -2119,10 +2153,15 @@
                     el.max = maxDate;
                 });
 
-                // Default controls are prepared, but NOT applied automatically.
                 single.value = maxDate;
                 start.value = minDate;
                 end.value = maxDate;
+            } else {
+                [single, start, end].forEach(el => {
+                    el.removeAttribute("min");
+                    el.removeAttribute("max");
+                    el.value = "";
+                });
             }
 
             const updateControls = () => {
@@ -2139,15 +2178,10 @@
             if (!equipmentDateFilterBound) {
                 mode.addEventListener("change", () => {
                     updateControls();
-                    if (mode.value === "all") {
-                        applyEquipmentDateFilter();
-                    }
+                    if (mode.value === "all") applyEquipmentDateFilter();
                 });
 
-                button.addEventListener("click", () => {
-                    applyEquipmentDateFilter();
-                });
-
+                button.addEventListener("click", () => applyEquipmentDateFilter());
                 equipmentDateFilterBound = true;
             }
         }
@@ -2155,11 +2189,10 @@
         function applyEquipmentDateFilter() {
             const mode = document.getElementById("equipment-date-mode")?.value || "all";
 
-            // Initial dashboard state: show ALL available equipment data.
             if (mode === "all") {
-                renderEquipmentSummary(equipmentRowsCache, null);
-                renderEquipmentActivitySummary(equipmentRowsCache);
-                renderEquipmentChart(equipmentRowsCache);
+                renderEquipmentSummary(equipmentRowsCache, null, logisticRowsCache);
+                renderEquipmentActivitySummary(equipmentRowsCache, logisticRowsCache);
+                renderEquipmentChart(equipmentRowsCache, logisticRowsCache);
                 renderEquipmentTable(equipmentRowsCache);
                 return;
             }
@@ -2175,32 +2208,45 @@
 
             if (start && end && start > end) [start, end] = [end, start];
 
-            const filtered = equipmentRowsCache.filter(r => {
-                if (!r.dateKey) return false;
-                if (start && r.dateKey < start) return false;
-                if (end && r.dateKey > end) return false;
+            const inRange = (dateKey) => {
+                if (!dateKey) return false;
+                if (start && dateKey < start) return false;
+                if (end && dateKey > end) return false;
                 return true;
-            });
+            };
 
-            renderEquipmentSummary(filtered, null);
-            renderEquipmentActivitySummary(filtered);
-            renderEquipmentChart(filtered);
-            renderEquipmentTable(filtered);
+            const filteredEquipment = equipmentRowsCache.filter(r => inRange(r.dateKey));
+            const filteredLogistic = logisticRowsCache.filter(r => inRange(r.dateKey));
+
+            renderEquipmentSummary(filteredEquipment, null, filteredLogistic);
+            renderEquipmentActivitySummary(filteredEquipment, filteredLogistic);
+            renderEquipmentChart(filteredEquipment, filteredLogistic);
+            renderEquipmentTable(filteredEquipment);
         }
 
-        function renderEquipmentActivitySummary(rows) {
+        function renderEquipmentActivitySummary(rows, logisticRows = []) {
             const container = document.getElementById("equipment-activity-summary");
             if (!container) return;
 
+            const haulingVolume = getLogisticVolumeForEquipmentView(logisticRows);
+
             container.innerHTML = EQUIPMENT_ACTIVITIES.map(activity => {
                 const activityRows = rows.filter(r => r.activity === activity);
-                const outputUnits = [...new Set(activityRows.map(r => r.outputUnit).filter(Boolean))];
+                const isHauling = activity === "Angkut Material";
+
+                // Hauling Material is sourced from TOTAL Volume in LOGISTIC.
+                const outputUnits = isHauling
+                    ? (haulingVolume > 0 ? ["m³"] : [])
+                    : [...new Set(activityRows.map(r => r.outputUnit).filter(Boolean))];
                 const usageUnits = [...new Set(activityRows.map(r => r.unit).filter(Boolean))];
 
-                const totalOutput = activityRows.reduce((sum, r) => sum + r.output, 0);
+                const totalOutput = isHauling
+                    ? haulingVolume
+                    : activityRows.reduce((sum, r) => sum + r.output, 0);
                 const totalFuel = activityRows.reduce((sum, r) => sum + r.fuel, 0);
                 const totalUsage = activityRows.reduce((sum, r) => sum + r.usage, 0);
 
+                const hasData = isHauling ? logisticRows.length > 0 : activityRows.length > 0;
                 const outputUnit = outputUnits.length === 1 ? outputUnits[0] : (outputUnits.length ? "Mixed" : "");
                 const usageUnit = usageUnits.length === 1 ? usageUnits[0] : (usageUnits.length ? "Mixed" : "");
 
@@ -2208,17 +2254,19 @@
                     <div style="border:1px solid #dbe3ea; border-radius:5px; padding:9px 10px; background:#fff; min-width:0;">
                         <div style="font-size:.62rem; color:#68798a; text-transform:uppercase; letter-spacing:.04em; line-height:1.25; min-height:28px;">${escapeHtml(equipmentActivityLabel(activity))}</div>
                         <div class="mono" style="font-size:1rem; font-weight:600; color:#233242; margin-top:5px;">
-                            ${activityRows.length ? fmtNumber(totalOutput) : "—"} ${escapeHtml(outputUnit)}
+                            ${hasData ? fmtNumber(totalOutput) : "—"} ${escapeHtml(outputUnit)}
                         </div>
                         <div style="font-size:.62rem; color:#7b8896; margin-top:3px;">
-                            ${activityRows.length ? `${fmtNumber(totalUsage)} ${escapeHtml(usageUnit)} · ${fmtNumber(totalFuel)} L` : "Belum ada data"}
+                            ${isHauling
+                                ? (hasData ? "Source: LOGISTIC · Volume" : "Belum ada data")
+                                : (hasData ? `${fmtNumber(totalUsage)} ${escapeHtml(usageUnit)} · ${fmtNumber(totalFuel)} L` : "Belum ada data")}
                         </div>
                     </div>
                 `;
             }).join("");
         }
 
-        function renderEquipmentSummary(rows, project) {
+        function renderEquipmentSummary(rows, project, logisticRows = []) {
             const usageUnits = [...new Set(rows.map(r => r.unit).filter(Boolean))];
             const outputUnits = [...new Set(rows.map(r => r.outputUnit).filter(Boolean))];
             const singleUsageUnit = usageUnits.length === 1 ? usageUnits[0] : "";
@@ -2240,29 +2288,43 @@
             setText("equipment-productivity-unit", productivity ? `${singleOutputUnit} / ${singleUsageUnit}` : "Output / Usage");
         }
 
-        function renderEquipmentChart(rows) {
+        function renderEquipmentChart(rows, logisticRows = []) {
             const canvas = document.getElementById("equipmentChart");
             if (!canvas) return;
             const ctx = canvas.getContext("2d");
             if (equipmentChartObj) equipmentChartObj.destroy();
 
-            if (!rows.length) {
-                clearCanvasWithMessage(canvas, "Belum ada data equipment pada periode terpilih.");
+            // Include dates from LOGISTIC as well as EQUIPMENT.
+            const dateKeys = [...new Set([
+                ...(Array.isArray(rows) ? rows.map(r => r.dateKey) : []),
+                ...(Array.isArray(logisticRows) ? logisticRows.map(r => r.dateKey) : [])
+            ].filter(Boolean))].sort();
+
+            if (!dateKeys.length) {
+                clearCanvasWithMessage(canvas, "Belum ada data equipment/logistic pada periode terpilih.");
                 return;
             }
 
-            const dateKeys = [...new Set(rows.map(r => r.dateKey).filter(Boolean))].sort();
             const activityColors = ["#16b3ab", "#3563c9", "#7551c9", "#f0a52e", "#c33d72"];
             const datasets = EQUIPMENT_ACTIVITIES.map((activity, index) => {
                 let cumulative = 0;
+                const isHauling = activity === "Angkut Material";
+
                 const values = dateKeys.map(date => {
-                    const daily = rows
-                        .filter(r => r.activity === activity && r.dateKey === date)
-                        .reduce((sum, r) => sum + r.output, 0);
+                    const daily = isHauling
+                        ? logisticRows
+                            .filter(r => r.dateKey === date)
+                            .reduce((sum, r) => sum + r.volume, 0)
+                        : rows
+                            .filter(r => r.activity === activity && r.dateKey === date)
+                            .reduce((sum, r) => sum + r.output, 0);
                     cumulative += daily;
                     return cumulative;
                 });
-                const units = [...new Set(rows.filter(r => r.activity === activity).map(r => r.outputUnit).filter(Boolean))];
+
+                const units = isHauling
+                    ? ["m³"]
+                    : [...new Set(rows.filter(r => r.activity === activity).map(r => r.outputUnit).filter(Boolean))];
                 const unit = units.length === 1 ? units[0] : (units.length ? units.join(" / ") : "");
                 const label = equipmentActivityLabel(activity);
                 return {
@@ -2280,7 +2342,7 @@
             }).filter(ds => ds.data.some(v => v > 0));
 
             if (!datasets.length) {
-                clearCanvasWithMessage(canvas, "Belum ada output equipment pada periode terpilih.");
+                clearCanvasWithMessage(canvas, "Belum ada output equipment/logistic pada periode terpilih.");
                 return;
             }
 
