@@ -408,6 +408,10 @@ function renderSCurve(kurvaS) {
     },
     options: {
       responsive: true,
+      // Animasi dimatikan: chart di-destroy & dibuat ulang tiap auto-refresh
+      // (60 detik), jadi animasi "garis merambat" akan keputar ulang terus
+      // kalau dibiarkan aktif.
+      animation: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { position: 'top', align: 'end', labels: { font: { family: 'Inter', size: 12 }, usePointStyle: true, boxWidth: 8 } },
