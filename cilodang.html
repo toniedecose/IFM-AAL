@@ -6,7 +6,8 @@
 <title>Dashboard Proyek — Jembatan Box Culvert Desa Cilodang</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"
+  onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';document.head.appendChild(s);"></script>
 <style>
 /* ============================================================
    CONFIG — ganti SHEET_API_URL setelah deploy Apps Script Web App
@@ -277,20 +278,27 @@ async function loadData() {
     return;
   }
 
+  setSyncStatus('loading');
   try {
-    setSyncStatus('loading');
     const res = await fetch(CONFIG.SHEET_API_URL, { method: 'GET' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     if (json.error) throw new Error(json.error);
     DATA = json;
     setSyncStatus('ok');
-    render();
   } catch (err) {
     console.error('Gagal memuat data dari Google Sheet:', err);
     DATA = DEMO_DATA;
     setSyncStatus('error');
+  }
+
+  // render() sengaja dipisah dari try/catch fetch di atas: kalau render
+  // gagal (misal Chart.js belum termuat), itu bukan masalah koneksi ke
+  // Google Sheet, jadi tidak boleh menimpa status jadi "gagal terhubung".
+  try {
     render();
+  } catch (renderErr) {
+    console.error('Gagal menampilkan dashboard:', renderErr);
   }
 }
 
@@ -352,6 +360,18 @@ function render() {
 
 function renderSCurve(kurvaS) {
   const ctx = document.getElementById('sCurveChart');
+
+  if (typeof Chart === 'undefined') {
+    console.error('Chart.js belum termuat — grafik Kurva S dilewati.');
+    const card = ctx.closest('.chart-card');
+    if (card) {
+      card.innerHTML = '<p style="color:#94a3b8;font-size:12.5px;margin:0;">' +
+        'Grafik tidak dapat ditampilkan karena library grafik gagal dimuat. ' +
+        'Coba muat ulang halaman (data lain tetap tampil normal).</p>';
+    }
+    return;
+  }
+
   const labels = kurvaS.map(w => 'M' + w.Minggu);
   const plan = kurvaS.map(w => Number(w.RencanaKumulatif));
   const real = kurvaS.map(w => Number(w.RealisasiKumulatif));
