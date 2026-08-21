@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Proyek — Jembatan Box Culvert Desa Cilodang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+/* ============================================================
+   CONFIG — ganti SHEET_API_URL setelah deploy Apps Script Web App
+   (lihat SETUP_GUIDE.md). Selama masih placeholder, dashboard
+   berjalan dengan data demo yang tertanam di bawah.
+   ============================================================ */
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" width="26" height="26">
+          <path d="M20 3 L34 12 L34 28 L20 37 L6 28 L6 12 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+          <path d="M20 11 L20 29 M12 15 L20 19 L28 15 M12 25 L20 21 L28 25" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">AAL-IFM</div>
+        <div class="brand-sub">Project Control</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="#ringkasan" class="nav-item active" data-target="ringkasan">
+        <span class="nav-num">01</span> Ringkasan
+      </a>
+      <a href="#kurva-s" class="nav-item" data-target="kurva-s">
+        <span class="nav-num">02</span> Kurva S
+      </a>
+      <a href="#wbs" class="nav-item" data-target="wbs">
+        <span class="nav-num">03</span> WBS &amp; Bobot
+      </a>
+      <a href="#milestone" class="nav-item" data-target="milestone">
+        <span class="nav-num">04</span> Milestone
+      </a>
+      <a href="#ai" class="nav-item" data-target="ai">
+        <span class="nav-num">05</span> AI Insight
+      </a>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="sync-row">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncLabel">Memuat data…</span>
+      </div>
+      <div class="sync-time" id="syncTime">—</div>
+      <button class="btn-refresh" id="refreshBtn">Muat Ulang Data</button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PROYEK INFRASTRUKTUR · PT SAL2</div>
+        <h1 id="projectTitle">Jembatan Akses P3 — Box Culvert Desa Cilodang</h1>
+        <div class="subtitle" id="projectSubtitle">Desa Cilodang, Kec. Pelepat, Kab. Bungo, Prov. Jambi</div>
+      </div>
+      <div class="topbar-right">
+        <div class="status-pill" id="statusPill">Persiapan</div>
+      </div>
+    </header>
+
+    <div class="demo-banner" id="demoBanner" hidden>
+      Mode Demo — dashboard ini menampilkan data contoh. Sambungkan ke Google Sheet Anda dengan mengisi
+      <code>SHEET_API_URL</code> pada bagian CONFIG di file ini. Lihat <strong>SETUP_GUIDE.md</strong>.
+    </div>
+
+    <section id="ringkasan" class="section">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Nilai Kontrak</div>
+          <div class="kpi-value mono" id="kpiNilai">—</div>
+          <div class="kpi-foot">Termasuk jasa konstruksi 10%</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Progres Fisik (Kumulatif)</div>
+          <div class="kpi-value mono" id="kpiProgress">—</div>
+          <div class="kpi-foot" id="kpiProgressFoot">vs rencana minggu berjalan</div>
+        </div>
+        <div class="kpi-card" id="kpiDeviasiCard">
+          <div class="kpi-label">Deviasi Jadwal</div>
+          <div class="kpi-value mono" id="kpiDeviasi">—</div>
+          <div class="kpi-foot" id="kpiDeviasiFoot">rencana − realisasi</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Milestone Pra-Konstruksi</div>
+          <div class="kpi-value mono" id="kpiMilestone">—</div>
+          <div class="kpi-foot">selesai dari total tahap</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="kurva-s" class="section">
+      <div class="section-head">
+        <h2><span class="section-num">02</span> Kurva S — Rencana vs Realisasi</h2>
+        <p>Progres fisik berbasis bobot nilai kontrak (metode cost-based weighting).</p>
+      </div>
+      <div class="card chart-card">
+        <canvas id="sCurveChart" height="100"></canvas>
+      </div>
+    </section>
+
+    <section id="wbs" class="section">
+      <div class="section-head">
+        <h2><span class="section-num">03</span> Work Breakdown Structure &amp; Bobot</h2>
+        <p>Bobot = nilai pekerjaan ÷ total nilai kontrak. 100% terdistribusi di tujuh paket pekerjaan utama.</p>
+      </div>
+      <div class="card">
+        <table class="wbs-table" id="wbsTable">
+          <thead>
+            <tr>
+              <th>Kode</th>
+              <th>Uraian Pekerjaan</th>
+              <th class="num">Jumlah (Rp)</th>
+              <th class="num">Bobot</th>
+              <th>Distribusi</th>
+            </tr>
+          </thead>
+          <tbody id="wbsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="milestone" class="section">
+      <div class="section-head">
+        <h2><span class="section-num">04</span> Milestone Pra-Konstruksi</h2>
+        <p>Tidak dibobot ke Kurva S fisik — dilacak berbasis status &amp; tanggal untuk kesiapan proyek.</p>
+      </div>
+      <div class="card">
+        <div class="timeline" id="milestoneTimeline"></div>
+      </div>
+    </section>
+
+    <section id="ai" class="section">
+      <div class="section-head">
+        <h2><span class="section-num">05</span> AI Insight</h2>
+        <p>Analisa otomatis oleh Gemini setiap kali data Google Sheet berubah (lihat Code.gs).</p>
+      </div>
+      <div class="card ai-card">
+        <div class="ai-head">
+          <div class="risk-badge" id="riskBadge">—</div>
+          <div class="ai-timestamp" id="aiTimestamp">Belum ada analisa</div>
+        </div>
+        <p class="ai-summary" id="aiSummary">Analisa AI akan muncul di sini setelah trigger Apps Script berjalan pertama kali. Jalankan <span class="mono">manualRunAnalysis()</span> dari editor Apps Script untuk uji coba.</p>
+        <div class="ai-reco">
+          <div class="ai-reco-label">Rekomendasi</div>
+          <p id="aiRecommendation">—</p>
+        </div>
+      </div>
+      <div class="ai-history" id="aiHistory"></div>
+    </section>
+
+    <footer class="page-footer">
+      Dashboard ini membaca data langsung dari Google Sheet melalui Google Apps Script Web App.
+      Data tidak disimpan di server lain.
+    </footer>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const CONFIG = {
+  // Tempel URL Web App Apps Script kamu di sini setelah deploy.
+  // Contoh: "https://script.google.com/macros/s/AKfycb.../exec"
+  SHEET_API_URL: "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE",
+  AUTO_REFRESH_MS: 60000
+};
+
+/* ============================================================
+   DEMO DATA — dipakai jika SHEET_API_URL belum dikonfigurasi
+   (harus selalu sinkron dengan google-sheets-template/*.csv)
+   ============================================================ */
+const DEMO_DATA = {
+  generatedAt: new Date().toISOString(),
+  projectInfo: {
+    NamaProject: "Jembatan Akses P3 - Box Culvert Desa Cilodang",
+    Pemilik: "PT SAL2 (Astra Agro Lestari)",
+    Lokasi: "Desa Cilodang, Kecamatan Pelepat, Kabupaten Bungo, Provinsi Jambi",
+    JenisProject: "Infrastruktur Jembatan (Box Culvert 2x3x3.5x5 Meter)",
+    NilaiKontrak: 340611489,
+    NomorPPBJ: "PPBJ-26-SAL2-PSM-129424",
+    Kontraktor: "PT Citra Kencana Teknik Sejati",
+    TanggalMulai: "2026-09-01",
+    TanggalSelesaiRencana: "2026-12-31",
+    StatusProject: "Persiapan - Menunggu Approval Dir. Finance Sumatera",
+    LastUpdated: "2026-08-21"
+  },
+  wbs: [
+    {Kode:"1.0", Uraian:"PEKERJAAN PERSIAPAN", Level:1, Jumlah:5401755, Bobot:1.59},
+    {Kode:"1.1", Uraian:"Pembersihan Lapangan dan Perataan", Level:2, Jumlah:2548755, Bobot:0.75},
+    {Kode:"1.2", Uraian:"Pengukuran dan Pemasangan Bouwplank", Level:2, Jumlah:2853000, Bobot:0.84},
+    {Kode:"2.0", Uraian:"PEKERJAAN TANAH", Level:1, Jumlah:4450359, Bobot:1.31},
+    {Kode:"2.1", Uraian:"Galian Tanah Biasa (kedalaman maks 1 m)", Level:2, Jumlah:3814720, Bobot:1.12},
+    {Kode:"2.2", Uraian:"Urugan Tanah Kembali", Level:2, Jumlah:635639, Bobot:0.19},
+    {Kode:"3.0", Uraian:"PEKERJAAN PONDASI", Level:1, Jumlah:7873500, Bobot:2.31},
+    {Kode:"3.1", Uraian:"Lantai Kerja 1PC:3PS:5KRL", Level:2, Jumlah:2473500, Bobot:0.73},
+    {Kode:"3.2", Uraian:"Pemasangan Cerucuk Kayu", Level:2, Jumlah:5400000, Bobot:1.59},
+    {Kode:"4.0", Uraian:"PEKERJAAN STRUKTUR BETON BOX CULVERT", Level:1, Jumlah:288179005, Bobot:84.61},
+    {Kode:"4.1", Uraian:"Bekisting Dinding", Level:2, Jumlah:43631925, Bobot:12.81},
+    {Kode:"4.2", Uraian:"Bekisting Lantai", Level:2, Jumlah:7055400, Bobot:2.07},
+    {Kode:"4.3", Uraian:"Pembesian (Besi Polos/Ulir diameter 13 mm)", Level:2, Jumlah:110970180, Bobot:32.58},
+    {Kode:"4.4", Uraian:"Pengecoran Beton Site Mix K-300", Level:2, Jumlah:126521500, Bobot:37.15},
+    {Kode:"5.0", Uraian:"PEKERJAAN PELENGKAP DAN FINISHING", Level:1, Jumlah:3740300, Bobot:1.10},
+    {Kode:"5.1", Uraian:"Pemasangan Pipa PVC (Safety Sign)", Level:2, Jumlah:2340000, Bobot:0.69},
+    {Kode:"5.2", Uraian:"Pengecatan Dinding (3x)", Level:2, Jumlah:1227600, Bobot:0.36},
+    {Kode:"5.3", Uraian:"Pengecatan Safety Sign (3x)", Level:2, Jumlah:172700, Bobot:0.05},
+    {Kode:"6.0", Uraian:"COMMISSIONING DAN SERAH TERIMA", Level:1, Jumlah:0, Bobot:0.00},
+    {Kode:"7.0", Uraian:"OVERHEAD DAN JASA KONSTRUKSI", Level:1, Jumlah:30964492, Bobot:9.09}
+  ],
+  kurvaS: [
+    {Minggu:1, RencanaKumulatif:0.79, RealisasiKumulatif:0},
+    {Minggu:2, RencanaKumulatif:1.59, RealisasiKumulatif:0},
+    {Minggu:3, RencanaKumulatif:2.24, RealisasiKumulatif:0},
+    {Minggu:4, RencanaKumulatif:2.91, RealisasiKumulatif:0},
+    {Minggu:5, RencanaKumulatif:4.06, RealisasiKumulatif:0},
+    {Minggu:6, RencanaKumulatif:18.16, RealisasiKumulatif:0},
+    {Minggu:7, RencanaKumulatif:32.27, RealisasiKumulatif:0},
+    {Minggu:8, RencanaKumulatif:46.37, RealisasiKumulatif:0},
+    {Minggu:9, RencanaKumulatif:60.48, RealisasiKumulatif:0},
+    {Minggu:10, RencanaKumulatif:74.58, RealisasiKumulatif:0},
+    {Minggu:11, RencanaKumulatif:88.69, RealisasiKumulatif:0},
+    {Minggu:12, RencanaKumulatif:97.78, RealisasiKumulatif:0},
+    {Minggu:13, RencanaKumulatif:98.33, RealisasiKumulatif:0},
+    {Minggu:14, RencanaKumulatif:98.88, RealisasiKumulatif:0},
+    {Minggu:15, RencanaKumulatif:99.44, RealisasiKumulatif:0},
+    {Minggu:16, RencanaKumulatif:100.00, RealisasiKumulatif:0}
+  ],
+  milestone: [
+    {Kode:"0.1", Milestone:"Survey Lokasi dan Desain Teknis", PIC:"Tim Engineering SAL2", TargetSelesai:"2026-07-10", Status:"Selesai"},
+    {Kode:"0.2", Milestone:"Pengajuan PPBJ", PIC:"PSM HO", TargetSelesai:"2026-07-20", Status:"Selesai"},
+    {Kode:"0.3", Milestone:"Tender dan Evaluasi Penawaran Kontraktor", PIC:"Procurement", TargetSelesai:"2026-08-05", Status:"Selesai"},
+    {Kode:"0.4", Milestone:"Approval Anggaran oleh Dir. Finance Sumatera", PIC:"Dir. Finance Sumatera", TargetSelesai:"2026-08-31", Status:"Berjalan"},
+    {Kode:"0.5", Milestone:"Penerbitan SPK / Kontrak Kerja", PIC:"PSM HO", TargetSelesai:"2026-09-05", Status:"Belum Mulai"},
+    {Kode:"0.6", Milestone:"Mobilisasi Kontraktor dan Persiapan Lapangan", PIC:"Kontraktor Pelaksana", TargetSelesai:"2026-09-08", Status:"Belum Mulai"}
+  ],
+  aiInsights: [
+    {
+      Timestamp: "2026-08-21T02:00:00.000Z",
+      Summary: "Progres fisik belum dimulai (0%) karena masih menunggu approval anggaran dari Dir. Finance Sumatera yang ditargetkan selesai 31 Agustus 2026. Tiga dari enam milestone pra-konstruksi sudah selesai (desain, PPBJ, tender). Risiko utama saat ini adalah keterlambatan approval yang akan menggeser seluruh jadwal konstruksi 16 minggu.",
+      RiskLevel: "Sedang",
+      Recommendation: "Eskalasi status approval anggaran ke Dir. Finance Sumatera minggu ini agar SPK dapat terbit sesuai target 5 September 2026, sehingga mobilisasi kontraktor tidak mundur dari jadwal."
+    }
+  ]
+};
+
+let DATA = null;
+let sCurveChartInstance = null;
+
+/* ============================================================
+   FETCH DATA (Google Sheet via Apps Script, fallback ke demo)
+   ============================================================ */
+async function loadData() {
+  const isConfigured = CONFIG.SHEET_API_URL && !CONFIG.SHEET_API_URL.includes("PASTE_YOUR");
+  document.getElementById('demoBanner').hidden = isConfigured;
+
+  if (!isConfigured) {
+    DATA = DEMO_DATA;
+    setSyncStatus('demo');
+    render();
+    return;
+  }
+
+  try {
+    setSyncStatus('loading');
+    const res = await fetch(CONFIG.SHEET_API_URL, { method: 'GET' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    DATA = json;
+    setSyncStatus('ok');
+    render();
+  } catch (err) {
+    console.error('Gagal memuat data dari Google Sheet:', err);
+    DATA = DEMO_DATA;
+    setSyncStatus('error');
+    render();
+  }
+}
+
+function setSyncStatus(state) {
+  const dot = document.getElementById('syncDot');
+  const label = document.getElementById('syncLabel');
+  const time = document.getElementById('syncTime');
+  dot.className = 'sync-dot ' + state;
+  const now = new Date().toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' });
+  if (state === 'ok') { label.textContent = 'Terhubung ke Google Sheet'; time.textContent = 'Sinkron ' + now; }
+  else if (state === 'demo') { label.textContent = 'Mode Demo'; time.textContent = 'Data contoh'; }
+  else if (state === 'loading') { label.textContent = 'Memuat…'; time.textContent = '—'; }
+  else { label.textContent = 'Gagal terhubung — pakai data demo'; time.textContent = now; }
+}
+
+/* ============================================================
+   FORMATTERS
+   ============================================================ */
+const fmtRp = n => 'Rp ' + Math.round(n).toLocaleString('id-ID');
+const fmtPct = n => Number(n).toFixed(2).replace('.', ',') + '%';
+const fmtDate = s => { if (!s) return '—'; const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }); };
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render() {
+  const { projectInfo, wbs, kurvaS, milestone, aiInsights } = DATA;
+
+  document.getElementById('projectTitle').textContent = projectInfo.NamaProject || '—';
+  document.getElementById('projectSubtitle').textContent = projectInfo.Lokasi || '';
+  document.getElementById('statusPill').textContent = projectInfo.StatusProject || '—';
+
+  // KPI: Nilai Kontrak
+  document.getElementById('kpiNilai').textContent = fmtRp(Number(projectInfo.NilaiKontrak || 0));
+
+  // KPI: progress + deviasi (dari minggu terakhir yg punya realisasi, atau minggu terakhir data)
+  const lastWeek = kurvaS[kurvaS.length - 1] || { RencanaKumulatif: 0, RealisasiKumulatif: 0 };
+  const plan = Number(lastWeek.RencanaKumulatif || 0);
+  const real = Number(lastWeek.RealisasiKumulatif || 0);
+  const deviasi = real - plan;
+
+  document.getElementById('kpiProgress').textContent = fmtPct(real);
+  document.getElementById('kpiProgressFoot').textContent = 'Rencana minggu ke-' + lastWeek.Minggu + ': ' + fmtPct(plan);
+
+  document.getElementById('kpiDeviasi').textContent = (deviasi >= 0 ? '+' : '') + fmtPct(deviasi);
+  const devCard = document.getElementById('kpiDeviasiCard');
+  devCard.classList.remove('kpi-ok', 'kpi-risk');
+  devCard.classList.add(deviasi >= 0 ? 'kpi-ok' : 'kpi-risk');
+
+  // KPI: milestone
+  const doneCount = milestone.filter(m => m.Status === 'Selesai').length;
+  document.getElementById('kpiMilestone').textContent = doneCount + ' / ' + milestone.length;
+
+  renderSCurve(kurvaS);
+  renderWBS(wbs);
+  renderMilestone(milestone);
+  renderAI(aiInsights);
+}
+
+function renderSCurve(kurvaS) {
+  const ctx = document.getElementById('sCurveChart');
+  const labels = kurvaS.map(w => 'M' + w.Minggu);
+  const plan = kurvaS.map(w => Number(w.RencanaKumulatif));
+  const real = kurvaS.map(w => Number(w.RealisasiKumulatif));
+
+  if (sCurveChartInstance) sCurveChartInstance.destroy();
+
+  sCurveChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Rencana Kumulatif',
+          data: plan,
+          borderColor: '#0E3B2E',
+          backgroundColor: 'rgba(14,59,46,0.08)',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          fill: true,
+          tension: 0.25
+        },
+        {
+          label: 'Realisasi Kumulatif',
+          data: real,
+          borderColor: '#B98B2A',
+          backgroundColor: 'rgba(185,139,42,0.12)',
+          borderWidth: 2.5,
+          pointRadius: 2.5,
+          pointBackgroundColor: '#B98B2A',
+          fill: true,
+          tension: 0.25
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { family: 'Inter', size: 12 }, usePointStyle: true, boxWidth: 8 } },
+        tooltip: {
+          callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtPct(ctx.parsed.y) }
+        }
+      },
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v + '%', font: { family: 'IBM Plex Mono', size: 11 } }, grid: { color: '#E1E4DD' } },
+        x: { grid: { display: false }, ticks: { font: { family: 'IBM Plex Mono', size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderWBS(wbs) {
+  const body = document.getElementById('wbsBody');
+  body.innerHTML = '';
+  wbs.forEach(item => {
+    const isL1 = Number(item.Level) === 1;
+    const tr = document.createElement('tr');
+    tr.className = isL1 ? 'l1' : 'l2';
+    tr.innerHTML = `
+      <td class="mono">${item.Kode}</td>
+      <td>${item.Uraian}</td>
+      <td class="num mono">${fmtRp(Number(item.Jumlah || 0))}</td>
+      <td class="num mono">${fmtPct(Number(item.Bobot || 0))}</td>
+      <td><div class="bar-track"><div class="bar-fill" style="width:${Math.min(Number(item.Bobot || 0), 100)}%"></div></div></td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderMilestone(milestone) {
+  const wrap = document.getElementById('milestoneTimeline');
+  wrap.innerHTML = '';
+  milestone.forEach(m => {
+    const statusClass = m.Status === 'Selesai' ? 'done' : m.Status === 'Berjalan' ? 'progress' : 'pending';
+    const el = document.createElement('div');
+    el.className = 'tl-item ' + statusClass;
+    el.innerHTML = `
+      <div class="tl-dot"></div>
+      <div class="tl-body">
+        <div class="tl-top">
+          <span class="tl-kode mono">${m.Kode}</span>
+          <span class="tl-status">${m.Status}</span>
+        </div>
+        <div class="tl-title">${m.Milestone}</div>
+        <div class="tl-meta">${m.PIC || ''} · Target ${fmtDate(m.TargetSelesai)}</div>
+      </div>
+    `;
+    wrap.appendChild(el);
+  });
+}
+
+function renderAI(aiInsights) {
+  if (!aiInsights || !aiInsights.length) return;
+  const latest = aiInsights[0];
+  const badge = document.getElementById('riskBadge');
+  badge.textContent = 'Risiko: ' + (latest.RiskLevel || latest.riskLevel || '—');
+  badge.className = 'risk-badge ' + riskClass(latest.RiskLevel || latest.riskLevel);
+
+  document.getElementById('aiTimestamp').textContent = 'Diperbarui ' + fmtDate(latest.Timestamp) + (latest.Timestamp ? ' ' + new Date(latest.Timestamp).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'}) : '');
+  document.getElementById('aiSummary').textContent = latest.Summary || latest.summary || '—';
+  document.getElementById('aiRecommendation').textContent = latest.Recommendation || latest.recommendation || '—';
+
+  const history = document.getElementById('aiHistory');
+  history.innerHTML = '';
+  aiInsights.slice(1).forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'ai-history-item';
+    el.innerHTML = `
+      <div class="ai-history-date mono">${fmtDate(item.Timestamp)}</div>
+      <div class="ai-history-text">${item.Summary || item.summary || ''}</div>
+    `;
+    history.appendChild(el);
+  });
+}
+
+function riskClass(level) {
+  if (!level) return '';
+  const l = level.toLowerCase();
+  if (l.includes('tinggi')) return 'risk-high';
+  if (l.includes('sedang')) return 'risk-med';
+  return 'risk-low';
+}
+
+/* ============================================================
+   NAV + INTERAKSI
+   ============================================================ */
+document.querySelectorAll('.nav-item').forEach(a => {
+  a.addEventListener('click', e => {
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+  });
+});
+
+document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+loadData();
+setInterval(loadData, CONFIG.AUTO_REFRESH_MS);
+</script>
+
+<style>
+:root {
+  --bg: #F4F5F0;
+  --surface: #FFFFFF;
+  --ink: #16211C;
+  --muted: #5C6660;
+  --primary: #0E3B2E;
+  --primary-light: #17573F;
+  --accent-gold: #B98B2A;
+  --risk-red: #B23A2E;
+  --risk-amber: #C97A2B;
+  --risk-green: #3E8E5B;
+  --line: #E1E4DD;
+  --radius: 10px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'IBM Plex Mono', monospace; }
+a { color: inherit; text-decoration: none; }
+
+.app { display: flex; min-height: 100vh; }
+
+/* ---------- SIDEBAR ---------- */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--primary);
+  color: #EAF1EC;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 18px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 28px; }
+.brand-mark { color: var(--accent-gold); flex-shrink: 0; }
+.brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.01em; }
+.brand-sub { font-size: 11px; color: #9FB8AB; margin-top: 1px; }
+
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nav-item {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 11px 10px; border-radius: 7px;
+  font-size: 13.5px; font-weight: 500; color: #C9DBD0;
+  transition: background 0.15s, color 0.15s;
+}
+.nav-num { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E9686; }
+.nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.nav-item.active { background: rgba(255,255,255,0.1); color: #fff; }
+.nav-item.active .nav-num { color: var(--accent-gold); }
+
+.sidebar-foot { padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.12); }
+.sync-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #DCE9E1; }
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #6E9686; flex-shrink: 0; }
+.sync-dot.ok { background: #5FBE86; box-shadow: 0 0 0 3px rgba(95,190,134,0.25); }
+.sync-dot.demo { background: var(--accent-gold); box-shadow: 0 0 0 3px rgba(185,139,42,0.25); }
+.sync-dot.error { background: var(--risk-red); box-shadow: 0 0 0 3px rgba(178,58,46,0.25); }
+.sync-dot.loading { background: #9FB8AB; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.sync-time { font-size: 11px; color: #7FA090; margin: 4px 0 10px; font-family: 'IBM Plex Mono', monospace; }
+.btn-refresh {
+  width: 100%; padding: 9px 10px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.18);
+  background: transparent; color: #EAF1EC; font-size: 12.5px; font-weight: 500; cursor: pointer;
+  font-family: 'Inter', sans-serif; transition: background 0.15s;
+}
+.btn-refresh:hover { background: rgba(255,255,255,0.08); }
+
+/* ---------- MAIN ---------- */
+.main { flex: 1; padding: 32px 40px 60px; max-width: 1180px; }
+
+.topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; gap: 20px; flex-wrap: wrap; }
+.eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: var(--accent-gold); font-weight: 600; margin-bottom: 6px; }
+.topbar h1 { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em; }
+.subtitle { color: var(--muted); font-size: 13.5px; }
+.status-pill {
+  padding: 7px 14px; border-radius: 999px; background: #FCEFDA; color: #8A5A17;
+  font-size: 12.5px; font-weight: 600; border: 1px solid #F0D8AC; white-space: nowrap;
+}
+
+.demo-banner {
+  background: #FCEFDA; border: 1px solid #F0D8AC; color: #7A4E14; border-radius: 8px;
+  padding: 11px 16px; font-size: 12.5px; margin-bottom: 24px;
+}
+.demo-banner code { background: rgba(0,0,0,0.06); padding: 1px 6px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; }
+
+.section { margin-bottom: 44px; scroll-margin-top: 20px; }
+.section-head { margin-bottom: 14px; }
+.section-head h2 { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+.section-num { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent-gold); font-weight: 600; }
+.section-head p { color: var(--muted); font-size: 12.5px; margin: 0; }
+
+/* KPI cards */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; }
+.kpi-label { font-size: 11.5px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
+.kpi-value { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.kpi-foot { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.kpi-card.kpi-ok .kpi-value { color: var(--risk-green); }
+.kpi-card.kpi-risk .kpi-value { color: var(--risk-red); }
+
+/* Card / chart */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+.chart-card { padding: 22px 26px; }
+
+/* WBS table */
+.wbs-table { width: 100%; border-collapse: collapse; font-size: 12.8px; }
+.wbs-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 0 10px 10px; border-bottom: 1px solid var(--line); }
+.wbs-table th.num, .wbs-table td.num { text-align: right; }
+.wbs-table td { padding: 9px 10px; border-bottom: 1px solid #EEF0EB; vertical-align: middle; }
+.wbs-table tr.l1 td { font-weight: 600; background: #F7F8F4; }
+.wbs-table tr.l2 td:nth-child(2) { padding-left: 22px; color: var(--muted); }
+.bar-track { width: 100px; height: 6px; background: #ECEEE8; border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--primary); border-radius: 4px; }
+.wbs-table tr.l1 .bar-fill { background: var(--accent-gold); }
+
+/* Milestone timeline */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.tl-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid #EEF0EB; position: relative; }
+.tl-item:last-child { border-bottom: none; }
+.tl-dot { width: 11px; height: 11px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; border: 2px solid var(--line); background: #fff; }
+.tl-item.done .tl-dot { background: var(--risk-green); border-color: var(--risk-green); }
+.tl-item.progress .tl-dot { background: var(--accent-gold); border-color: var(--accent-gold); }
+.tl-item.pending .tl-dot { background: #fff; border-color: #C9CEC5; }
+.tl-top { display: flex; align-items: center; gap: 10px; margin-bottom: 3px; }
+.tl-kode { font-size: 11px; color: var(--muted); }
+.tl-status { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #F0F1EC; color: var(--muted); }
+.tl-item.done .tl-status { background: #E4F3E9; color: #2C6E48; }
+.tl-item.progress .tl-status { background: #FCEFDA; color: #8A5A17; }
+.tl-title { font-size: 13.5px; font-weight: 500; }
+.tl-meta { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* AI Insight */
+.ai-card { margin-bottom: 12px; }
+.ai-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.risk-badge { font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 999px; background: #F0F1EC; color: var(--muted); letter-spacing: 0.01em; }
+.risk-badge.risk-low { background: #E4F3E9; color: #2C6E48; }
+.risk-badge.risk-med { background: #FCEFDA; color: #8A5A17; }
+.risk-badge.risk-high { background: #FBE6E3; color: #93261B; }
+.ai-timestamp { font-size: 11.5px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+.ai-summary { font-size: 14px; line-height: 1.65; margin: 0 0 18px; }
+.ai-reco { background: #F7F8F4; border-radius: 8px; padding: 14px 16px; border-left: 3px solid var(--accent-gold); }
+.ai-reco-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent-gold); font-weight: 700; margin-bottom: 5px; }
+.ai-reco p { margin: 0; font-size: 13px; }
+
+.ai-history-item { padding: 12px 4px; border-bottom: 1px solid #EEF0EB; display: flex; gap: 16px; }
+.ai-history-date { font-size: 11px; color: var(--muted); flex-shrink: 0; width: 90px; }
+.ai-history-text { font-size: 12.5px; color: var(--muted); }
+
+.page-footer { font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; margin-top: 10px; }
+
+@media (max-width: 980px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 760px) {
+  .app { flex-direction: column; }
+  .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; align-items: center; gap: 20px; overflow-x: auto; }
+  .nav { flex-direction: row; }
+  .sidebar-foot { display: none; }
+  .main { padding: 20px; }
+  .kpi-grid { grid-template-columns: 1fr; }
+}
+</style>
+</body>
+</html>
