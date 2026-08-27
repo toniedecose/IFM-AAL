@@ -1214,7 +1214,7 @@
             const [centralLocations, setCentralLocations] = React.useState(() => getLocalLocations());
             const [ptByRegency, setPtByRegency] = React.useState(() => normalizePTDatabase(PT_DATABASE));
             const [centralLoading, setCentralLoading] = React.useState(false);
-            const [centralPriceSource, setCentralPriceSource] = React.useState('LOCAL FALLBACK');
+            const [centralPriceSource, setCentralPriceSource] = React.useState('ESTIMATOR DATABASE');
             const [marketItem, setMarketItem] = React.useState('Cement');
             const [marketAnalysis, setMarketAnalysis] = React.useState(null);
             const [marketLoading, setMarketLoading] = React.useState(false);
@@ -1318,7 +1318,7 @@
                     if (apiPT && typeof apiPT === 'object') {
                         setPtByRegency(prev => ({ ...prev, ...normalizePTDatabase(apiPT) }));
                     }
-                    setCentralPriceSource('CENTRAL DATABASE');
+                    setCentralPriceSource('ESTIMATOR DATABASE');
 
                     const provinces = data.provinceList || [];
                     if (provinces.length) {
@@ -1346,7 +1346,7 @@
                     });
                     if (!data.success || !data.prices || !data.count) throw new Error(data.error || 'Harga pusat tidak ditemukan.');
                     setPrices(normalizeCentralPrices(data.prices));
-                    setCentralPriceSource('CENTRAL DATABASE');
+                    setCentralPriceSource('ESTIMATOR DATABASE');
                     setMarketAnalysis(null);
                     const firstItem = Object.keys(data.prices)[0];
                     if (firstItem) setMarketItem(priceKeyMap[firstItem] || firstItem.charAt(0).toLowerCase() + firstItem.slice(1));
@@ -1481,9 +1481,65 @@
                 }
             }, [activeTab, wizardStep, darkMode, isReportOpen]);
 
-            // Lokasi awal menggunakan database lokal agar halaman tidak menampilkan
-            // error ketika endpoint Apps Script sedang tidak tersedia.
-            // Harga pusat tetap dicoba saat Kabupaten dipilih/diganti.
+            // Sinkronisasi lokasi DAN harga dari sheet ESTIMATOR saat halaman dibuka.
+            // ESTIMATOR adalah sumber utama; database lokal hanya fallback jika API gagal.
+            React.useEffect(() => {
+                let cancelled = false;
+
+                (async () => {
+                    try {
+                        const data = await callEstimatorApi({
+                            action: 'locations',
+                            estimator: 'Titi Panen'
+                        });
+
+                        if (cancelled || !data || !data.success) return;
+
+                        const provinces = data.provinces || {};
+                        const provinceList = data.provinceList || Object.keys(provinces);
+
+                        if (!provinceList.length) return;
+
+                        setCentralLocations({ provinces, provinceList });
+
+                        const apiPT = data.ptByRegency || null;
+                        if (apiPT && typeof apiPT === 'object') {
+                            setPtByRegency(prev => ({
+                                ...prev,
+                                ...normalizePTDatabase(apiPT)
+                            }));
+                        }
+
+                        const activeProvince = provinceList.includes(project.province)
+                            ? project.province
+                            : provinceList[0];
+                        const regencies = provinces[activeProvince] || [];
+                        const activeRegency = regencies.includes(project.regency)
+                            ? project.regency
+                            : regencies[0];
+
+                        if (activeProvince && activeRegency) {
+                            const ok = await fetchCentralPrices(activeProvince, activeRegency);
+                            if (!cancelled) {
+                                const defaultPT = selectDefaultPT(activeRegency, project.company);
+                                setProject(prev => ({
+                                    ...prev,
+                                    island: provinceIsland(activeProvince),
+                                    province: activeProvince,
+                                    regency: activeRegency,
+                                    company: defaultPT || prev.company
+                                }));
+                                if (ok) setCentralPriceSource('ESTIMATOR DATABASE');
+                            }
+                        }
+                    } catch (error) {
+                        // Silent fallback: database lokal tetap digunakan tanpa banner error.
+                        console.warn('ESTIMATOR database tidak dapat diakses, menggunakan fallback lokal:', error);
+                    }
+                })();
+
+                return () => { cancelled = true; };
+            }, []);
 
             const triggerExplain = (title, formula, inputs, trace, result) => {
                 setExplainData({ title, formula, inputs, trace, result });
