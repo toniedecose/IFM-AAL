@@ -1751,15 +1751,70 @@
 
             // Save local edits only as a temporary browser fallback.
             // Central ESTIMATOR remains the authoritative database.
-            const handleUpdateMarketPrice = () => {
-                const updated = { ...regionalDb };
-                const island = provinceIsland(project.province);
-                if (!updated[island]) updated[island] = {};
-                if (!updated[island][project.province]) updated[island][project.province] = {};
-                updated[island][project.province][project.regency] = { ...prices };
-                setRegionalDb(updated);
-                localStorage.setItem('titi_panen_regional_db', JSON.stringify(updated));
-                showToast(`Harga lokal sementara untuk ${project.regency} disimpan di browser.`);
+            const handleUpdateMarketPrice = async () => {
+                const priceMapToItem = {
+                    cement: 'Cement',
+                    sand: 'Sand',
+                    gravel: 'Gravel',
+                    rebar6: 'Rebar6',
+                    rebar8: 'Rebar8',
+                    rebar10: 'Rebar10',
+                    rebar12: 'Rebar12',
+                    bindingWire: 'BindingWire',
+                    formworkWood: 'FormworkWood',
+                    labourWorker: 'LabourWorker',
+                    labourArtisan: 'LabourArtisan',
+                    labourForeman: 'LabourForeman'
+                };
+
+                const items = Object.entries(priceMapToItem)
+                    .filter(([key]) => Number.isFinite(Number(prices[key])) && Number(prices[key]) >= 0);
+
+                if (!project.province || !project.regency || !items.length) {
+                    showToast('Lokasi atau harga belum lengkap.', 'error');
+                    return;
+                }
+
+                try {
+                    setCentralLoading(true);
+
+                    let successCount = 0;
+
+                    for (const [key, item] of items) {
+                        const data = await callEstimatorApi({
+                            action: 'update_price',
+                            estimator: 'Titi Panen',
+                            province: project.province,
+                            regency: project.regency,
+                            item,
+                            price: Number(prices[key]),
+                            unit: ''
+                        });
+
+                        if (!data || data.success !== true) {
+                            throw new Error(
+                                (data && data.error) ||
+                                `Gagal menyimpan ${item}`
+                            );
+                        }
+
+                        successCount++;
+                    }
+
+                    // Ambil ulang dari database supaya nilai layar benar-benar
+                    // sama dengan yang tersimpan di ESTIMATOR.
+                    await fetchCentralPrices(project.province, project.regency);
+
+                    showToast(
+                        `${successCount} harga ${project.regency} berhasil disimpan ke ESTIMATOR.`
+                    );
+
+                } catch (error) {
+                    console.error('Update ESTIMATOR gagal:', error);
+                    showToast('Gagal menyimpan ke database: ' + error.message, 'error');
+                } finally {
+                    setCentralLoading(false);
+                }
             };
 
             const currentRAB = React.useMemo(() => {
@@ -2393,7 +2448,7 @@
                                                     className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow"
                                                 >
                                                     <i data-lucide="refresh-cw" className="w-3.5 h-3.5"></i>
-                                                    <span>Update Harga Pasar</span>
+                                                    <span>Simpan ke ESTIMATOR</span>
                                                 </button>
                                             </div>
 
