@@ -1303,11 +1303,15 @@
             // which routinely takes well over 15s - give it a much longer budget than simple lookups.
             const callEstimatorApi = async (params = {}) => {
                 const timeoutMs = params.action === 'market' ? 90000 : 15000;
+
+                // Apps Script Web App: JSONP menjadi jalur utama untuk lookup
+                // lokasi/harga karena endpoint Code.gs memang mendukung callback.
+                // Fetch tetap menjadi fallback.
                 try {
-                    return await callEstimatorApiViaFetch(params, timeoutMs);
-                } catch (fetchError) {
-                    console.warn('Fetch ke database pusat gagal, mencoba JSONP sebagai fallback:', fetchError);
                     return await callEstimatorApiViaJsonp(params, timeoutMs);
+                } catch (jsonpError) {
+                    console.warn('JSONP database gagal, mencoba Fetch:', jsonpError);
+                    return await callEstimatorApiViaFetch(params, timeoutMs);
                 }
             };
 
@@ -1347,23 +1351,88 @@
                 }
             };
 
+            const priceRequestRef = React.useRef(0);
+
             const fetchCentralPrices = async (province, regency) => {
+                const requestId = ++priceRequestRef.current;
+                const targetProvince = String(province || '').trim();
+                const targetRegency = String(regency || '').trim();
+
+                if (!targetProvince || !targetRegency) return false;
+
                 try {
                     const data = await callEstimatorApi({
                         action: 'prices',
                         estimator: 'Titi Panen',
-                        province,
-                        regency
+                        province: targetProvince,
+                        regency: targetRegency,
+                        _: Date.now()
                     });
-                    if (!data.success || !data.prices || !data.count) throw new Error(data.error || 'Harga pusat tidak ditemukan.');
-                    setPrices(normalizeCentralPrices(data.prices));
-                    setCentralPriceSource('ESTIMATOR DATABASE');
+
+                    // Abaikan response lama jika user sudah memilih kabupaten lain.
+                    if (requestId !== priceRequestRef.current) return false;
+
+                    if (!data || data.success !== true || !data.prices || Number(data.count) <= 0) {
+                        throw new Error(
+                            (data && data.error) ||
+                            `Harga ESTIMATOR tidak ditemukan untuk ${targetRegency}, ${targetProvince}.`
+                        );
+                    }
+
+                    const normalized = normalizeCentralPrices(data.prices);
+
+                    // Pastikan item-item utama benar-benar tersedia.
+                    const requiredKeys = [
+                        'cement', 'sand', 'gravel',
+                        'rebar6', 'rebar8', 'rebar10', 'rebar12',
+                        'bindingWire', 'formworkWood',
+                        'labourWorker', 'labourArtisan', 'labourForeman'
+                    ];
+
+                    const missing = requiredKeys.filter(k => !Number.isFinite(Number(normalized[k])));
+                    if (missing.length) {
+                        throw new Error(
+                            `Data harga ${targetRegency} tidak lengkap: ${missing.join(', ')}`
+                        );
+                    }
+
+                    // INI HARGA FINAL YANG DIPAKAI ENGINE:
+                    // selalu dari ESTIMATOR kabupaten aktif.
+                    setPrices(normalized);
+                    setCentralPriceSource(
+                        `ESTIMATOR • ${targetRegency}`
+                    );
                     setMarketAnalysis(null);
+
                     const firstItem = Object.keys(data.prices)[0];
-                    if (firstItem) setMarketItem(priceKeyMap[firstItem] || firstItem.charAt(0).toLowerCase() + firstItem.slice(1));
+                    if (firstItem) {
+                        setMarketItem(
+                            priceKeyMap[firstItem] ||
+                            firstItem.charAt(0).toLowerCase() + firstItem.slice(1)
+                        );
+                    }
+
                     return true;
+
                 } catch (error) {
-                    console.warn('Harga pusat tidak tersedia, menggunakan harga lokal:', error);
+                    if (requestId !== priceRequestRef.current) return false;
+
+                    console.error(
+                        `Gagal mengambil harga ESTIMATOR untuk ${targetRegency}, ${targetProvince}:`,
+                        error
+                    );
+
+                    // JANGAN mempertahankan harga kabupaten sebelumnya.
+                    // Ini penting agar misalnya Aceh Barat tidak memakai harga
+                    // Rokan Hulu hanya karena request baru gagal.
+                    setPrices({
+                        cement: 0, sand: 0, gravel: 0,
+                        rebar6: 0, rebar8: 0, rebar10: 0, rebar12: 0,
+                        bindingWire: 0, formworkWood: 0,
+                        labourWorker: 0, labourArtisan: 0, labourForeman: 0
+                    });
+
+                    setCentralPriceSource(`ERROR HARGA • ${targetRegency}`);
                     return false;
                 }
             };
@@ -1449,14 +1518,7 @@
                 }));
 
                 if (updatedRegency) {
-                    const ok = await fetchCentralPrices(updatedProvince, updatedRegency);
-                    if (!ok) {
-                        const localPrices = getLocalPrices(updatedProvince, updatedRegency);
-                        if (localPrices) {
-                            setPrices(localPrices);
-                            setCentralPriceSource('LOCAL FALLBACK');
-                        }
-                    }
+                    await fetchCentralPrices(updatedProvince, updatedRegency);
                 }
             };
 
@@ -2077,7 +2139,7 @@
                                             <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-700/60 p-3 rounded-lg">
                                                 <div>
                                                     <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">3. Harga Pasar Kabupaten: <span className="text-emerald-600 dark:text-emerald-400">{project.regency}</span></h3>
-                                                    <p className="text-xs text-slate-500">Harga acuan: {centralPriceSource}.</p>
+                                                    <p className="text-xs text-slate-500">Harga acuan: <b>{centralPriceSource}</b>. Harga RAB dihitung ulang dari harga kabupaten aktif.</p>
                                                 </div>
                                                 <button 
                                                     onClick={handleUpdateMarketPrice}
