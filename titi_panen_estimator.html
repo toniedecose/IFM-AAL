@@ -1229,6 +1229,12 @@
             const [compareSpan, setCompareSpan] = React.useState(selectedSpan);
             const [compareQty, setCompareQty] = React.useState(quantity);
             const [compareSort, setCompareSort] = React.useState('priceAsc');
+            const [simRows, setSimRows] = React.useState([]);
+            const [simLoading, setSimLoading] = React.useState(false);
+            const [simType, setSimType] = React.useState(selectedType);
+            const [simSpan, setSimSpan] = React.useState(selectedSpan);
+            const [simQty, setSimQty] = React.useState(quantity);
+            const [simSort, setSimSort] = React.useState('priceAsc');
 
             const provinceIsland = (province) => {
                 if (province === 'Riau' || province === 'Jambi') return 'Sumatera';
@@ -1605,6 +1611,84 @@
                 }
             };
 
+
+            const runAllRegencySimulation = async () => {
+                const locations = centralLocations?.provinces || {};
+                const records = [];
+                Object.entries(locations).forEach(([province, regencies]) => {
+                    (regencies || []).forEach(regency => {
+                        records.push({ province: String(province).trim(), regency: String(regency).trim() });
+                    });
+                });
+
+                if (!records.length) {
+                    showToast('Database ESTIMATOR belum memiliki data kabupaten.', 'error');
+                    return;
+                }
+
+                const spec = TITI_PANEN_TYPES[simType];
+                if (!spec || !spec.spans.includes(Number(simSpan))) {
+                    showToast('Bentang tidak sesuai dengan tipe titi panen.', 'error');
+                    return;
+                }
+
+                setSimLoading(true);
+                setSimRows([]);
+
+                try {
+                    const rows = [];
+                    for (const loc of records) {
+                        try {
+                            const data = await callEstimatorApi({
+                                action: 'prices',
+                                estimator: 'Titi Panen',
+                                province: loc.province,
+                                regency: loc.regency,
+                                _: Date.now()
+                            });
+
+                            if (!data || data.success !== true || !data.prices || Number(data.count) <= 0) {
+                                rows.push({...loc, available:false, grandTotal:0, materialCost:0, labourCost:0, costPerUnit:0, costPerMeter:0});
+                                continue;
+                            }
+
+                            const pricesForRegency = normalizeCentralPrices(data.prices);
+                            const rab = AHSPEngine.calculateRAB(
+                                simType, Number(simSpan), Number(simQty),
+                                pricesForRegency, rabSettings
+                            );
+
+                            rows.push({
+                                ...loc,
+                                available: true,
+                                grandTotal: Number(rab.costs.grandTotal) || 0,
+                                materialCost: Number(rab.costs.totalMaterialCost) || 0,
+                                labourCost: Number(rab.costs.totalLabourCost) || 0,
+                                costPerUnit: Number(rab.costs.costPerUnit) || 0,
+                                costPerMeter: Number(rab.costs.costPerMeter) || 0
+                            });
+                        } catch (err) {
+                            rows.push({...loc, available:false, grandTotal:0, materialCost:0, labourCost:0, costPerUnit:0, costPerMeter:0});
+                        }
+                    }
+
+                    setSimRows(rows);
+                    showToast(`Simulasi ${rows.length} kabupaten selesai.`);
+                } catch (error) {
+                    console.error(error);
+                    showToast('Simulasi gagal: ' + error.message, 'error');
+                } finally {
+                    setSimLoading(false);
+                }
+            };
+
+            const sortedSimRows = React.useMemo(() => {
+                const rows = [...simRows];
+                if (simSort === 'priceAsc') return rows.sort((a,b) => (a.available ? a.grandTotal : Infinity) - (b.available ? b.grandTotal : Infinity));
+                if (simSort === 'priceDesc') return rows.sort((a,b) => (b.available ? b.grandTotal : -Infinity) - (a.available ? a.grandTotal : -Infinity));
+                return rows.sort((a,b) => `${a.province} ${a.regency}`.localeCompare(`${b.province} ${b.regency}`));
+            }, [simRows, simSort]);
+
             const sortedCompareRows = React.useMemo(() => {
                 const rows = [...compareRows];
                 if (compareSort === 'priceAsc') {
@@ -1868,6 +1952,13 @@
                                 >
                                     <i data-lucide="coins" className="w-4 h-4"></i>
                                     <span>Market Price Engine</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('simulate')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'simulate' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="map" className="w-4 h-4"></i>
+                                    <span>Simulasi Semua Kabupaten</span>
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('history')} 
@@ -2609,6 +2700,102 @@
                                     <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                         <p className="text-[11px] text-slate-500">Catatan: hasil market intelligence adalah referensi eksternal. Jika Status Data = NO_DATA, jangan mengisi harga dengan asumsi; masukkan harga manual atau lakukan pencarian kembali. Harga pada RAB tetap berasal dari harga yang sedang aktif di estimator sampai tombol <b>Gunakan Harga Rekomendasi</b> dipilih.</p>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* ALL REGENCY SIMULATION TAB */}
+                            {activeTab === 'simulate' && (
+                                <div className="space-y-5 animate-fade-in">
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                            <div>
+                                                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                    <i data-lucide="map" className="w-5 h-5 text-brand-600"></i>
+                                                    Simulasi Semua Kabupaten
+                                                </h2>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Simulasi spesifikasi yang sama untuk seluruh kabupaten pada database ESTIMATOR.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-5">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Tipe Titi Panen</label>
+                                                <select value={simType} onChange={e => {
+                                                    const v=e.target.value; setSimType(v);
+                                                    const spans=TITI_PANEN_TYPES[v]?.spans||[];
+                                                    if(!spans.includes(Number(simSpan)) && spans.length) setSimSpan(spans[0]);
+                                                }} className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold">
+                                                    {Object.entries(TITI_PANEN_TYPES).map(([key,spec]) => <option key={key} value={key}>{spec.code} — {spec.name}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Bentang</label>
+                                                <select value={simSpan} onChange={e=>setSimSpan(Number(e.target.value))} className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold">
+                                                    {(TITI_PANEN_TYPES[simType]?.spans||[]).map(s=><option key={s} value={s}>{s} meter</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Quantity</label>
+                                                <input type="number" min="1" value={simQty} onChange={e=>setSimQty(Math.max(1,Number(e.target.value)||1))} className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold"/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Urutan</label>
+                                                <select value={simSort} onChange={e=>setSimSort(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold">
+                                                    <option value="priceAsc">Termurah → Termahal</option>
+                                                    <option value="priceDesc">Termahal → Termurah</option>
+                                                    <option value="location">Provinsi / Kabupaten</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+                                            <div className="text-[11px] text-slate-500">
+                                                Database: <b>{Object.values(centralLocations?.provinces||{}).reduce((n,x)=>n+(x||[]).length,0)}</b> kabupaten
+                                                · <b>{TITI_PANEN_TYPES[simType]?.code}</b> · <b>{simSpan} m</b> · Qty <b>{simQty}</b>
+                                            </div>
+                                            <button onClick={runAllRegencySimulation} disabled={simLoading} className="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow">
+                                                <i data-lucide={simLoading?"loader-2":"play"} className={`w-4 h-4 ${simLoading?"animate-spin":""}`}></i>
+                                                {simLoading?'Menghitung...':'Simulasikan Sekarang'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {simRows.length>0 && (
+                                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                                                <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">Ranking Biaya</h3>
+                                                <p className="text-[11px] text-slate-500">Formula sama, harga material dan upah mengikuti kabupaten masing-masing.</p>
+                                            </div>
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs">
+                                                    <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 font-bold uppercase">
+                                                        <tr>
+                                                            <th className="p-3 text-left">Rank</th><th className="p-3 text-left">Provinsi</th><th className="p-3 text-left">Kabupaten</th>
+                                                            <th className="p-3 text-right">Material</th><th className="p-3 text-right">Upah</th><th className="p-3 text-right">Grand Total</th>
+                                                            <th className="p-3 text-right">Rp/Unit</th><th className="p-3 text-right">Rp/Meter</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {sortedSimRows.map((r,i)=><tr key={`${r.province}-${r.regency}`} className={`border-t border-slate-100 dark:border-slate-700 ${i===0&&r.available?'bg-emerald-50/60 dark:bg-emerald-900/10':''}`}>
+                                                            <td className="p-3 font-extrabold text-slate-400">{r.available?i+1:'-'}</td>
+                                                            <td className="p-3">{r.province}</td>
+                                                            <td className="p-3 font-bold">{r.regency}</td>
+                                                            <td className="p-3 text-right font-mono">{r.available?'Rp '+r.materialCost.toLocaleString('id-ID'):'-'}</td>
+                                                            <td className="p-3 text-right font-mono">{r.available?'Rp '+r.labourCost.toLocaleString('id-ID'):'-'}</td>
+                                                            <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">{r.available?'Rp '+r.grandTotal.toLocaleString('id-ID',{maximumFractionDigits:0}):'-'}</td>
+                                                            <td className="p-3 text-right font-bold">{r.available?'Rp '+r.costPerUnit.toLocaleString('id-ID',{maximumFractionDigits:0}):'-'}</td>
+                                                            <td className="p-3 text-right font-bold">{r.available?'Rp '+r.costPerMeter.toLocaleString('id-ID',{maximumFractionDigits:0}):'-'}</td>
+                                                        </tr>)}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-900/40 text-[10px] text-slate-500">
+                                                <b>Catatan:</b> perbandingan valid karena tipe, bentang, quantity, dan setting RAB sama untuk seluruh kabupaten.
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
