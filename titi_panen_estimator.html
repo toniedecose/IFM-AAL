@@ -187,7 +187,7 @@
 
         // --- DEFAULT PROJECT DATA ---
         const DEFAULT_PROJECT = {
-            company: "PT Ekadura Indonesia",
+            company: "EDI1",
             estate: "PT Ekadura Indonesia",
             afdeling: "OE",
             block: "14",
@@ -606,8 +606,7 @@
                     [],
                     ["Informasi Proyek:"],
                     ["Perusahaan / PT", project.company, "Pulau", project.island],
-                    ["Kebun / Rayon", project.estate, "Provinsi", project.province],
-                    ["Afdeling / Blok", `${project.afdeling} / ${project.block}`, "Kabupaten", project.regency],
+                    ["Provinsi", project.province, "Kabupaten", project.regency],
                     ["Senior Estimator", project.seniorEstimator, "Tanggal", project.date],
                     [],
                     ["Spesifikasi Titi Panen:"],
@@ -942,9 +941,7 @@
                                 <div>
                                     <table className="w-full">
                                         <tbody>
-                                            <tr><td className="font-semibold text-slate-500 w-28">Nama Kebun/Rayon:</td><td className="font-bold">{project.estate}</td></tr>
-                                            <tr><td className="font-semibold text-slate-500">Afdeling / Blok:</td><td className="font-bold">{project.afdeling} / Blok {project.block}</td></tr>
-                                            <tr><td className="font-semibold text-slate-500">Lokasi Regional:</td><td className="font-bold">{project.island} &rarr; {project.province}</td></tr>
+                                                                                        <tr><td className="font-semibold text-slate-500">Lokasi Regional:</td><td className="font-bold">{project.island} &rarr; {project.province}</td></tr>
                                             <tr><td className="font-semibold text-slate-500">Kabupaten Market:</td><td className="font-bold text-brand-700">{project.regency}</td></tr>
                                         </tbody>
                                     </table>
@@ -1177,7 +1174,19 @@
             const [toast, setToast] = React.useState(null);
 
             // Central estimator database / AI market intelligence
-            const [centralLocations, setCentralLocations] = React.useState({ provinces: {}, provinceList: [] });
+            const getLocalLocations = () => {
+                const provinces = {};
+                const provinceList = [];
+                Object.entries(REGIONAL_DATABASE || {}).forEach(([island, provinceMap]) => {
+                    Object.entries(provinceMap || {}).forEach(([province, regencyMap]) => {
+                        if (!provinceList.includes(province)) provinceList.push(province);
+                        provinces[province] = Object.keys(regencyMap || {});
+                    });
+                });
+                return { provinces, provinceList };
+            };
+
+            const [centralLocations, setCentralLocations] = React.useState(() => getLocalLocations());
             const [ptByRegency, setPtByRegency] = React.useState(() => normalizePTDatabase(PT_DATABASE));
             const [centralLoading, setCentralLoading] = React.useState(false);
             const [centralPriceSource, setCentralPriceSource] = React.useState('LOCAL FALLBACK');
@@ -1204,7 +1213,11 @@
                 return map;
             }, [centralLocations.provinceList]);
 
-            const islandList = React.useMemo(() => Object.keys(islandProvinceMap).sort(), [islandProvinceMap]);
+            const islandList = React.useMemo(() => {
+                const fromMap = Object.keys(islandProvinceMap);
+                if (fromMap.length) return fromMap.sort();
+                return Object.keys(REGIONAL_DATABASE || {}).sort();
+            }, [islandProvinceMap]);
 
             const priceKeyMap = {
                 Cement: 'cement', Sand: 'sand', Gravel: 'gravel',
@@ -1292,7 +1305,7 @@
                     }
                 } catch (error) {
                     console.error('Central location error:', error);
-                    showToast('Database pusat tidak dapat diakses. Menggunakan data lokal sementara.', 'error');
+                    setCentralPriceSource('LOCAL FALLBACK');
                 } finally {
                     setCentralLoading(false);
                 }
@@ -1314,7 +1327,7 @@
                     if (firstItem) setMarketItem(priceKeyMap[firstItem] || firstItem.charAt(0).toLowerCase() + firstItem.slice(1));
                     return true;
                 } catch (error) {
-                    console.error('Central price error:', error);
+                    console.warn('Harga pusat tidak tersedia, menggunakan harga lokal:', error);
                     return false;
                 }
             };
@@ -1362,8 +1375,12 @@
                 return options.includes(currentCompany) ? currentCompany : options[0];
             };
 
+            const getLocalPrices = (province, regency) => {
+                return REGIONAL_DATABASE?.[provinceIsland(province)]?.[province]?.[regency] || null;
+            };
+
             // Update location from the CENTRAL ESTIMATOR database.
-            // newIsland/newProvince/newRegency: pass null for whichever the user didn't just change.
+            // Jika database pusat gagal, gunakan harga lokal sesuai Kabupaten.
             const handleLocationChange = async (newIsland, newProvince, newRegency) => {
                 let updatedProvince = newProvince;
 
@@ -1390,7 +1407,13 @@
 
                 if (updatedRegency) {
                     const ok = await fetchCentralPrices(updatedProvince, updatedRegency);
-                    if (!ok) showToast('Harga pusat untuk lokasi ini belum tersedia.', 'error');
+                    if (!ok) {
+                        const localPrices = getLocalPrices(updatedProvince, updatedRegency);
+                        if (localPrices) {
+                            setPrices(localPrices);
+                            setCentralPriceSource('LOCAL FALLBACK');
+                        }
+                    }
                 }
             };
 
@@ -1433,9 +1456,9 @@
                 }
             }, [activeTab, wizardStep, darkMode, isReportOpen]);
 
-            React.useEffect(() => {
-                fetchCentralLocations();
-            }, []);
+            // Lokasi awal menggunakan database lokal agar halaman tidak menampilkan
+            // error ketika endpoint Apps Script sedang tidak tersedia.
+            // Harga pusat tetap dicoba saat Kabupaten dipilih/diganti.
 
             const triggerExplain = (title, formula, inputs, trace, result) => {
                 setExplainData({ title, formula, inputs, trace, result });
@@ -1837,7 +1860,7 @@
                                             <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-3">
                                                 <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center space-x-1">
                                                     <i data-lucide="map-pin" className="w-4 h-4"></i>
-                                                    <span>Pilih Regional Lokasi Kebun (Harga Acuan Otomatis Terhubung)</span>
+                                                    <span>Pilih Regional Lokasi Kebun</span>
                                                 </p>
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                                                     <div>
@@ -1860,7 +1883,7 @@
                                                             onChange={e => handleLocationChange(project.island, e.target.value, null)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
                                                         >
-                                                            {(islandProvinceMap[project.island] || centralLocations.provinceList).map(prov => (
+                                                            {(islandProvinceMap[project.island] || Object.keys(REGIONAL_DATABASE?.[project.island] || {})).map(prov => (
                                                                 <option key={prov} value={prov}>{prov}</option>
                                                             ))}
                                                         </select>
@@ -1873,7 +1896,7 @@
                                                             onChange={e => handleLocationChange(project.island, project.province, e.target.value)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-extrabold text-emerald-700 dark:text-emerald-400"
                                                         >
-                                                            {(centralLocations.provinces[project.province] || []).map(reg => (
+                                                            {(centralLocations.provinces[project.province] || Object.keys(REGIONAL_DATABASE?.[project.island]?.[project.province] || {})).map(reg => (
                                                                 <option key={reg} value={reg}>{reg}</option>
                                                             ))}
                                                         </select>
@@ -1898,18 +1921,6 @@
                                                         <input type="text" value={project.company} onChange={e => setProject({...project, company: e.target.value})} placeholder="Belum ada PT pada sheet PT" className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
                                                     )}
                                                     <p className="text-[10px] text-slate-400 mt-1">Pilihan otomatis mengikuti Kabupaten yang dipilih.</p>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-slate-500 mb-1 font-semibold">Estate / Kebun</label>
-                                                    <input type="text" value={project.estate} onChange={e => setProject({...project, estate: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-slate-500 mb-1 font-semibold">Afdeling</label>
-                                                    <input type="text" value={project.afdeling} onChange={e => setProject({...project, afdeling: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-slate-500 mb-1 font-semibold">Nomor Blok</label>
-                                                    <input type="text" value={project.block} onChange={e => setProject({...project, block: e.target.value})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-medium" />
                                                 </div>
                                                 <div className="md:col-span-2">
                                                     <label className="block text-slate-500 mb-1 font-semibold">Senior Estimator</label>
@@ -1971,7 +1982,7 @@
                                             <div className="flex justify-between items-center bg-slate-100 dark:bg-slate-700/60 p-3 rounded-lg">
                                                 <div>
                                                     <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">3. Harga Pasar Kabupaten: <span className="text-emerald-600 dark:text-emerald-400">{project.regency}</span></h3>
-                                                    <p className="text-xs text-slate-500">Harga acuan diambil dari database pusat ESTIMATOR. {centralLoading ? 'Menghubungkan...' : centralPriceSource}.</p>
+                                                    <p className="text-xs text-slate-500">Harga acuan: {centralPriceSource}.</p>
                                                 </div>
                                                 <button 
                                                     onClick={handleUpdateMarketPrice}
