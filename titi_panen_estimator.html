@@ -1221,6 +1221,14 @@
             const [marketItem, setMarketItem] = React.useState('Cement');
             const [marketAnalysis, setMarketAnalysis] = React.useState(null);
             const [marketLoading, setMarketLoading] = React.useState(false);
+            // Analisa ulang & perbandingan PT
+            const [compareRows, setCompareRows] = React.useState([]);
+            const [compareLoading, setCompareLoading] = React.useState(false);
+            const [compareScope, setCompareScope] = React.useState('all');
+            const [compareType, setCompareType] = React.useState(selectedType);
+            const [compareSpan, setCompareSpan] = React.useState(selectedSpan);
+            const [compareQty, setCompareQty] = React.useState(quantity);
+            const [compareSort, setCompareSort] = React.useState('priceAsc');
 
             const provinceIsland = (province) => {
                 if (province === 'Riau' || province === 'Jambi') return 'Sumatera';
@@ -1473,6 +1481,140 @@
                 setPrices(prev => ({ ...prev, [marketItem]: recommended }));
                 showToast('Harga rekomendasi AI diterapkan ke RAB. Belum mengubah Sheet ESTIMATOR.');
             };
+
+
+            // Mulai analisa baru tanpa perlu refresh halaman.
+            const startNewAnalysis = () => {
+                setWizardStep(1);
+                setActiveTab('wizard');
+                setCompareRows([]);
+                setCompareType(selectedType);
+                setCompareSpan(selectedSpan);
+                setCompareQty(quantity);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // Ambil daftar PT + kabupaten dari database PT.
+            const getAllPTRecords = () => {
+                const records = [];
+                Object.entries(ptByRegency || {}).forEach(([regency, pts]) => {
+                    (pts || []).forEach(pt => {
+                        records.push({
+                            pt: String(pt).trim(),
+                            regency: String(regency).trim(),
+                            estimator: getEstimatorByPT(pt)
+                        });
+                    });
+                });
+                return records.filter((r, i, arr) =>
+                    r.pt && arr.findIndex(x => x.pt === r.pt) === i
+                );
+            };
+
+            const getCompareRecords = () => {
+                const all = getAllPTRecords();
+                if (compareScope === 'regency') {
+                    return all.filter(x => x.regency === project.regency);
+                }
+                if (compareScope === 'province') {
+                    const regencies = centralLocations.provinces[project.province] || [];
+                    return all.filter(x => regencies.includes(x.regency));
+                }
+                return all;
+            };
+
+            // Bandingkan PT menggunakan spesifikasi yang SAMA.
+            // Harga setiap PT diambil berdasarkan KABUPATEN PT tersebut.
+            const runPTComparison = async () => {
+                const records = getCompareRecords();
+
+                if (!records.length) {
+                    showToast('Belum ada data PT untuk dibandingkan.', 'error');
+                    return;
+                }
+
+                const typeSpec = TITI_PANEN_TYPES[compareType];
+                if (!typeSpec || !typeSpec.spans.includes(Number(compareSpan))) {
+                    showToast('Bentang tidak sesuai dengan tipe titi panen.', 'error');
+                    return;
+                }
+
+                setCompareLoading(true);
+                setCompareRows([]);
+
+                try {
+                    // Hindari request berulang untuk kabupaten yang sama.
+                    const uniqueRegencies = [...new Set(records.map(r => r.regency))];
+                    const priceMap = {};
+
+                    for (const regency of uniqueRegencies) {
+                        const record = await callEstimatorApi({
+                            action: 'prices',
+                            estimator: 'Titi Panen',
+                            province: (() => {
+                                const p = Object.keys(centralLocations.provinces || {})
+                                    .find(prov => (centralLocations.provinces[prov] || []).includes(regency));
+                                return p || project.province;
+                            })(),
+                            regency
+                        });
+
+                        if (record && record.success && record.prices && Number(record.count) > 0) {
+                            priceMap[regency] = normalizeCentralPrices(record.prices);
+                        }
+                    }
+
+                    const rows = records.map(r => {
+                        const p = priceMap[r.regency];
+                        if (!p) {
+                            return {
+                                ...r,
+                                available: false,
+                                grandTotal: 0,
+                                costPerUnit: 0,
+                                costPerMeter: 0
+                            };
+                        }
+
+                        const rab = AHSPEngine.calculateRAB(
+                            compareType,
+                            Number(compareSpan),
+                            Number(compareQty),
+                            p,
+                            rabSettings
+                        );
+
+                        return {
+                            ...r,
+                            available: true,
+                            grandTotal: rab.costs.grandTotal,
+                            costPerUnit: rab.costs.costPerUnit,
+                            costPerMeter: rab.costs.costPerMeter,
+                            materialCost: rab.costs.totalMaterialCost,
+                            labourCost: rab.costs.totalLabourCost
+                        };
+                    });
+
+                    setCompareRows(rows);
+                    showToast(`Perbandingan ${rows.length} PT selesai.`);
+                } catch (error) {
+                    console.error('PT comparison error:', error);
+                    showToast('Perbandingan PT gagal: ' + error.message, 'error');
+                } finally {
+                    setCompareLoading(false);
+                }
+            };
+
+            const sortedCompareRows = React.useMemo(() => {
+                const rows = [...compareRows];
+                if (compareSort === 'priceAsc') {
+                    return rows.sort((a, b) => (a.available ? a.grandTotal : Infinity) - (b.available ? b.grandTotal : Infinity));
+                }
+                if (compareSort === 'priceDesc') {
+                    return rows.sort((a, b) => (b.available ? b.grandTotal : -Infinity) - (a.available ? a.grandTotal : -Infinity));
+                }
+                return rows.sort((a, b) => a.pt.localeCompare(b.pt));
+            }, [compareRows, compareSort]);
 
             const showToast = (message, type = 'success') => {
                 setToast({ message, type });
@@ -1742,6 +1884,19 @@
                                     <span>Pengaturan & Proyek</span>
                                 </button>
                             </nav>
+
+                            <div className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                <button
+                                    onClick={startNewAnalysis}
+                                    className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 shadow transition"
+                                >
+                                    <i data-lucide="rotate-ccw" className="w-4 h-4"></i>
+                                    <span>Analisa Titi Panen Baru</span>
+                                </button>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center mt-2">
+                                    Ganti PT / kabupaten tanpa refresh halaman
+                                </p>
+                            </div>
 
                             {/* Export / Print Quick Actions Card */}
                             <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-xl shadow-md space-y-3">
@@ -2308,13 +2463,22 @@
                                                 Lanjut Langkah {wizardStep + 1}
                                             </button>
                                         ) : (
-                                            <button 
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={startNewAnalysis}
+                                                    className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center space-x-1.5"
+                                                >
+                                                    <i data-lucide="rotate-ccw" className="w-4 h-4"></i>
+                                                    <span>Analisa Baru</span>
+                                                </button>
+                                                <button 
                                                 onClick={() => { handleSaveEstimation(); setActiveTab('dashboard'); }}
                                                 className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow flex items-center space-x-1.5"
                                             >
                                                 <i data-lucide="check" className="w-4 h-4"></i>
                                                 <span>Selesaikan & Simpan Estimasi</span>
-                                            </button>
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -2445,6 +2609,167 @@
                                     <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
                                         <p className="text-[11px] text-slate-500">Catatan: hasil market intelligence adalah referensi eksternal. Jika Status Data = NO_DATA, jangan mengisi harga dengan asumsi; masukkan harga manual atau lakukan pencarian kembali. Harga pada RAB tetap berasal dari harga yang sedang aktif di estimator sampai tombol <b>Gunakan Harga Rekomendasi</b> dipilih.</p>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* PT COMPARISON TAB */}
+                            {activeTab === 'compare' && (
+                                <div className="space-y-5 animate-fade-in">
+                                    <div className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                            <div>
+                                                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                    <i data-lucide="git-compare" className="w-5 h-5 text-brand-600"></i>
+                                                    Perbandingan Harga Antar PT
+                                                </h2>
+                                                <p className="text-xs text-slate-500 mt-1">
+                                                    Bandingkan Grand Total untuk spesifikasi yang sama. Harga mengikuti Kabupaten masing-masing PT dari database ESTIMATOR.
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={startNewAnalysis}
+                                                className="px-4 py-2 bg-slate-100 dark:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"
+                                            >
+                                                <i data-lucide="calculator" className="w-4 h-4"></i>
+                                                Analisa PT / Kabupaten Lain
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-5">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Tipe Titi Panen</label>
+                                                <select
+                                                    value={compareType}
+                                                    onChange={e => {
+                                                        const type = e.target.value;
+                                                        setCompareType(type);
+                                                        const spans = TITI_PANEN_TYPES[type]?.spans || [];
+                                                        if (!spans.includes(Number(compareSpan)) && spans.length) setCompareSpan(spans[0]);
+                                                    }}
+                                                    className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold"
+                                                >
+                                                    {Object.entries(TITI_PANEN_TYPES).map(([key, spec]) => (
+                                                        <option key={key} value={key}>{spec.code} — {spec.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Bentang</label>
+                                                <select
+                                                    value={compareSpan}
+                                                    onChange={e => setCompareSpan(Number(e.target.value))}
+                                                    className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold"
+                                                >
+                                                    {(TITI_PANEN_TYPES[compareType]?.spans || []).map(s => (
+                                                        <option key={s} value={s}>{s} meter</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Quantity</label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={compareQty}
+                                                    onChange={e => setCompareQty(Math.max(1, Number(e.target.value) || 1))}
+                                                    className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold"
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 mb-1">Lingkup Perbandingan</label>
+                                                <select
+                                                    value={compareScope}
+                                                    onChange={e => setCompareScope(e.target.value)}
+                                                    className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 font-bold"
+                                                >
+                                                    <option value="all">Semua PT</option>
+                                                    <option value="province">PT di Provinsi Aktif</option>
+                                                    <option value="regency">PT di Kabupaten Aktif</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+                                            <div className="text-[11px] text-slate-500">
+                                                Lokasi aktif: <b>{project.regency}, {project.province}</b> · Spesifikasi: <b>{TITI_PANEN_TYPES[compareType]?.code}</b> bentang <b>{compareSpan} m</b> · Qty <b>{compareQty}</b>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={compareSort}
+                                                    onChange={e => setCompareSort(e.target.value)}
+                                                    className="p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-xs font-bold"
+                                                >
+                                                    <option value="priceAsc">Termurah → Termahal</option>
+                                                    <option value="priceDesc">Termahal → Termurah</option>
+                                                    <option value="pt">Urut PT</option>
+                                                </select>
+                                                <button
+                                                    onClick={runPTComparison}
+                                                    disabled={compareLoading}
+                                                    className="px-4 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow"
+                                                >
+                                                    <i data-lucide={compareLoading ? "loader-2" : "search"} className={`w-4 h-4 ${compareLoading ? "animate-spin" : ""}`}></i>
+                                                    {compareLoading ? 'Mengambil Harga...' : 'Bandingkan Sekarang'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {compareRows.length > 0 && (
+                                        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                                            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">Hasil Perbandingan</h3>
+                                                        <p className="text-[11px] text-slate-500">Harga dihitung ulang dengan formula RAB yang sama untuk semua PT.</p>
+                                                    </div>
+                                                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        {sortedCompareRows.filter(r => r.available).length} PT tersedia
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs">
+                                                    <thead className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 font-bold uppercase">
+                                                        <tr>
+                                                            <th className="p-3 text-left">Rank</th>
+                                                            <th className="p-3 text-left">PT</th>
+                                                            <th className="p-3 text-left">Kabupaten</th>
+                                                            <th className="p-3 text-left">IFM Analyst</th>
+                                                            <th className="p-3 text-right">Material</th>
+                                                            <th className="p-3 text-right">Upah</th>
+                                                            <th className="p-3 text-right">Grand Total</th>
+                                                            <th className="p-3 text-right">Rp/Unit</th>
+                                                            <th className="p-3 text-right">Rp/Meter</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {sortedCompareRows.map((row, idx) => (
+                                                            <tr key={row.pt} className="border-t border-slate-100 dark:border-slate-700">
+                                                                <td className="p-3 font-extrabold text-slate-400">{row.available ? idx + 1 : '-'}</td>
+                                                                <td className="p-3 font-extrabold text-slate-800 dark:text-slate-100">{row.pt}</td>
+                                                                <td className="p-3 text-slate-600 dark:text-slate-300">{row.regency}</td>
+                                                                <td className="p-3 text-slate-600 dark:text-slate-300">{row.estimator || '-'}</td>
+                                                                <td className="p-3 text-right font-mono">{row.available ? 'Rp ' + row.materialCost.toLocaleString('id-ID') : 'Tidak tersedia'}</td>
+                                                                <td className="p-3 text-right font-mono">{row.available ? 'Rp ' + row.labourCost.toLocaleString('id-ID') : '-'}</td>
+                                                                <td className="p-3 text-right font-black text-emerald-700 dark:text-emerald-400">{row.available ? 'Rp ' + row.grandTotal.toLocaleString('id-ID', {maximumFractionDigits: 0}) : '-'}</td>
+                                                                <td className="p-3 text-right font-bold">{row.available ? 'Rp ' + row.costPerUnit.toLocaleString('id-ID', {maximumFractionDigits: 0}) : '-'}</td>
+                                                                <td className="p-3 text-right font-bold">{row.available ? 'Rp ' + row.costPerMeter.toLocaleString('id-ID', {maximumFractionDigits: 0}) : '-'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-900/40 text-[10px] text-slate-500">
+                                                Catatan: PT yang berada di Kabupaten yang sama akan memiliki harga material/upah yang sama, karena database harga Anda berada pada level Kabupaten. Perbedaan antar PT muncul jika Kabupaten sumber harganya berbeda.
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
