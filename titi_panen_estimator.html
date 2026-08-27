@@ -228,7 +228,7 @@
             estate: "PT Ekadura Indonesia",
             afdeling: "OE",
             block: "14",
-            seniorEstimator: "Ir. MUHAMAD FATONI, S.T., M.M.",
+            seniorEstimator: "",
             date: new Date().toISOString().split('T')[0],
             island: "Sumatera",
             province: "Riau",
@@ -1597,7 +1597,7 @@
                                 </div>
                                 <span className="text-slate-600">|</span>
                                 <div className="text-slate-400">
-                                    Estimator: <span className="text-emerald-300 font-medium">{project.seniorEstimator}</span>
+                                    Estimator: <span className="text-emerald-300 font-medium">{getEstimatorByPT(project.company) || project.seniorEstimator}</span>
                                 </div>
                             </div>
 
