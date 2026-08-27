@@ -207,8 +207,10 @@
             "PDL1": "GERI P. HARTONO"
         };
 
+        const ESTIMATOR_BY_PT_RUNTIME = { ...ESTIMATOR_BY_PT };
+
         const getEstimatorByPT = (pt) => {
-            return ESTIMATOR_BY_PT[String(pt || '').trim()] || "";
+            return ESTIMATOR_BY_PT_RUNTIME[String(pt || '').trim()] || "";
         };
 
         const normalizePTDatabase = (source) => {
@@ -987,7 +989,7 @@
                                             <tr><td className="font-semibold text-slate-500 w-28">Tipe Titi Panen:</td><td className="font-bold">{spec.code} - {spec.name}</td></tr>
                                             <tr><td className="font-semibold text-slate-500">Panjang Bentang:</td><td className="font-bold">{selectedSpan} Meter</td></tr>
                                             <tr><td className="font-semibold text-slate-500">Jumlah Pekerjaan:</td><td className="font-bold">{quantity} Unit ({selectedSpan * quantity} m Total)</td></tr>
-                                            <tr><td className="font-semibold text-slate-500">IFM Analyst:</td><td className="font-bold">{getEstimatorByPT(project.company) || project.seniorEstimator}</td></tr>
+                                            <tr><td className="font-semibold text-slate-500">IFM Analyst:</td><td className="font-bold">{getEstimatorByPT(project.company) || "IFM ANALYST"}</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -1140,7 +1142,7 @@
                             <div className="grid grid-cols-2 gap-10 text-center text-xs font-semibold pt-4 border-t border-slate-300">
                                 <div>
                                     <p className="text-slate-500 mb-12">Dibuat Oleh,</p>
-                                    <p className="font-bold underline text-slate-900">{getEstimatorByPT(project.company) || project.seniorEstimator}</p>
+                                    <p className="font-bold underline text-slate-900">{getEstimatorByPT(project.company) || "IFM ANALYST"}</p>
                                     <p className="text-[10px] text-slate-500">IFM ANALYST</p>
                                 </div>
 
@@ -1213,6 +1215,7 @@
 
             const [centralLocations, setCentralLocations] = React.useState(() => getLocalLocations());
             const [ptByRegency, setPtByRegency] = React.useState(() => normalizePTDatabase(PT_DATABASE));
+            const [estimatorByPT, setEstimatorByPT] = React.useState(() => ({ ...ESTIMATOR_BY_PT }));
             const [centralLoading, setCentralLoading] = React.useState(false);
             const [centralPriceSource, setCentralPriceSource] = React.useState('ESTIMATOR DATABASE');
             const [marketItem, setMarketItem] = React.useState('Cement');
@@ -1318,6 +1321,14 @@
                     if (apiPT && typeof apiPT === 'object') {
                         setPtByRegency(prev => ({ ...prev, ...normalizePTDatabase(apiPT) }));
                     }
+
+                    // Nama IFM ANALYST diambil LANGSUNG dari kolom ESTIMATOR
+                    // pada sheet PT, berdasarkan kode PT yang dipilih.
+                    if (data.estimatorByPT && typeof data.estimatorByPT === 'object') {
+                        setEstimatorByPT(prev => ({ ...prev, ...data.estimatorByPT }));
+                        Object.assign(ESTIMATOR_BY_PT_RUNTIME, data.estimatorByPT);
+                    }
+
                     setCentralPriceSource('ESTIMATOR DATABASE');
 
                     const provinces = data.provinceList || [];
