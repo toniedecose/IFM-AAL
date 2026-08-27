@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bridge Engineering Projects | AAL Infrastructure</title>
+    <meta name="description" content="Centralized bridge engineering project workspace for AAL Infrastructure.">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --primary: #0F4C81;
+            --primary-dark: #0A355D;
+            --accent: #18A957;
+            --accent-hover: #138746;
+            --dark-navy: #0D1B2E;
+            --workspace: #F5F7FA;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --card-bg: #FFFFFF;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+            --transition: all 0.25s ease-in-out;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--workspace);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* =========================
+           HEADER
+        ========================== */
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 66px;
+            background: rgba(13, 27, 46, 0.96);
+            backdrop-filter: blur(10px);
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 2rem;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .brand-logo {
+            height: 34px;
+            width: auto;
+            object-fit: contain;
+            display: block;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.15;
+        }
+
+        .brand-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: 0.02em;
+            color: #22C55E;
+            white-space: nowrap;
+        }
+
+        .brand-subtitle {
+            font-weight: 500;
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #94A3B8;
+            white-space: nowrap;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.75rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #CBD5E1;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #fff;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown > a {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: calc(100% + 18px);
+            left: 0;
+            background: var(--dark-navy);
+            min-width: 215px;
+            box-shadow: var(--shadow-lg);
+            border-radius: 8px;
+            padding: 0.5rem 0;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 1001;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-content a {
+            display: block;
+            padding: 0.55rem 1rem;
+            color: #CBD5E1;
+            font-size: 0.85rem;
+        }
+
+        .dropdown-content a:hover {
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        /* =========================
+           HERO
+        ========================== */
+        .hero {
+            margin-top: 66px;
+            background: linear-gradient(135deg, var(--dark-navy) 0%, var(--primary-dark) 100%);
+            color: #fff;
+            padding: 4.5rem 2rem 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px);
+            background-size: 24px 24px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            right: -120px;
+            top: -180px;
+            border-radius: 50%;
+            border: 1px solid rgba(96,165,250,0.15);
+            box-shadow:
+                0 0 0 45px rgba(96,165,250,0.035),
+                0 0 0 90px rgba(96,165,250,0.025);
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: #94A3B8;
+            font-size: 0.78rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .breadcrumb a {
+            color: #94A3B8;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            color: #fff;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(24,169,87,0.15);
+            color: #4ADE80;
+            padding: 0.35rem 0.85rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            border: 1px solid rgba(74,222,128,0.3);
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.85rem;
+        }
+
+        .hero h1 span {
+            color: #60A5FA;
+        }
+
+        .hero p {
+            color: #94A3B8;
+            font-size: 1rem;
+            max-width: 720px;
+        }
+
+        /* =========================
+           PROJECT WORKSPACE
+        ========================== */
+        .workspace {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .workspace-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .workspace-title h2 {
+            color: var(--dark-navy);
+            font-size: 1.35rem;
+            font-weight: 800;
+        }
+
+        .workspace-title p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.2rem;
+        }
+
+        .toolbar-actions {
+            display: flex;
+            gap: 0.65rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1rem;
+            border-radius: 7px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        .btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            color: #fff;
+        }
+
+        .project-layout {
+            display: grid;
+            grid-template-columns: 290px minmax(0, 1fr);
+            gap: 1rem;
+            min-height: 720px;
+        }
+
+        /* Project list */
+        .project-sidebar {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 1rem 1.1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h3 {
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--dark-navy);
+        }
+
+        .project-count {
+            font-size: 0.7rem;
+            background: rgba(15,76,129,0.08);
+            color: var(--primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 20px;
+            font-weight: 700;
+        }
+
+        .project-list {
+            padding: 0.65rem;
+            overflow-y: auto;
+        }
+
+        .project-item {
+            width: 100%;
+            border: 1px solid transparent;
+            background: transparent;
+            border-radius: 9px;
+            padding: 0.8rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.7rem;
+            text-align: left;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-main);
+            margin-bottom: 0.3rem;
+        }
+
+        .project-item:hover {
+            background: var(--workspace);
+            border-color: var(--border-color);
+        }
+
+        .project-item.active {
+            background: rgba(15,76,129,0.07);
+            border-color: rgba(15,76,129,0.2);
+        }
+
+        .project-icon {
+            width: 38px;
+            height: 38px;
+            flex: 0 0 38px;
+            border-radius: 8px;
+            background: var(--workspace);
+            border: 1px solid var(--border-color);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .project-item.active .project-icon {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .project-info {
+            min-width: 0;
+        }
+
+        .project-info strong {
+            display: block;
+            font-size: 0.85rem;
+            line-height: 1.3;
+            color: var(--dark-navy);
+            margin-bottom: 0.2rem;
+        }
+
+        .project-info small {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            line-height: 1.35;
+        }
+
+        .project-status {
+            display: inline-block;
+            margin-top: 0.35rem;
+            font-size: 0.62rem;
+            font-weight: 700;
+            padding: 0.12rem 0.4rem;
+            border-radius: 4px;
+            background: rgba(24,169,87,0.1);
+            color: var(--accent);
+        }
+
+        .project-status.dev {
+            background: rgba(234,179,8,0.1);
+            color: #CA8A04;
+        }
+
+        .add-project-note {
+            margin: auto 0.8rem 0.8rem;
+            padding: 0.8rem;
+            background: var(--workspace);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            line-height: 1.45;
+        }
+
+        .add-project-note strong {
+            display: block;
+            color: var(--dark-navy);
+            margin-bottom: 0.2rem;
+        }
+
+        /* Viewer */
+        .viewer {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewer-header {
+            min-height: 62px;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            background: #fff;
+        }
+
+        .viewer-project {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .viewer-project-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            background: rgba(15,76,129,0.08);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 38px;
+        }
+
+        .viewer-project h3 {
+            font-size: 0.9rem;
+            color: var(--dark-navy);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .viewer-project span {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.68rem;
+            margin-top: 0.1rem;
+        }
+
+        .viewer-actions {
+            display: flex;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            color: var(--text-muted);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+        }
+
+        .icon-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+            background: rgba(15,76,129,0.03);
+        }
+
+        .iframe-wrap {
+            position: relative;
+            flex: 1;
+            min-height: 650px;
+            background: #eef2f6;
+        }
+
+        #projectFrame {
+            width: 100%;
+            height: 100%;
+            min-height: 650px;
+            border: 0;
+            display: block;
+            background: #fff;
+        }
+
+        .loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(245,247,250,0.96);
+            z-index: 2;
+            transition: opacity 0.25s ease;
+        }
+
+        .loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-box {
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .loading-box .spinner {
+            width: 34px;
+            height: 34px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 0.8rem;
+        }
+
+        .loading-box p {
+            font-size: 0.78rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* =========================
+           INFO STRIP
+        ========================== */
+        .info-strip {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem 2.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .info-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.15rem;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .info-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--dark-navy);
+            margin-bottom: 0.4rem;
+        }
+
+        .info-card h3 i {
+            color: var(--accent);
+        }
+
+        .info-card p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* =========================
+           FOOTER
+        ========================== */
+        footer {
+            background: var(--dark-navy);
+            color: #94A3B8;
+            padding: 2.5rem 2rem 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+            padding-bottom: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .footer-brand p {
+            font-size: 0.78rem;
+            margin-top: 0.5rem;
+            color: #64748B;
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+        }
+
+        /* =========================
+           RESPONSIVE
+        ========================== */
+        @media (max-width: 1024px) {
+            .project-layout {
+                grid-template-columns: 240px minmax(0, 1fr);
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            header {
+                padding: 0.75rem 1rem;
+            }
+
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 66px;
+                left: 0;
+                width: 100%;
+                background: var(--dark-navy);
+                padding: 1rem;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.85rem;
+                border-bottom: 1px solid rgba(255,255,255,0.1);
+            }
+
+            .nav-links.mobile-open {
+                display: flex;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .hero {
+                padding: 3.5rem 1.25rem 3rem;
+            }
+
+            .hero h1 {
+                font-size: 2.15rem;
+            }
+
+            .workspace,
+            .info-strip {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .workspace-toolbar {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .project-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .project-sidebar {
+                min-height: auto;
+            }
+
+            .project-list {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.35rem;
+            }
+
+            .project-item {
+                margin-bottom: 0;
+            }
+
+            .add-project-note {
+                display: none;
+            }
+
+            .viewer-header {
+                align-items: flex-start;
+            }
+
+            .viewer-actions {
+                flex-wrap: wrap;
+            }
+
+            .iframe-wrap,
+            #projectFrame {
+                min-height: 560px;
+            }
+
+            .footer-container,
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .brand-subtitle {
+                display: none;
+            }
+
+            .brand-title {
+                font-size: 0.9rem;
+            }
+
+            .logo-container {
+                padding: 0.25rem 0.5rem;
+            }
+
+            .brand-logo {
+                height: 28px;
+            }
+
+            .project-list {
+                grid-template-columns: 1fr;
+            }
+
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <a href="index.html" class="brand">
+            <div class="logo-container">
+                <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">AAL Infrastructure</span>
+                <span class="brand-subtitle">Management</span>
+            </div>
+        </a>
+
+        <nav class="nav-links" id="navLinks">
+            <a href="index.html">Dashboard</a>
+            <a href="estimator.html">Estimator</a>
+
+            <div class="dropdown">
+                <a href="#" class="active">
+                    Projects <i data-lucide="chevron-down" size="14"></i>
+                </a>
+                <div class="dropdown-content">
+                    <a href="cbs.html">Project CBS</a>
+                    <a href="soil-improvement.html">Project Soil Improvement</a>
+                    <a href="jembatan.html">Project Jembatan</a>
+                    <a href="fuel.html">Project Fuel</a>
+                </div>
+            </div>
+
+            <a href="index.html#capability">Infrastructure</a>
+            <a href="index.html#digital">Digital Engineering</a>
+        </nav>
+
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle Menu">
+            <i data-lucide="menu" size="24"></i>
+        </button>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="breadcrumb">
+                <a href="index.html">Dashboard</a>
+                <i data-lucide="chevron-right" size="13"></i>
+                <span>Projects</span>
+                <i data-lucide="chevron-right" size="13"></i>
+                <span>Bridge Engineering</span>
+            </div>
+
+            <div class="hero-badge">
+                <i data-lucide="bridge" size="14"></i>
+                BRIDGE ENGINEERING
+            </div>
+
+            <h1>Bridge <span>Project Portal</span></h1>
+            <p>
+                Centralized workspace for bridge engineering projects, technical documentation,
+                project development and field implementation.
+            </p>
+        </div>
+    </section>
+
+    <!-- WORKSPACE -->
+    <main class="workspace">
+
+        <div class="workspace-toolbar">
+            <div class="workspace-title">
+                <h2>Bridge Projects</h2>
+                <p>Select a project to open it inside the engineering workspace.</p>
+            </div>
+
+            <div class="toolbar-actions">
+                <a href="index.html" class="btn">
+                    <i data-lucide="arrow-left" size="15"></i>
+                    Dashboard
+                </a>
+            </div>
+        </div>
+
+        <div class="project-layout">
+
+            <!-- PROJECT SIDEBAR -->
+            <aside class="project-sidebar">
+                <div class="sidebar-header">
+                    <h3>Project List</h3>
+                    <span class="project-count" id="projectCount">1 Project</span>
+                </div>
+
+                <div class="project-list" id="projectList">
+
+                    <!--
+                        ADD NEW PROJECT:
+                        Copy this project-item and change:
+                        1. data-url
+                        2. data-title
+                        3. data-description
+                        4. data-status
+                        5. project name
+                    -->
+
+                    <button
+                        class="project-item active"
+                        data-url="cilodang.html"
+                        data-title="Jembatan Cilodang"
+                        data-description="Bridge engineering project workspace"
+                        data-status="ACTIVE"
+                        type="button"
+                    >
+                        <div class="project-icon">
+                            <i data-lucide="bridge" size="19"></i>
+                        </div>
+
+                        <div class="project-info">
+                            <strong>Jembatan Cilodang</strong>
+                            <small>Bridge engineering project workspace</small>
+                            <span class="project-status">ACTIVE</span>
+                        </div>
+                    </button>
+
+                </div>
+
+                <div class="add-project-note">
+                    <strong>+ Add Project</strong>
+                    Tambahkan project baru pada bagian
+                    <b>project-list</b> di source code ini.
+                    Tidak perlu mengubah viewer.
+                </div>
+            </aside>
+
+            <!-- PROJECT VIEWER -->
+            <section class="viewer">
+
+                <div class="viewer-header">
+                    <div class="viewer-project">
+                        <div class="viewer-project-icon">
+                            <i data-lucide="bridge" size="19"></i>
+                        </div>
+
+                        <div>
+                            <h3 id="viewerTitle">Jembatan Cilodang</h3>
+                            <span id="viewerDescription">Bridge engineering project workspace</span>
+                        </div>
+                    </div>
+
+                    <div class="viewer-actions">
+                        <button
+                            class="icon-btn"
+                            id="reloadBtn"
+                            title="Reload project"
+                            aria-label="Reload project"
+                        >
+                            <i data-lucide="refresh-cw" size="16"></i>
+                        </button>
+
+                        <a
+                            class="icon-btn"
+                            id="fullPageBtn"
+                            href="cilodang.html"
+                            target="_blank"
+                            rel="noopener"
+                            title="Open project in new tab"
+                            aria-label="Open project in new tab"
+                        >
+                            <i data-lucide="external-link" size="16"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="iframe-wrap">
+
+                    <div class="loading" id="loading">
+                        <div class="loading-box">
+                            <div class="spinner"></div>
+                            <p>Loading bridge project...</p>
+                        </div>
+                    </div>
+
+                    <iframe
+                        id="projectFrame"
+                        src="cilodang.html"
+                        title="Bridge Project Viewer"
+                        loading="eager"
+                    ></iframe>
+
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- INFO -->
+    <section class="info-strip">
+        <div class="info-grid">
+
+            <div class="info-card">
+                <h3>
+                    <i data-lucide="folder-kanban" size="17"></i>
+                    Centralized Project Workspace
+                </h3>
+                <p>
+                    Semua project jembatan dapat diakses dari satu halaman tanpa
+                    meninggalkan Bridge Project Portal.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <h3>
+                    <i data-lucide="layers" size="17"></i>
+                    Modular Project Structure
+                </h3>
+                <p>
+                    Setiap project tetap menggunakan file HTML masing-masing sehingga
+                    pengembangan antar-project tetap terpisah dan mudah dikelola.
+                </p>
+            </div>
+
+            <div class="info-card">
+                <h3>
+                    <i data-lucide="external-link" size="17"></i>
+                    Full Page Access
+                </h3>
+                <p>
+                    Project yang sedang dipilih juga dapat dibuka sebagai halaman
+                    penuh melalui tombol external link.
+                </p>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <a href="index.html" class="brand">
+                    <div class="logo-container">
+                        <img src="logo.png" alt="Infrastructure Management Logo" class="brand-logo">
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">AAL Infrastructure</span>
+                        <span class="brand-subtitle">Management</span>
+                    </div>
+                </a>
+
+                <p>Engineering • Projects • Estimation • Digital Transformation</p>
+            </div>
+
+            <div style="font-size:0.78rem; color:#64748B;">
+                Bridge Engineering Project Workspace
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <div>© 2026 Infrastructure Management</div>
+            <div>Engineering Workspace by Fatoni</div>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+
+        /* =========================
+           ELEMENTS
+        ========================== */
+        const projectFrame = document.getElementById('projectFrame');
+        const projectList = document.getElementById('projectList');
+        const projectItems = document.querySelectorAll('.project-item');
+
+        const viewerTitle = document.getElementById('viewerTitle');
+        const viewerDescription = document.getElementById('viewerDescription');
+        const fullPageBtn = document.getElementById('fullPageBtn');
+
+        const reloadBtn = document.getElementById('reloadBtn');
+        const loading = document.getElementById('loading');
+
+        const projectCount = document.getElementById('projectCount');
+
+        /* =========================
+           PROJECT COUNT
+        ========================== */
+        function updateProjectCount() {
+            const count = document.querySelectorAll('.project-item').length;
+            projectCount.textContent = count + (count === 1 ? ' Project' : ' Projects');
+        }
+
+        updateProjectCount();
+
+        /* =========================
+           OPEN PROJECT
+        ========================== */
+        function openProject(item) {
+            const url = item.dataset.url;
+            const title = item.dataset.title;
+            const description = item.dataset.description || 'Bridge engineering project workspace';
+
+            document.querySelectorAll('.project-item').forEach(project => {
+                project.classList.remove('active');
+            });
+
+            item.classList.add('active');
+
+            viewerTitle.textContent = title;
+            viewerDescription.textContent = description;
+
+            fullPageBtn.href = url;
+
+            loading.classList.remove('hidden');
+
+            projectFrame.src = url;
+
+            // Keep the URL hash so the selected project can be bookmarked.
+            if (history.replaceState) {
+                history.replaceState(null, '', '#' + encodeURIComponent(url));
+            }
+        }
+
+        /* =========================
+           PROJECT CLICK
+        ========================== */
+        projectList.addEventListener('click', function(event) {
+            const item = event.target.closest('.project-item');
+
+            if (!item) return;
+
+            openProject(item);
+        });
+
+        /* =========================
+           IFRAME LOADING
+        ========================== */
+        projectFrame.addEventListener('load', function() {
+            loading.classList.add('hidden');
+        });
+
+        /* =========================
+           RELOAD
+        ========================== */
+        reloadBtn.addEventListener('click', function() {
+            loading.classList.remove('hidden');
+
+            try {
+                projectFrame.contentWindow.location.reload();
+            } catch (error) {
+                // Fallback for browsers/security restrictions.
+                projectFrame.src = projectFrame.src;
+            }
+        });
+
+        /* =========================
+           LOAD PROJECT FROM HASH
+           Example:
+           jembatan.html#cilodang.html
+        ========================== */
+        function loadProjectFromHash() {
+            const hash = decodeURIComponent(window.location.hash.replace('#', ''));
+
+            if (!hash) return;
+
+            const matchingItem = Array.from(projectItems).find(item => {
+                return item.dataset.url === hash;
+            });
+
+            if (matchingItem) {
+                openProject(matchingItem);
+            }
+        }
+
+        loadProjectFromHash();
+
+        /* =========================
+           MOBILE MENU
+        ========================== */
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.getElementById('navLinks');
+
+        mobileMenuBtn.addEventListener('click', function() {
+            navLinks.classList.toggle('mobile-open');
+        });
+
+        /* Close mobile menu after navigation */
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function() {
+                navLinks.classList.remove('mobile-open');
+            });
+        });
+    </script>
+
+</body>
+</html>
