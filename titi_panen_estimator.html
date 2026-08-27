@@ -1213,7 +1213,10 @@
                 return { provinces, provinceList };
             };
 
-            const [centralLocations, setCentralLocations] = React.useState(() => getLocalLocations());
+            const [centralLocations, setCentralLocations] = React.useState(() => ({
+                provinces: {},
+                provinceList: []
+            }));
             const [ptByRegency, setPtByRegency] = React.useState(() => normalizePTDatabase(PT_DATABASE));
             const [estimatorByPT, setEstimatorByPT] = React.useState(() => ({ ...ESTIMATOR_BY_PT }));
             const [centralLoading, setCentralLoading] = React.useState(false);
@@ -1256,9 +1259,7 @@
             }, [centralLocations.provinceList]);
 
             const islandList = React.useMemo(() => {
-                const fromMap = Object.keys(islandProvinceMap);
-                if (fromMap.length) return fromMap.sort();
-                return Object.keys(REGIONAL_DATABASE || {}).sort();
+                return Object.keys(islandProvinceMap).sort();
             }, [islandProvinceMap]);
 
             const priceKeyMap = {
@@ -2290,7 +2291,7 @@
                                                             onChange={e => handleLocationChange(project.island, e.target.value, null)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-bold text-slate-800 dark:text-slate-100"
                                                         >
-                                                            {(islandProvinceMap[project.island] || Object.keys(REGIONAL_DATABASE?.[project.island] || {})).map(prov => (
+                                                            {(islandProvinceMap[project.island] || []).map(prov => (
                                                                 <option key={prov} value={prov}>{prov}</option>
                                                             ))}
                                                         </select>
@@ -2303,7 +2304,7 @@
                                                             onChange={e => handleLocationChange(project.island, project.province, e.target.value)}
                                                             className="w-full p-2.5 rounded-lg border bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 font-extrabold text-emerald-700 dark:text-emerald-400"
                                                         >
-                                                            {(centralLocations.provinces[project.province] || Object.keys(REGIONAL_DATABASE?.[project.island]?.[project.province] || {})).map(reg => (
+                                                            {(centralLocations.provinces[project.province] || []).map(reg => (
                                                                 <option key={reg} value={reg}>{reg}</option>
                                                             ))}
                                                         </select>
@@ -2752,7 +2753,7 @@
 
                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
                                             <div className="text-[11px] text-slate-500">
-                                                Database: <b>{Object.values(centralLocations?.provinces||{}).reduce((n,x)=>n+(x||[]).length,0)}</b> kabupaten
+                                                ESTIMATOR: <b>{Object.values(centralLocations?.provinces||{}).reduce((n,x)=>n+(x||[]).length,0)}</b> kabupaten
                                                 · <b>{TITI_PANEN_TYPES[simType]?.code}</b> · <b>{simSpan} m</b> · Qty <b>{simQty}</b>
                                             </div>
                                             <button onClick={runAllRegencySimulation} disabled={simLoading} className="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-60 text-white rounded-lg text-xs font-bold flex items-center gap-2 shadow">
