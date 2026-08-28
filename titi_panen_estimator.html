@@ -156,6 +156,46 @@
             }
         };
 
+        // --- COMPLETE PRICE FALLBACK (18 ITEMS) ---
+        // Harga dari ESTIMATOR pusat selalu diprioritaskan. Fallback hanya mengisi item
+        // yang belum dikirim agar wizard tidak pernah menampilkan harga kosong/0.
+        const COMPLETE_PRICE_DEFAULTS = {
+            cement: 85000, sand: 250000, gravel: 400000,
+            rebar6: 15000, rebar8: 15000, rebar10: 15000, rebar12: 17000,
+            bindingWire: 30000, formworkWood: 2500000, formworkNails: 25000, formworkOil: 15000,
+            labourWorker: 120000, labourArtisan: 150000, labourForeman: 200000,
+            equipmentMixer: 300000, equipmentVibrator: 205000,
+            equipmentBarCutter: 250000, equipmentBarBender: 250000
+        };
+
+        const PRICE_DB_KEYS = [
+            'cement','sand','gravel','rebar6','rebar8','rebar10','rebar12',
+            'bindingWire','formworkWood','formworkNails','formworkOil',
+            'labourWorker','labourArtisan','labourForeman',
+            'equipmentMixer','equipmentVibrator','equipmentBarCutter','equipmentBarBender'
+        ];
+
+        const PRICE_DB_UNITS = {
+            cement:'Sak', sand:'m³', gravel:'m³',
+            rebar6:'kg', rebar8:'kg', rebar10:'kg', rebar12:'kg',
+            bindingWire:'kg', formworkWood:'m³', formworkNails:'kg', formworkOil:'liter',
+            labourWorker:'OH', labourArtisan:'OH', labourForeman:'OH',
+            equipmentMixer:'hari', equipmentVibrator:'hari',
+            equipmentBarCutter:'hari', equipmentBarBender:'hari'
+        };
+
+        const completePrices = (source = {}, fallback = COMPLETE_PRICE_DEFAULTS) => {
+            const result = {};
+            PRICE_DB_KEYS.forEach(key => {
+                const value = Number(source?.[key]);
+                const fb = Number(fallback?.[key] ?? COMPLETE_PRICE_DEFAULTS[key]);
+                result[key] = Number.isFinite(value) && value > 0
+                    ? value
+                    : (Number.isFinite(fb) && fb > 0 ? fb : Number(COMPLETE_PRICE_DEFAULTS[key] || 1));
+            });
+            return result;
+        };
+
         // --- PT / COMPANY DATABASE ---
         // Daftar fallback dari sheet PT yang terlihat pada database.
         // Jika Apps Script mengembalikan ptByRegency/companies/pt, data tersebut akan diprioritaskan.
@@ -749,13 +789,14 @@
                     ["Material", "Kayu/Komponen Bekisting (balok kayu kelas II)", rab.formwork.formworkWoodM3.toFixed(3), "m³", prices.formworkWood || 0, rab.costs.formworkWood],
                     ["Material", "Paku Bekisting", rab.formwork.formworkNailsKg.toFixed(2), "Kg", prices.formworkNails || 0, rab.costs.formworkNails],
                     ["Material", "Minyak Bekisting", rab.formwork.formworkOilL.toFixed(2), "Liter", prices.formworkOil || 0, rab.costs.formworkOil],
-                    ["Material", "Plywood Bekisting", rab.formwork.formworkPlywoodSheet.toFixed(2), "Lbr", prices.formworkPlywood || 0, rab.costs.formworkPlywood],
-                    ["Material", "Dolken Bekisting", rab.formwork.formworkDolkenBar.toFixed(2), "Batang", prices.formworkDolken || 0, rab.costs.formworkDolken],
+
                     ["Upah", "Pekerja Lapangan", rab.labour.totalWorkerOH.toFixed(2), "OH", prices.labourWorker, rab.labour.costWorker],
                     ["Upah", "Tukang Batu/Besi", rab.labour.totalArtisanOH.toFixed(2), "OH", prices.labourArtisan, rab.labour.costArtisan],
                     ["Upah", "Mandor Lapangan", rab.labour.totalForemanOH.toFixed(2), "OH", prices.labourForeman, rab.labour.costForeman],
-                    ["Peralatan", "Concrete Mixer 0,35 m³", rab.equipment.mixerDays.toFixed(3), "Hari", prices.equipmentMixer || 0, rab.costs.equipmentMixer],
-                    ["Peralatan", "Concrete Vibrator", rab.equipment.vibratorDays.toFixed(3), "Hari", prices.equipmentVibrator || 0, rab.costs.equipmentVibrator],
+                    ["Peralatan", "Concrete Mixer 0,35 m³", rab.equipment.mixerDays.toFixed(3), "Hari", prices.equipmentMixer, rab.costs.equipmentMixer],
+                    ["Peralatan", "Concrete Vibrator", rab.equipment.vibratorDays.toFixed(3), "Hari", prices.equipmentVibrator, rab.costs.equipmentVibrator],
+                    ["Peralatan", "Bar Cutter (HSD Database)", "—", "Hari", prices.equipmentBarCutter, 0],
+                    ["Peralatan", "Bar Bender (HSD Database)", "—", "Hari", prices.equipmentBarBender, 0],
                     [],
                     ["TOTAL DIRECT COST", "", "", "", "", rab.costs.subtotalDirect]
                 ];
@@ -1118,8 +1159,8 @@
                                     <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Tukang Batu / Besi</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalArtisanOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourArtisan.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costArtisan.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Mandor Lapangan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalForemanOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourForeman.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costForeman.toLocaleString('id-ID')}</td></tr>
                                     <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">C. PERALATAN AHSP</td></tr>
-                                    <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Concrete Mixer 0,35 m³</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.mixerDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {(prices.equipmentMixer || 0).toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentMixer.toLocaleString('id-ID')}</td></tr>
-                                    <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Concrete Vibrator</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.vibratorDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {(prices.equipmentVibrator || 0).toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentVibrator.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Concrete Mixer 0,35 m³</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.mixerDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentMixer.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentMixer.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Concrete Vibrator</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.vibratorDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentVibrator.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentVibrator.toLocaleString('id-ID')}</td></tr>
                                 </tbody>
                             </table>
                             </div>
@@ -1149,8 +1190,6 @@
                                         ['Kayu/Komponen Bekisting', currentRAB.costs.formworkWood],
                                         ['Paku Bekisting', currentRAB.costs.formworkNails],
                                         ['Minyak Bekisting', currentRAB.costs.formworkOil],
-                                        ['Plywood Bekisting', currentRAB.costs.formworkPlywood],
-                                        ['Dolken Bekisting', currentRAB.costs.formworkDolken],
                                     ].map((row, idx) => (
                                         <tr key={`distmat-${idx}`}>
                                             <td className="border border-slate-300 p-1.5 text-center">{idx + 1}</td>
@@ -1285,7 +1324,7 @@
 
             // Prices for active selected regency
             const [prices, setPrices] = React.useState(() => {
-                return regionalDb["Sumatera"]["Riau"]["Rokan Hulu"];
+                return completePrices(regionalDb["Sumatera"]["Riau"]["Rokan Hulu"], COMPLETE_PRICE_DEFAULTS);
             });
 
             const [rabSettings, setRabSettings] = React.useState({
@@ -1381,7 +1420,9 @@
                 const normalized = {};
                 Object.entries(apiPrices || {}).forEach(([item, data]) => {
                     const key = priceKeyMap[item] || item.charAt(0).toLowerCase() + item.slice(1);
-                    normalized[key] = Number(data.price) || 0;
+                    const rawPrice = (data && typeof data === 'object') ? data.price : data;
+                    const value = Number(rawPrice);
+                    if (Number.isFinite(value) && value > 0) normalized[key] = value;
                 });
                 return normalized;
             };
@@ -1503,25 +1544,12 @@
                     }
 
                     const normalized = normalizeCentralPrices(data.prices);
+                    const localFallback = getLocalPrices(targetProvince, targetRegency) || {};
+                    const merged = completePrices(normalized, { ...localFallback, ...COMPLETE_PRICE_DEFAULTS });
 
-                    // Pastikan item-item utama benar-benar tersedia.
-                    const requiredKeys = [
-                        'cement', 'sand', 'gravel',
-                        'rebar6', 'rebar8', 'rebar10', 'rebar12',
-                        'bindingWire', 'formworkWood',
-                        'labourWorker', 'labourArtisan', 'labourForeman'
-                    ];
-
-                    const missing = requiredKeys.filter(k => !Number.isFinite(Number(normalized[k])));
-                    if (missing.length) {
-                        throw new Error(
-                            `Data harga ${targetRegency} tidak lengkap: ${missing.join(', ')}`
-                        );
-                    }
-
-                    // INI HARGA FINAL YANG DIPAKAI ENGINE:
-                    // selalu dari ESTIMATOR kabupaten aktif.
-                    setPrices(normalized);
+                    // Harga ESTIMATOR pusat menjadi prioritas. Item yang tidak tersedia
+                    // dilengkapi dari fallback agar 18 field selalu terisi.
+                    setPrices(merged);
                     setCentralPriceSource(
                         `ESTIMATOR • ${targetRegency}`
                     );
@@ -1548,12 +1576,8 @@
                     // JANGAN mempertahankan harga kabupaten sebelumnya.
                     // Ini penting agar misalnya Aceh Barat tidak memakai harga
                     // Rokan Hulu hanya karena request baru gagal.
-                    setPrices({
-                        cement: 0, sand: 0, gravel: 0,
-                        rebar6: 0, rebar8: 0, rebar10: 0, rebar12: 0,
-                        bindingWire: 0, formworkWood: 0,
-                        labourWorker: 0, labourArtisan: 0, labourForeman: 0
-                    });
+                    const localFallback = getLocalPrices(targetProvince, targetRegency) || {};
+                    setPrices(completePrices(localFallback, COMPLETE_PRICE_DEFAULTS));
 
                     setCentralPriceSource(`ERROR HARGA • ${targetRegency}`);
                     return false;
@@ -1823,7 +1847,14 @@
             };
 
             const getLocalPrices = (province, regency) => {
-                return REGIONAL_DATABASE?.[provinceIsland(province)]?.[province]?.[regency] || null;
+                const raw = REGIONAL_DATABASE?.[provinceIsland(province)]?.[province]?.[regency] || {};
+                const normalized = { ...raw };
+                [6, 8, 10, 12].forEach(d => {
+                    const legacyBarPrice = Number(normalized[`rebar${d}`]);
+                    const unitWeight12m = 0.006165 * Math.pow(d, 2) * 12;
+                    if (legacyBarPrice > 0 && unitWeight12m > 0) normalized[`rebar${d}`] = legacyBarPrice / unitWeight12m;
+                });
+                return completePrices(normalized, COMPLETE_PRICE_DEFAULTS);
             };
 
             // Update location from the CENTRAL ESTIMATOR database.
@@ -1861,22 +1892,16 @@
             // Central ESTIMATOR remains the authoritative database.
             const handleUpdateMarketPrice = async () => {
                 const priceMapToItem = {
-                    cement: 'Cement',
-                    sand: 'Sand',
-                    gravel: 'Gravel',
-                    rebar6: 'Rebar6',
-                    rebar8: 'Rebar8',
-                    rebar10: 'Rebar10',
-                    rebar12: 'Rebar12',
-                    bindingWire: 'BindingWire',
-                    formworkWood: 'FormworkWood',
-                    labourWorker: 'LabourWorker',
-                    labourArtisan: 'LabourArtisan',
-                    labourForeman: 'LabourForeman'
+                    cement: 'Cement', sand: 'Sand', gravel: 'Gravel',
+                    rebar6: 'Rebar6', rebar8: 'Rebar8', rebar10: 'Rebar10', rebar12: 'Rebar12',
+                    bindingWire: 'BindingWire', formworkWood: 'FormworkWood',
+                    formworkNails: 'FormworkNails', formworkOil: 'FormworkOil',
+                    labourWorker: 'LabourWorker', labourArtisan: 'LabourArtisan', labourForeman: 'LabourForeman',
+                    equipmentMixer: 'EquipmentMixer', equipmentVibrator: 'EquipmentVibrator',
+                    equipmentBarCutter: 'EquipmentBarCutter', equipmentBarBender: 'EquipmentBarBender'
                 };
-
                 const items = Object.entries(priceMapToItem)
-                    .filter(([key]) => Number.isFinite(Number(prices[key])) && Number(prices[key]) >= 0);
+                    .filter(([key]) => Number.isFinite(Number(prices[key])) && Number(prices[key]) > 0);
 
                 if (!project.province || !project.regency || !items.length) {
                     showToast('Lokasi atau harga belum lengkap.', 'error');
@@ -1896,12 +1921,7 @@
                             regency: project.regency,
                             item,
                             price: Number(prices[key]),
-                            unit: ({
-                                cement: 'Sak', sand: 'm3', gravel: 'm3',
-                                rebar6: 'kg', rebar8: 'kg', rebar10: 'kg', rebar12: 'kg',
-                                bindingWire: 'kg', formworkWood: 'm3',
-                                labourWorker: 'OH', labourArtisan: 'OH', labourForeman: 'OH'
-                            })[key] || ''
+                            unit: PRICE_DB_UNITS[key] || ''
                         });
 
                         if (!data || data.success !== true) {
@@ -1931,7 +1951,7 @@
             };
 
             const currentRAB = React.useMemo(() => {
-                return AHSPEngine.calculateRAB(selectedType, selectedSpan, quantity, prices, rabSettings);
+                return AHSPEngine.calculateRAB(selectedType, selectedSpan, quantity, completePrices(prices, COMPLETE_PRICE_DEFAULTS), rabSettings);
             }, [selectedType, selectedSpan, quantity, prices, rabSettings]);
 
             const handleSaveEstimation = () => {
@@ -2567,60 +2587,53 @@
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                                                 <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-2">
-                                                    <p className="font-bold text-slate-700 dark:text-slate-200 border-b pb-1">Material Utama</p>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Semen PCC (per Sak 50kg)</span>
-                                                        <input type="number" value={prices.cement} onChange={e => setPrices({...prices, cement: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Pasir Beton (per m³)</span>
-                                                        <input type="number" value={prices.sand} onChange={e => setPrices({...prices, sand: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Kerikil / Batu Pecah (per m³)</span>
-                                                        <input type="number" value={prices.gravel} onChange={e => setPrices({...prices, gravel: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Besi Ø6mm (per Kg)</span>
-                                                        <input type="number" value={prices.rebar6} onChange={e => setPrices({...prices, rebar6: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Besi Ø8mm (per Kg)</span>
-                                                        <input type="number" value={prices.rebar8} onChange={e => setPrices({...prices, rebar8: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Besi Ø10mm (per Kg)</span>
-                                                        <input type="number" value={prices.rebar10} onChange={e => setPrices({...prices, rebar10: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Besi Ø12mm (per Kg)</span>
-                                                        <input type="number" value={prices.rebar12} onChange={e => setPrices({...prices, rebar12: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
+                                                    <p className="font-bold text-slate-700 dark:text-slate-200 border-b pb-1">Material Struktur</p>
+                                                    {[
+                                                        ['cement','Semen PCC','Sak'],
+                                                        ['sand','Pasir Beton','m³'],
+                                                        ['gravel','Kerikil / Batu Pecah','m³'],
+                                                        ['rebar6','Besi Ø6 mm','kg'],
+                                                        ['rebar8','Besi Ø8 mm','kg'],
+                                                        ['rebar10','Besi Ø10 mm','kg'],
+                                                        ['rebar12','Besi Ø12 mm','kg'],
+                                                        ['bindingWire','Kawat Bendrat','kg'],
+                                                        ['formworkWood','Kayu Bekisting','m³'],
+                                                        ['formworkNails','Paku Bekisting','kg'],
+                                                        ['formworkOil','Minyak Bekisting','liter']
+                                                    ].map(([key,label,unit]) => (
+                                                        <div key={key} className="flex justify-between items-center gap-3">
+                                                            <span>{label} (per {unit})</span>
+                                                            <input type="number" min="1"
+                                                                value={prices[key] || COMPLETE_PRICE_DEFAULTS[key]}
+                                                                onChange={e => setPrices({...prices, [key]: Math.max(1, Number(e.target.value) || COMPLETE_PRICE_DEFAULTS[key])})}
+                                                                className="w-32 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                        </div>
+                                                    ))}
                                                 </div>
-
                                                 <div className="p-3 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-2">
-                                                    <p className="font-bold text-slate-700 dark:text-slate-200 border-b pb-1">Upah Tenaga Kerja & Bekisting</p>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Pekerja Lapangan (per OH)</span>
-                                                        <input type="number" value={prices.labourWorker} onChange={e => setPrices({...prices, labourWorker: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Tukang Batu / Besi (per OH)</span>
-                                                        <input type="number" value={prices.labourArtisan} onChange={e => setPrices({...prices, labourArtisan: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Mandor Lapangan (per OH)</span>
-                                                        <input type="number" value={prices.labourForeman} onChange={e => setPrices({...prices, labourForeman: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Kayu Bekisting (per m³)</span>
-                                                        <input type="number" value={prices.formworkWood} onChange={e => setPrices({...prices, formworkWood: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span>Kawat Bendrat (per kg)</span>
-                                                        <input type="number" value={prices.bindingWire} onChange={e => setPrices({...prices, bindingWire: Number(e.target.value)})} className="w-28 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
-                                                    </div>
+                                                    <p className="font-bold text-slate-700 dark:text-slate-200 border-b pb-1">Upah & Peralatan</p>
+                                                    {[
+                                                        ['labourWorker','Pekerja Lapangan','OH'],
+                                                        ['labourArtisan','Tukang Batu / Besi','OH'],
+                                                        ['labourForeman','Mandor Lapangan','OH'],
+                                                        ['equipmentMixer','Concrete Mixer 0,35 m³','hari'],
+                                                        ['equipmentVibrator','Concrete Vibrator','hari'],
+                                                        ['equipmentBarCutter','Bar Cutter','hari'],
+                                                        ['equipmentBarBender','Bar Bender','hari']
+                                                    ].map(([key,label,unit]) => (
+                                                        <div key={key} className="flex justify-between items-center gap-3">
+                                                            <span>{label} (per {unit})</span>
+                                                            <input type="number" min="1"
+                                                                value={prices[key] || COMPLETE_PRICE_DEFAULTS[key]}
+                                                                onChange={e => setPrices({...prices, [key]: Math.max(1, Number(e.target.value) || COMPLETE_PRICE_DEFAULTS[key])})}
+                                                                className="w-32 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
+                                                        </div>
+                                                    ))}
                                                 </div>
+                                            </div>
+
+                                            <div className="mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/70 dark:bg-emerald-950/20 dark:border-emerald-800 text-[10px] text-slate-600 dark:text-slate-300">
+                                                <b>18 item database aktif:</b> harga dari ESTIMATOR pusat diprioritaskan. Jika ada item yang belum dikirim database pusat, sistem otomatis melengkapi dari fallback lokal/default sehingga tidak ada harga kosong atau Rp0.
                                             </div>
 
                                             <div className="p-3 rounded-lg border border-brand-200 bg-brand-50/60 dark:bg-brand-950/30 dark:border-brand-800 text-[10px] text-slate-600 dark:text-slate-300 space-y-1.5">
@@ -2628,7 +2641,7 @@
                                                 <p><b>Beton:</b> AHSP PUPR 2023 fc' 25 MPa: 383 kg semen, 764 kg pasir, 934 kg agregat kasar, 195 L air per m³; pemadatan menambah 0,08 OH pekerja + 0,008 OH mandor per m³. Mutu desain tetap <b>K-300 sesuai gambar AAL</b>.</p>
                                                 <p><b>Besi:</b> quantity take-off dari panjang tulangan pada gambar dan berat nominal kg/m. Harga database dibaca langsung sebagai <b>Rp/kg</b>; tidak ada lagi konversi harga batang 12 m.</p>
                                                 <p><b>AHSP pembesian balok:</b> 1,02 kg baja + 0,028 kg bendrat per 1 kg baja terpasang; upah 0,0016 OH pekerja + 0,0016 OH tukang besi + 0,00016 OH kepala tukang + 0,00016 OH mandor per kg. Kepala tukang digabung ke komponen artisan karena database belum menyediakan harga kepala tukang.</p>
-                                                <p><b>Bekisting:</b> luas mengikuti geometri aktual penampang; kayu memakai koefisien 0,040 m³/m². Paku/minyak tidak dihitung karena belum tersedia sebagai item harga di database ESTIMATOR.</p>
+                                                <p><b>Bekisting:</b> luas mengikuti geometri aktual penampang; kayu memakai koefisien 0,040 m³/m². Paku dan minyak bekisting menggunakan HSD database masing-masing.</p>
                                                 <p className="pt-1 border-t border-brand-200 dark:border-brand-800"><b>Referensi:</b> Permen PUPR 8/2023 • SNI 2847:2019 • SNI 2052:2024 • Spesifikasi Umum Bina Marga 2025.</p>
                                             </div>
                                         </div>
@@ -2636,7 +2649,7 @@
 
                                     {wizardStep === 3 && (
                                         <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-800">
-                                            <b>Basis standard:</b> AHSP Permen PUPR No. 8/2023. Beton K-300 menggunakan U.4.2.b.1.2; pembesian menggunakan U.4.6.a.3 untuk diameter &lt; 12 mm dan U.4.6.a.4 untuk diameter ≥ 12 mm; harga besi dibaca <b>Rp/kg</b>. Bekisting menggunakan analisa balok 3 kali pakai. Quantity paku, minyak, plywood, dolken, mixer dan vibrator tetap dihitung, tetapi biayanya Rp0 jika HSD item belum tersedia di database ESTIMATOR.
+                                            <b>Basis standard:</b> AHSP Permen PUPR No. 8/2023. Beton K-300 menggunakan U.4.2.b.1.2; pembesian menggunakan U.4.6.a.3 untuk diameter &lt; 12 mm dan U.4.6.a.4 untuk diameter ≥ 12 mm; harga besi dibaca <b>Rp/kg</b>. Bekisting menggunakan analisa balok 3 kali pakai. HSD paku, minyak, mixer, vibrator, bar cutter dan bar bender mengikuti database 18-item; fallback digunakan hanya bila item belum tersedia dari database pusat.
                                         </div>
                                     )}
 
