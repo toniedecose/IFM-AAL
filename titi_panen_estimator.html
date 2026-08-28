@@ -212,7 +212,20 @@
         .structural-drawing-print-safe .drawing-label {
             fill: #111827 !important;
         }
-    </style>
+    
+        /* Harden PDF/print layout so tables and report blocks stay within A4. */
+        .pdf-no-break { break-inside: avoid !important; page-break-inside: avoid !important; }
+        @media print {
+            html, body { width:100% !important; min-width:0 !important; margin:0 !important; padding:0 !important; overflow:visible !important; }
+            #report-print-overlay, #report-print-card, #report-document-content {
+                width:100% !important; max-width:100% !important; min-width:0 !important;
+                box-sizing:border-box !important; margin:0 !important; overflow:visible !important;
+            }
+            #report-document-content { padding-left:0 !important; padding-right:0 !important; }
+            #report-document-content table { width:100% !important; max-width:100% !important; table-layout:fixed !important; }
+            #report-document-content th, #report-document-content td { overflow-wrap:anywhere !important; }
+        }
+</style>
 </head>
 <body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 custom-scrollbar antialiased">
     <div id="root" class="h-full"></div>
@@ -600,11 +613,23 @@
                 const takeoff = getDrawingTakeoff(typeKey, spanLength);
                 if (takeoff) return takeoff.formworkArea * quantity;
                 const spec = TITI_PANEN_TYPES[typeKey];
-                // Reconstruct the same drawing take-off progression from the verified rows:
-                // TP-01 = 0.570 L + 0.081; TP-02/TP-03 = 0.800 L + 0.108;
-                // TP-04 = 0.500 L + 0.072. This avoids the old cross-type 10 m mapping.
-                const formworkWidthFactor = typeKey === 'TP01' ? 0.570 : (typeKey === 'TP04' ? 0.500 : 0.800);
-                const fixedEndAllowance = typeKey === 'TP01' ? 0.081 : (typeKey === 'TP04' ? 0.072 : 0.108);
+
+                // For TP-03/TP-04, do not reuse the old cross-type hard-code.
+                // Formwork is based on the exposed faces of the T-beam:
+                // soffit width + both web sides, plus the two end faces.
+                // The top face of the flange is not formwork.
+                if (typeKey === 'TP03' || typeKey === 'TP04') {
+                    const soffitWidth = spec.width / 1000;
+                    const webSideHeight = spec.webHeight / 1000;
+                    const sectionArea = this.calculateArea(typeKey);
+                    const longitudinalFormworkPerM = soffitWidth + (2 * webSideHeight);
+                    const endFaceAllowance = 2 * sectionArea;
+                    return (longitudinalFormworkPerM * spanLength + endFaceAllowance) * quantity;
+                }
+
+                // Retain the approved take-off basis for TP-01/TP-02.
+                const formworkWidthFactor = typeKey === 'TP01' ? 0.570 : 0.800;
+                const fixedEndAllowance = typeKey === 'TP01' ? 0.081 : 0.108;
                 return (formworkWidthFactor * spanLength + fixedEndAllowance) * quantity;
             }
         };
@@ -643,7 +668,51 @@
                 };
             },
             calculateRebarDetails(typeKey, spanLength, quantity = 1) {
+                const spec = TITI_PANEN_TYPES[typeKey];
                 const takeoff = getDrawingTakeoff(typeKey, spanLength);
+
+                // TP-03/TP-04 have explicit longitudinal and stirrup schedules in the drawing.
+                // Use those schedules directly; never fall back to the generic 4/6-bar formula.
+                if (spec.longitudinalSchedule) {
+                    const a = Math.max(0, spanLength - 0.06);
+                    const b = a / 5;
+                    const c = (3 * a) / 5;
+                    const lengthMap = { a, b, c };
+                    const longitudinalBars = spec.longitudinalSchedule.map(item => {
+                        const lengthPerBar = lengthMap[item.length];
+                        const totalLength = lengthPerBar * item.count * quantity;
+                        return { ...item, lengthPerBar, totalLength, weight: totalLength * this.getUnitWeight(item.dia) };
+                    });
+                    const detailed = this.calculateDetailedStirrups(spec, spanLength);
+                    const stirrupBars = detailed.components.map(item => ({
+                        ...item,
+                        count: item.count * quantity,
+                        totalLength: item.totalLength * quantity,
+                        weight: item.weight * quantity
+                    }));
+                    const mainWeight = longitudinalBars.reduce((sum, bar) => sum + bar.weight, 0);
+                    const stirrupWeight = stirrupBars.reduce((sum, bar) => sum + bar.weight, 0);
+                    const installedWeight = mainWeight + stirrupWeight;
+                    return {
+                        mainDia: longitudinalBars[0]?.dia || 0,
+                        mainCount: longitudinalBars.reduce((sum, bar) => sum + bar.count, 0),
+                        totalMainLength: longitudinalBars.reduce((sum, bar) => sum + bar.totalLength, 0),
+                        mainWeight,
+                        stirrupDia: stirrupBars[0]?.dia || 0,
+                        totalStirrups: detailed.totalStations * quantity,
+                        totalStirrupLength: stirrupBars.reduce((sum, bar) => sum + bar.totalLength, 0),
+                        stirrupWeight,
+                        subtotalWeight: installedWeight,
+                        installedWeight,
+                        procurementWeight: installedWeight * STANDARD_BASIS.rebarMaterialFactor,
+                        bindingWireKg: installedWeight * STANDARD_BASIS.bindingWireFactorPerKgInstalled,
+                        longitudinalBars,
+                        stirrupBars,
+                        longitudinalLabel: longitudinalBars.map(x => `Ø${x.dia} (${x.position})`).join(' + '),
+                        stirrupLabel: stirrupBars.map(x => x.label || `Ø${x.dia}`).join(' + ')
+                    };
+                }
+
                 if (takeoff) {
                     const longitudinalBars = takeoff.rebar.filter(x => x.role === 'main').map(x => ({
                         dia: x.dia,
@@ -688,7 +757,6 @@
                 }
 
                 // Fallback only for a span that is not present in the drawing take-off.
-                const spec = TITI_PANEN_TYPES[typeKey];
                 const mainDia = spec.mainRebar.dia;
                 const mainCount = spec.mainRebar.count;
                 const mainLengthPerBar = spanLength + ((2 * 15 * mainDia) / 1000);
@@ -1126,12 +1194,15 @@
 
                 // Render a clean, fixed-width A4 clone. The on-screen modal has
                 // viewport/scroll/flex constraints that are unsuitable for html2canvas.
+                // Keep the export clone inside the viewport. A huge negative left
+                // offset can make html2canvas calculate a wrong canvas origin and crop
+                // the left side of the generated PDF.
                 const host = document.createElement('div');
                 host.id = 'pdf-export-host';
-                host.style.cssText = 'position:absolute;left:-100000px;top:0;width:190mm;background:#fff;overflow:visible;z-index:-1;';
+                host.style.cssText = 'position:fixed;left:0;top:0;width:210mm;min-height:297mm;background:#fff;overflow:visible;z-index:2147483647;opacity:0.01;pointer-events:none;';
                 const clone = original.cloneNode(true);
                 clone.removeAttribute('id');
-                clone.style.cssText = 'width:190mm;max-width:190mm;height:auto;max-height:none;overflow:visible;padding:0;margin:0;background:#fff;color:#111827;';
+                clone.style.cssText = 'display:block;width:190mm;max-width:190mm;box-sizing:border-box;height:auto;max-height:none;overflow:visible;padding:0;margin:0 auto;background:#fff;color:#111827;';
                 clone.querySelectorAll('.no-print').forEach(el => el.remove());
                 host.appendChild(clone);
                 document.body.appendChild(host);
@@ -1155,9 +1226,18 @@
                     margin: [10,10,10,10],
                     filename: `Laporan_Komplit_RAB_TitiPanen_${project.regency}_${spec.code}.pdf`,
                     image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: Math.ceil(190/25.4*96) },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        logging: false,
+                        width: Math.ceil(190/25.4*96),
+                        windowWidth: Math.ceil(210/25.4*96),
+                        scrollX: 0,
+                        scrollY: 0
+                    },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
-                    pagebreak: { mode: ['css','legacy'], avoid: ['tr','table'] }
+                    pagebreak: { mode: ['css','legacy'], avoid: ['tr','td','.pdf-no-break'] }
                 };
 
                 try {
