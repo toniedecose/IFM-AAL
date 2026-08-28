@@ -1220,6 +1220,32 @@
                 clone.querySelectorAll('.drawing-dimension').forEach(el => el.setAttribute('stroke','#374151'));
                 clone.querySelectorAll('.drawing-label').forEach(el => el.setAttribute('fill','#111827'));
 
+                // html2canvas can render the SVG grid but, depending on browser
+                // version, may omit SVG shapes whose styling came from CSS.
+                // Convert the finished inline SVG into a self-contained data-image
+                // for PDF export. This preserves the concrete outline, rebar,
+                // dimensions and labels instead of producing an empty/grid-only box.
+                const svgImages = [];
+                clone.querySelectorAll('svg').forEach(svg => {
+                    svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                    svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+                    svg.setAttribute('width', '760');
+                    svg.setAttribute('height', '456');
+                    const serialized = new XMLSerializer().serializeToString(svg);
+                    const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(serialized);
+                    const img = document.createElement('img');
+                    img.src = dataUrl;
+                    img.alt = 'Structural cross-section drawing';
+                    img.style.cssText = 'display:block;width:100%;height:100%;object-fit:contain;background:#fff;';
+                    svg.parentNode.replaceChild(img, svg);
+                    svgImages.push(img);
+                });
+
+                await Promise.all(svgImages.map(img => new Promise(resolve => {
+                    if (img.complete) return resolve();
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                })));
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
                 const opt = {
