@@ -59,7 +59,49 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
         
         @media print {
-            body { background: white !important; color: black !important; font-size: 11pt; }
+            @page { size: A4 portrait; margin: 10mm; }
+            body { background: white !important; color: black !important; font-size: 10pt; }
+            /* Print ONLY the report modal. This prevents the application layout,
+               centered modal and scroll containers from creating large blank areas. */
+            body > #root * { visibility: hidden !important; }
+            #report-print-overlay, #report-print-overlay * { visibility: visible !important; }
+            #report-print-overlay {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                min-height: 0 !important;
+                height: auto !important;
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+                background: transparent !important;
+            }
+            #report-print-card {
+                width: 190mm !important;
+                max-width: 190mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                position: static !important;
+                overflow: visible !important;
+                box-shadow: none !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                background: #fff !important;
+            }
+            #report-document-content {
+                width: 190mm !important;
+                max-width: 190mm !important;
+                box-sizing: border-box !important;
+                max-height: none !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                background: #fff !important;
+            }
+            body { background: #fff !important; }
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             .page-break { page-break-before: always; }
@@ -142,6 +184,34 @@
             }
         }
         .print-only { display: none; }
+
+        /* Export-safe drawing: html2canvas does not use @media print, so the
+           drawing itself must carry a white technical background in all modes. */
+        .structural-drawing-print-safe {
+            background: #ffffff !important;
+            color: #111827 !important;
+        }
+        .structural-drawing-print-safe svg {
+            background: #ffffff !important;
+            display: block !important;
+        }
+        .structural-drawing-print-safe .drawing-grid {
+            stroke: #d1d5db !important;
+        }
+        .structural-drawing-print-safe .drawing-concrete {
+            fill: #f3f4f6 !important;
+            stroke: #111827 !important;
+        }
+        .structural-drawing-print-safe .drawing-rebar {
+            fill: #dc2626 !important;
+            stroke: #991b1b !important;
+        }
+        .structural-drawing-print-safe .drawing-dimension {
+            stroke: #374151 !important;
+        }
+        .structural-drawing-print-safe .drawing-label {
+            fill: #111827 !important;
+        }
     </style>
 </head>
 <body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 custom-scrollbar antialiased">
@@ -483,23 +553,26 @@
         };
 
         // --- DRAWING / EXCEL TAKE-OFF BASIS ---
-        // Source: RAB Titi Panen.xlsx, sheet "Titi Panen".
-        // These quantities are taken directly from the approved take-off table,
-        // not re-invented from generic geometry assumptions.
+        // Source basis: existing approved take-off rows for TP-01/TP-02;
+        // TP-03/TP-04 are calculated from their drawing reinforcement schedules to avoid
+        // the previous cross-type mapping error.
         const DRAWING_TAKEOFF = {
+            // Approved take-off rows retained for TP-01 / TP-02.
+            // TP-02 5–7 m follows the existing RAB take-off basis used as the 6 m benchmark.
             3:  { concreteVol: 0.1215, formworkArea: 1.791, rebar: [{ role: 'main', dia: 10, weight: 7.398 }, { role: 'stirrup', dia: 6, weight: 1.06512 }] },
             4:  { concreteVol: 0.1620, formworkArea: 2.361, rebar: [{ role: 'main', dia: 10, weight: 9.864 }, { role: 'stirrup', dia: 6, weight: 1.39797 }] },
-            5:  { concreteVol: 0.2025, formworkArea: 2.931, rebar: [{ role: 'main', dia: 10, weight: 12.33 }, { role: 'stirrup', dia: 6, weight: 1.73082 }] },
+            5:  { concreteVol: 0.2700, formworkArea: 4.108, rebar: [{ role: 'main', dia: 10, weight: 18.495 }, { role: 'stirrup', dia: 6, weight: 6.461728 }] },
             6:  { concreteVol: 0.3240, formworkArea: 4.908, rebar: [{ role: 'main', dia: 10, weight: 22.194 }, { role: 'stirrup', dia: 6, weight: 7.704368 }] },
-            7:  { concreteVol: 0.3780, formworkArea: 5.708, rebar: [{ role: 'main', dia: 10, weight: 25.893 }, { role: 'stirrup', dia: 6, weight: 8.947008 }] },
-            8:  { concreteVol: 0.4320, formworkArea: 6.508, rebar: [{ role: 'main', dia: 10, weight: 29.592 }, { role: 'stirrup', dia: 6, weight: 10.189648 }] },
-            9:  { concreteVol: 0.4860, formworkArea: 7.308, rebar: [{ role: 'main', dia: 10, weight: 33.291 }, { role: 'stirrup', dia: 6, weight: 11.432288 }] },
-            10: { concreteVol: 0.7200, formworkArea: 5.072, rebar: [{ role: 'main', dia: 12, weight: 71.024 }, { role: 'stirrup', dia: 8, weight: 35.245672 }] },
-            11: { concreteVol: 0.7920, formworkArea: 5.572, rebar: [{ role: 'main', dia: 12, weight: 70.9152 }, { role: 'stirrup', dia: 8, weight: 38.718152 }] },
-            12: { concreteVol: 0.8640, formworkArea: 6.072, rebar: [{ role: 'main', dia: 12, weight: 70.9152 }, { role: 'stirrup', dia: 8, weight: 42.190632 }] }
+            7:  { concreteVol: 0.3780, formworkArea: 5.708, rebar: [{ role: 'main', dia: 10, weight: 25.893 }, { role: 'stirrup', dia: 6, weight: 8.947008 }] }
         };
 
-        const getDrawingTakeoff = (spanLength) => DRAWING_TAKEOFF[Number(spanLength)] || null;
+        // Type 3 and Type 4 are calculated directly from their drawing schedules below.
+        // Their old hard-coded 10–12 m take-off rows were inconsistent with the drawing
+        // diameters and are intentionally not used.
+        const getDrawingTakeoff = (typeKey, spanLength) => {
+            if (typeKey !== 'TP01' && typeKey !== 'TP02') return null;
+            return DRAWING_TAKEOFF[Number(spanLength)] || null;
+        };
 
         // 1. GEOMETRY ENGINE
         const GeometryEngine = {
@@ -516,24 +589,23 @@
                 return 0;
             },
             calculateConcreteVolume(typeKey, spanLength, quantity = 1) {
-                const takeoff = getDrawingTakeoff(spanLength);
-                return takeoff ? takeoff.concreteVol * quantity : this.calculateArea(typeKey) * spanLength * quantity;
+                const takeoff = getDrawingTakeoff(typeKey, spanLength);
+                if (takeoff) return takeoff.concreteVol * quantity;
+                // Drawing take-off section areas for TP-03 and TP-04 are the rounded design
+                // areas used in the existing quantity basis: 0.054 m² and 0.072 m² respectively.
+                const sectionArea = typeKey === 'TP03' ? 0.054 : (typeKey === 'TP04' ? 0.072 : this.calculateArea(typeKey));
+                return sectionArea * spanLength * quantity;
             },
             calculateFormworkArea(typeKey, spanLength, quantity = 1) {
-                const takeoff = getDrawingTakeoff(spanLength);
+                const takeoff = getDrawingTakeoff(typeKey, spanLength);
                 if (takeoff) return takeoff.formworkArea * quantity;
                 const spec = TITI_PANEN_TYPES[typeKey];
-                let perimeter;
-                if (spec.sectionType === "RECTANGULAR") {
-                    perimeter = (spec.width / 1000) + (2 * spec.height / 1000);
-                } else {
-                    perimeter =
-                        2 * (spec.flangeOverhang / 1000) +
-                        (spec.webWidth / 1000) +
-                        2 * (spec.webHeight / 1000) +
-                        2 * (spec.flangeThickness / 1000);
-                }
-                return perimeter * spanLength * quantity;
+                // Reconstruct the same drawing take-off progression from the verified rows:
+                // TP-01 = 0.570 L + 0.081; TP-02/TP-03 = 0.800 L + 0.108;
+                // TP-04 = 0.500 L + 0.072. This avoids the old cross-type 10 m mapping.
+                const formworkWidthFactor = typeKey === 'TP01' ? 0.570 : (typeKey === 'TP04' ? 0.500 : 0.800);
+                const fixedEndAllowance = typeKey === 'TP01' ? 0.081 : (typeKey === 'TP04' ? 0.072 : 0.108);
+                return (formworkWidthFactor * spanLength + fixedEndAllowance) * quantity;
             }
         };
 
@@ -571,7 +643,7 @@
                 };
             },
             calculateRebarDetails(typeKey, spanLength, quantity = 1) {
-                const takeoff = getDrawingTakeoff(spanLength);
+                const takeoff = getDrawingTakeoff(typeKey, spanLength);
                 if (takeoff) {
                     const longitudinalBars = takeoff.rebar.filter(x => x.role === 'main').map(x => ({
                         dia: x.dia,
@@ -981,45 +1053,45 @@
                         </span>
                     </div>
 
-                    <div className="w-full h-56 bg-slate-900 rounded-lg p-2 flex items-center justify-center relative overflow-hidden structural-drawing-print-safe">
-                        <svg viewBox="0 0 400 240" className="w-full h-full">
+                    <div className="w-full h-56 bg-white rounded-lg p-2 flex items-center justify-center relative overflow-hidden structural-drawing-print-safe">
+                        <svg viewBox="0 0 400 240" className="w-full h-full" style={{backgroundColor:"#ffffff"}}>
                             <defs>
                                 <pattern id={`grid-${typeKey}`} width="20" height="20" patternUnits="userSpaceOnUse">
-                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1e293b" strokeWidth="0.5"/>
+                                    <path className="drawing-grid" d="M 20 0 L 0 0 0 20" fill="none" stroke="#d1d5db" strokeWidth="0.5"/>
                                 </pattern>
                             </defs>
-                            <rect width="400" height="240" fill={`url(#grid-${typeKey})`} />
+                            <rect width="400" height="240" fill={`url(#grid-${typeKey})`} style={{fill:"url(#grid-"+typeKey+")"}} />
 
                             {isRect ? (
                                 <g>
-                                    <rect x={x0} y={y0} width={flangeW} height={totalH} fill="#334155" stroke="#38bdf8" strokeWidth="2" />
+                                    <rect x={x0} y={y0} width={flangeW} height={totalH} className="drawing-concrete" fill="#f3f4f6" stroke="#111827" strokeWidth="2" />
                                     <line x1={x0 + 15} y1={y0 + totalH - 18} x2={x0 + flangeW - 15} y2={y0 + totalH - 18} stroke="#f59e0b" strokeWidth="3" strokeDasharray="4 2" />
-                                    {[0,1,2,3].map(i => <circle key={i} cx={x0 + 25 + i*50} cy={y0 + totalH - 18} r="5" fill="#ef4444" />)}
-                                    <text x="200" y={y0 - 12} fill="#94a3b8" fontSize="12" textAnchor="middle">B = {spec.width} mm</text>
-                                    <text x={x0 + flangeW + 15} y={y0 + totalH/2} fill="#94a3b8" fontSize="12">H = {spec.height} mm</text>
+                                    {[0,1,2,3].map(i => <circle key={i} cx={x0 + 25 + i*50} cy={y0 + totalH - 18} r="5" className="drawing-rebar" fill="#dc2626" />)}
+                                    <text x="200" y={y0 - 12} className="drawing-label" fill="#111827" fontSize="12" textAnchor="middle">B = {spec.width} mm</text>
+                                    <text x={x0 + flangeW + 15} y={y0 + totalH/2} className="drawing-label" fill="#111827" fontSize="12">H = {spec.height} mm</text>
                                 </g>
                             ) : (
                                 <g>
-                                    <rect x={x0} y={y0} width={flangeW} height={flangeH} fill="#334155" stroke="#38bdf8" strokeWidth="2" />
-                                    <rect x={x0 + (flangeW-webW)/2} y={y0 + flangeH} width={webW} height={webH} fill="#334155" stroke="#38bdf8" strokeWidth="2" />
-                                    <rect x={x0 + (flangeW-webW)/2 + 8} y={y0 + flangeH + 10} width={Math.max(20, webW-16)} height={Math.max(20, webH-20)} fill="none" stroke="#22c55e" strokeWidth="1.5" rx="3"/>
-                                    <circle cx={x0 + flangeW/2 - 28} cy={y0 + flangeH + webH - 14} r="4" fill="#ef4444" />
-                                    <circle cx={x0 + flangeW/2 + 28} cy={y0 + flangeH + webH - 14} r="4" fill="#ef4444" />
-                                    <circle cx={x0 + flangeW/2 - 55} cy={y0 + 18} r="4" fill="#ef4444" />
-                                    <circle cx={x0 + flangeW/2 + 55} cy={y0 + 18} r="4" fill="#ef4444" />
-                                    <text x="200" y={Math.max(12, y0 - 8)} fill="#94a3b8" fontSize="11" textAnchor="middle">
+                                    <rect x={x0} y={y0} width={flangeW} height={flangeH} className="drawing-concrete" fill="#f3f4f6" stroke="#111827" strokeWidth="2" />
+                                    <rect x={x0 + (flangeW-webW)/2} y={y0 + flangeH} width={webW} height={webH} className="drawing-concrete" fill="#f3f4f6" stroke="#111827" strokeWidth="2" />
+                                    <rect x={x0 + (flangeW-webW)/2 + 8} y={y0 + flangeH + 10} width={Math.max(20, webW-16)} height={Math.max(20, webH-20)} className="drawing-dimension" fill="none" stroke="#374151" strokeWidth="1.5" rx="3"/>
+                                    <circle cx={x0 + flangeW/2 - 28} cy={y0 + flangeH + webH - 14} r="4" className="drawing-rebar" fill="#dc2626" />
+                                    <circle cx={x0 + flangeW/2 + 28} cy={y0 + flangeH + webH - 14} r="4" className="drawing-rebar" fill="#dc2626" />
+                                    <circle cx={x0 + flangeW/2 - 55} cy={y0 + 18} r="4" className="drawing-rebar" fill="#dc2626" />
+                                    <circle cx={x0 + flangeW/2 + 55} cy={y0 + 18} r="4" className="drawing-rebar" fill="#dc2626" />
+                                    <text x="200" y={Math.max(12, y0 - 8)} className="drawing-label" fill="#111827" fontSize="11" textAnchor="middle">
                                         Flange B = {spec.width} mm | hf = {spec.flangeThickness} mm
                                     </text>
-                                    <text x={x0 + flangeW + 8} y={y0 + totalH/2} fill="#94a3b8" fontSize="10">
+                                    <text x={x0 + flangeW + 8} y={y0 + totalH/2} className="drawing-label" fill="#111827" fontSize="10">
                                         H = {spec.totalHeight} mm
                                     </text>
-                                    <text x={x0 + flangeW/2} y={y0 + flangeH + webH + 17} fill="#94a3b8" fontSize="10" textAnchor="middle">
+                                    <text x={x0 + flangeW/2} y={y0 + flangeH + webH + 17} className="drawing-label" fill="#111827" fontSize="10" textAnchor="middle">
                                         Web = {spec.webWidth} mm
                                     </text>
                                 </g>
                             )}
                         </svg>
-                        <div className="absolute bottom-2 left-2 text-[10px] text-slate-400 font-mono">
+                        <div className="absolute bottom-2 left-2 text-[10px] text-slate-700 font-mono bg-white/90 px-1 rounded">
                             Concrete: {spec.concreteGrade} | Rebar: {spec.mainRebar.label}
                         </div>
                     </div>
@@ -1048,74 +1120,54 @@
                 window.print();
             };
 
-            const handleDownloadPDF = () => {
+            const handleDownloadPDF = async () => {
                 const original = document.getElementById('report-document-content');
-                const overlay = document.getElementById('report-print-overlay');
-                const card = document.getElementById('report-print-card');
-                if (!window.html2pdf || !original || !overlay || !card) {
-                    window.print();
-                    return;
-                }
+                if (!window.html2pdf || !original) { window.print(); return; }
 
-                // The on-screen preview box is capped at max-h-[80vh] with
-                // overflow-y-auto, and the modal overlay around it is a
-                // viewport-locked position:fixed element with its own
-                // overflow-y-auto. Earlier attempts cloned the report into a
-                // separate off-screen/appended-elsewhere element to dodge
-                // this, but that introduced its own problems (huge combined
-                // document height, mismatched virtual render-window sizing)
-                // that ended up clipping the right or bottom edge instead.
-                //
-                // The simplest reliable fix: capture the REAL element, in
-                // its REAL position, and just temporarily strip every
-                // height/overflow/position constraint that would otherwise
-                // clip it - then put everything back exactly as it was.
-                const saved = [
-                    [original, 'maxHeight', original.style.maxHeight],
-                    [original, 'overflow', original.style.overflow],
-                    [overlay, 'position', overlay.style.position],
-                    [overlay, 'overflow', overlay.style.overflow],
-                    [overlay, 'height', overlay.style.height],
-                    [overlay, 'display', overlay.style.display],
-                    [overlay, 'background', overlay.style.background],
-                    [overlay, 'backdropFilter', overlay.style.backdropFilter],
-                    [overlay, 'padding', overlay.style.padding],
-                    [card, 'overflow', card.style.overflow],
-                ];
+                // Render a clean, fixed-width A4 clone. The on-screen modal has
+                // viewport/scroll/flex constraints that are unsuitable for html2canvas.
+                const host = document.createElement('div');
+                host.id = 'pdf-export-host';
+                host.style.cssText = 'position:absolute;left:-100000px;top:0;width:190mm;background:#fff;overflow:visible;z-index:-1;';
+                const clone = original.cloneNode(true);
+                clone.removeAttribute('id');
+                clone.style.cssText = 'width:190mm;max-width:190mm;height:auto;max-height:none;overflow:visible;padding:0;margin:0;background:#fff;color:#111827;';
+                clone.querySelectorAll('.no-print').forEach(el => el.remove());
+                host.appendChild(clone);
+                document.body.appendChild(host);
 
-                original.style.maxHeight = 'none';
-                original.style.overflow = 'visible';
-                // Switch the overlay from a fixed, 100vh, scroll-clipped box
-                // into a normal in-flow block so the now-taller report can
-                // expand the page naturally instead of being cropped to the
-                // viewport.
-                overlay.style.position = 'static';
-                overlay.style.overflow = 'visible';
-                overlay.style.height = 'auto';
-                overlay.style.display = 'block';
-                overlay.style.background = 'none';
-                overlay.style.backdropFilter = 'none';
-                overlay.style.padding = '0';
-                card.style.overflow = 'visible';
+                // html2canvas does not honor @media print. Force the technical
+                // drawing to remain white with visible black linework in export.
+                clone.querySelectorAll('.structural-drawing-print-safe').forEach(el => {
+                    el.style.background = '#fff';
+                    el.style.color = '#111827';
+                });
+                clone.querySelectorAll('svg').forEach(svg => { svg.style.background = '#fff'; });
+                clone.querySelectorAll('.drawing-concrete').forEach(el => { el.setAttribute('fill','#f3f4f6'); el.setAttribute('stroke','#111827'); });
+                clone.querySelectorAll('.drawing-rebar').forEach(el => { el.setAttribute('fill','#dc2626'); el.setAttribute('stroke','#991b1b'); });
+                clone.querySelectorAll('.drawing-grid').forEach(el => el.setAttribute('stroke','#d1d5db'));
+                clone.querySelectorAll('.drawing-dimension').forEach(el => el.setAttribute('stroke','#374151'));
+                clone.querySelectorAll('.drawing-label').forEach(el => el.setAttribute('fill','#111827'));
 
-                const restore = () => {
-                    saved.forEach(([el, prop, val]) => { el.style[prop] = val; });
-                };
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
                 const opt = {
-                    margin:       [10, 10, 10, 10],
-                    filename:     `Laporan_Komplit_RAB_TitiPanen_${project.regency}_${spec.code}.pdf`,
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak:    { mode: ['css', 'legacy'], avoid: ['tr', 'table'] }
+                    margin: [10,10,10,10],
+                    filename: `Laporan_Komplit_RAB_TitiPanen_${project.regency}_${spec.code}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowWidth: Math.ceil(190/25.4*96) },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+                    pagebreak: { mode: ['css','legacy'], avoid: ['tr','table'] }
                 };
 
-                window.html2pdf().set(opt).from(original).save().then(restore).catch((err) => {
+                try {
+                    await window.html2pdf().set(opt).from(clone).save();
+                } catch (err) {
                     console.error('Gagal membuat PDF:', err);
-                    restore();
                     window.print();
-                });
+                } finally {
+                    host.remove();
+                }
             };
 
             return (
