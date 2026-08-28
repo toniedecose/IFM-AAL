@@ -345,25 +345,48 @@
         };
 
         // --- BASIS STANDAR PERHITUNGAN ---
-        // Quantity take-off tetap mengikuti gambar Titi Panen AAL 001-004.
-        // Cost analysis menggunakan AHSP PUPR 2023; standar struktur/material
-        // dipakai sebagai acuan teknis, bukan untuk mendesain ulang tulangan.
+        // Quantity take-off mengikuti drawing Titi Panen AAL TP-01 s.d. TP-04.
+        // Cost analysis mengikuti AHSP Permen PUPR No. 8 Tahun 2023.
+        // Harga besi pada database ESTIMATOR = Rp/kg (BUKAN Rp/batang).
         const STANDARD_BASIS = {
             ahsp: "Permen PUPR No. 8 Tahun 2023 - AHSP Bidang PUPR",
-            concrete: "AHSP U.4.2.b.1.2 - beton mutu sedang fc' 25 MPa (semi-mekanis)",
-            rebar: "AHSP U.4.6.a.3 - penulangan kolom/balok/ring balk/sloof Ø < 12 mm, satuan kg",
+            concrete: "U.4.2.b.1.2 - Pembuatan s.d. Pengecoran beton fc' 25 MPa secara semi-mekanis",
+            rebarSmall: "U.4.6.a.3 - Penulangan kolom/balok/ring balk/sloof BjTP/BjTS < 12 mm secara manual",
+            rebarLarge: "U.4.6.a.4 - Penulangan kolom/balok/ring balk/sloof BjTP/BjTS >= 12 mm secara semi-mekanis",
             concreteStructure: "SNI 2847:2019 - Persyaratan beton struktural",
             reinforcementMaterial: "SNI 2052:2024 - Baja tulangan beton",
             roadBridgeExecution: "Spesifikasi Umum Bina Marga 2025 - Seksi 7.1 Beton & 7.3 Baja Tulangan",
-            sandBulkDensityKgM3: 1369,
-            gravelBulkDensityKgM3: 1260,
+            // Berat isi lepas yang dipakai hanya untuk mengonversi HSD pasir/kerikil Rp/m3
+            // karena koefisien AHSP beton dinyatakan dalam kg.
+            sandLooseDensityKgM3: 1370,
+            gravelLooseDensityKgM3: 1260,
             rebarMaterialFactor: 1.02,
             bindingWireFactorPerKgInstalled: 0.028,
-            formworkWoodFactorM3PerM2: 0.04,
-            formworkLabour: { worker: 0.66, carpenter: 0.33, headCarpenter: 0.033, foreman: 0.033 },
-            concreteLabour: { worker: 1.00, artisan: 0.275, foreman: 0.10 },
-            rebarLabourPerKg: { worker: 0.0016, artisanAndHead: 0.00176, foreman: 0.00016 },
-            concreteCompactionLabour: { worker: 0.08, foreman: 0.008 }
+            // Bekisting balok 3 kali pakai: koefisien material standar yang umum
+            // dipakai pada AHSP PUPR (harga item ancillary mengikuti database jika tersedia).
+            formwork: {
+                reuse: 3,
+                worker: 0.660,
+                carpenter: 0.330,
+                headCarpenter: 0.033,
+                foreman: 0.011,
+                nailsKgPerM2: 0.400,
+                releaseOilLPerM2: 0.200,
+                classIIBalokM3PerM2: 0.00558,
+                plywoodSheetPerM2: 0.12705,
+                dolkenBarPerM2: 0.650
+            },
+            // AHSP U.4.2.b.1.2 sudah mencakup pembuatan s.d. pengecoran.
+            // Jangan menambahkan tenaga pengecoran kedua kali.
+            concreteLabour: { worker: 1.000, artisan: 0.250, head: 0.025, foreman: 0.100 },
+            // U.4.5.b hanya ditambahkan bila metode pemadatan vibrator dipilih.
+            concreteEquipment: { mixerDayPerM3: 0.1475 },
+            concreteCompaction: { worker: 0.080, foreman: 0.008, vibratorDay: 0.080 },
+            rebarManualSmall: { worker: 0.00160, artisan: 0.00160, head: 0.00016, foreman: 0.00016 },
+            rebarManualLarge: { worker: 0.00160, artisan: 0.00160, head: 0.00016, foreman: 0.00016 },
+            // Harga alat belum ada pada database ESTIMATOR. Quantity tetap dihitung,
+            // tetapi cost alat menjadi 0 sampai HSD alat tersedia di database.
+            equipmentPriceKeys: { mixer: 'equipmentMixer', vibrator: 'equipmentVibrator', cutter: 'equipmentBarCutter', bender: 'equipmentBarBender' }
         };
 
         // 1. GEOMETRY ENGINE
@@ -371,88 +394,70 @@
             calculateArea(typeKey) {
                 const spec = TITI_PANEN_TYPES[typeKey];
                 if (spec.sectionType === "RECTANGULAR") {
-                    return (spec.width / 1000) * (spec.height / 1000); // m2
+                    return (spec.width / 1000) * (spec.height / 1000);
                 }
                 if (spec.sectionType === "T_BEAM") {
                     const flangeArea = (spec.width / 1000) * (spec.flangeThickness / 1000);
                     const webArea = (spec.webWidth / 1000) * (spec.webHeight / 1000);
-                    return flangeArea + webArea; // m2
+                    return flangeArea + webArea;
                 }
                 return 0;
             },
             calculateConcreteVolume(typeKey, spanLength, quantity = 1) {
-                return this.calculateArea(typeKey) * spanLength * quantity; // m3
+                return this.calculateArea(typeKey) * spanLength * quantity;
             },
             calculateFormworkArea(typeKey, spanLength, quantity = 1) {
                 const spec = TITI_PANEN_TYPES[typeKey];
                 let perimeter;
                 if (spec.sectionType === "RECTANGULAR") {
-                    perimeter = (spec.width / 1000) + 2 * (spec.height / 1000);
+                    // Dua sisi vertikal + sisi bawah; permukaan atas bukan bekisting.
+                    perimeter = (spec.width / 1000) + (2 * spec.height / 1000);
                 } else {
-                    // Formwork perimeter below the top face of the T-beam:
-                    // 2 flange overhangs + flange soffit over web + 2 web sides + 2 flange edges.
+                    // Dua overhang flange + soffit flange di atas web + dua sisi web
+                    // + dua sisi tepi flange.
                     perimeter =
                         2 * (spec.flangeOverhang / 1000) +
                         (spec.webWidth / 1000) +
                         2 * (spec.webHeight / 1000) +
                         2 * (spec.flangeThickness / 1000);
                 }
-                return perimeter * spanLength * quantity; // m2
+                return perimeter * spanLength * quantity;
             }
         };
 
         // 2. REBAR ENGINE
         const RebarEngine = {
             getUnitWeight(diameterMm) {
-                // Berat nominal teoritis: 0.006165 x d² kg/m.
-                // Digunakan untuk quantity take-off dari panjang aktual pada gambar.
-                return 0.006165 * Math.pow(diameterMm, 2); // kg/m
+                // Berat teoritis SNI: w = 0.006165 d^2 kg/m.
+                return 0.006165 * Math.pow(diameterMm, 2);
             },
-
             getBarPricePerKg(diameterMm, prices) {
-                // DATABASE ESTIMATOR MENYIMPAN HARGA BESI DALAM Rp/kg.
-                // Jangan lagi membagi harga dengan berat batang 12 m.
+                // PENTING: database ESTIMATOR sudah Rp/kg.
                 return Number(prices[`rebar${diameterMm}`] || 0);
             },
-
             countStations(lengthM, spacingM) {
                 return Math.floor(lengthM / spacingM + 1e-9) + 1;
             },
-
             calculateDetailedStirrups(spec, spanLength) {
-                // TP-03 dan TP-04: Ø6 @100 mm pada 1/4L tumpuan masing-masing sisi
-                // dan Ø6 @200 mm pada 1/2L lapangan, sesuai detail gambar.
                 const schedule = spec.stirrupSchedule;
                 const supportLength = spanLength * schedule.supportLengthRatio;
                 const fieldLength = spanLength * schedule.fieldLengthRatio;
                 const supportStationsEach = this.countStations(supportLength, schedule.supportSpacing / 1000);
                 const fieldStations = this.countStations(fieldLength, schedule.fieldSpacing / 1000);
                 const totalStations = Math.max(1, (supportStationsEach * 2) + fieldStations - 2);
-
                 const webU = schedule.webU;
-                const webUWidthM = webU.width / 1000;
-                const webUHeightM = webU.height / 1000;
-                const webUCutLength = (2 * webUHeightM) + webUWidthM + (webU.hookAllowance / 1000);
+                const webUCutLength = (2 * (webU.height / 1000)) + (webU.width / 1000) + (webU.hookAllowance / 1000);
                 const topTieCutLength = schedule.topTie.cutLength / 1000;
-
                 const webULength = webUCutLength * totalStations;
                 const topTieLength = topTieCutLength * totalStations;
-                const webUWeight = webULength * this.getUnitWeight(webU.dia);
-                const topTieWeight = topTieLength * this.getUnitWeight(schedule.topTie.dia);
-
                 return {
-                    supportLength,
-                    fieldLength,
-                    supportStationsEach,
-                    fieldStations,
-                    totalStations,
+                    supportLength, fieldLength, supportStationsEach, fieldStations, totalStations,
                     components: [
-                        { dia: webU.dia, count: totalStations, cutLength: webUCutLength, totalLength: webULength, weight: webUWeight, label: webU.label },
-                        { dia: schedule.topTie.dia, count: totalStations, cutLength: topTieCutLength, totalLength: topTieLength, weight: topTieWeight, label: schedule.topTie.label }
+                        { dia: webU.dia, count: totalStations, cutLength: webUCutLength, totalLength: webULength, weight: webULength * this.getUnitWeight(webU.dia), label: webU.label },
+                        { dia: schedule.topTie.dia, count: totalStations, cutLength: topTieCutLength, totalLength: topTieLength, weight: topTieLength * this.getUnitWeight(schedule.topTie.dia), label: schedule.topTie.label }
                     ]
                 };
             },
-
             calculateRebarDetails(typeKey, spanLength, quantity = 1) {
                 const spec = TITI_PANEN_TYPES[typeKey];
                 let longitudinalBars = [];
@@ -464,26 +469,19 @@
                     const b = a / 5;
                     const c = (3 * a) / 5;
                     const lengthMap = { a, b, c };
-
                     longitudinalBars = spec.longitudinalSchedule.map(item => {
                         const lengthPerBar = lengthMap[item.length];
                         const totalLength = lengthPerBar * item.count * quantity;
-                        return {
-                            ...item,
-                            lengthPerBar,
-                            totalLength,
-                            weight: totalLength * this.getUnitWeight(item.dia)
-                        };
+                        return { ...item, lengthPerBar, totalLength, weight: totalLength * this.getUnitWeight(item.dia) };
                     });
-
-                    const detailedStirrups = this.calculateDetailedStirrups(spec, spanLength);
-                    stirrupBars = detailedStirrups.components.map(item => ({
+                    const detailed = this.calculateDetailedStirrups(spec, spanLength);
+                    stirrupBars = detailed.components.map(item => ({
                         ...item,
                         count: item.count * quantity,
                         totalLength: item.totalLength * quantity,
                         weight: item.weight * quantity
                     }));
-                    totalStirrups = detailedStirrups.totalStations * quantity;
+                    totalStirrups = detailed.totalStations * quantity;
                 } else {
                     const mainDia = spec.mainRebar.dia;
                     const mainCount = spec.mainRebar.count;
@@ -491,27 +489,21 @@
                     const mainLengthPerBar = spanLength + hookLength;
                     const totalMainLength = mainLengthPerBar * mainCount * quantity;
                     longitudinalBars = [{
-                        dia: mainDia,
-                        count: mainCount,
-                        lengthPerBar: mainLengthPerBar,
-                        totalLength: totalMainLength,
-                        weight: totalMainLength * this.getUnitWeight(mainDia),
-                        position: "Utama"
+                        dia: mainDia, count: mainCount, lengthPerBar: mainLengthPerBar,
+                        totalLength: totalMainLength, weight: totalMainLength * this.getUnitWeight(mainDia), position: "Utama"
                     }];
 
                     const spacingM = spec.stirrupRebar.spacing / 1000;
                     const stirrupCountPerUnit = this.countStations(spanLength, spacingM);
                     totalStirrups = stirrupCountPerUnit * quantity;
 
-                    let stirrupCutLength;
-                    if (spec.sectionType === "RECTANGULAR") {
-                        stirrupCutLength = (spec.width - 40 + 100) / 1000;
-                    } else {
-                        const webW = spec.webWidth - 40;
-                        const totalH = spec.totalHeight - 40;
-                        const flangeWings = 2 * (spec.flangeOverhang - 20);
-                        stirrupCutLength = (2 * webW + 2 * totalH + flangeWings + 100) / 1000;
-                    }
+                    // Untuk TP-01/TP-02 tidak ada schedule detail sengkang di data gambar.
+                    // Gunakan geometri penampang + selimut 40 mm + kait 10d.
+                    const cover = 0.040;
+                    const b = spec.sectionType === "RECTANGULAR" ? spec.width / 1000 : spec.webWidth / 1000;
+                    const h = spec.totalHeight ? spec.totalHeight / 1000 : spec.height / 1000;
+                    const d = spec.stirrupRebar.dia / 1000;
+                    const stirrupCutLength = Math.max(0, (2 * Math.max(0, b - 2 * cover)) + (2 * Math.max(0, h - 2 * cover)) + (2 * 10 * d));
                     const totalLength = stirrupCutLength * stirrupCountPerUnit * quantity;
                     stirrupBars = [{
                         dia: spec.stirrupRebar.dia,
@@ -526,14 +518,10 @@
                 const mainWeight = longitudinalBars.reduce((sum, bar) => sum + bar.weight, 0);
                 const stirrupWeight = stirrupBars.reduce((sum, bar) => sum + bar.weight, 0);
                 const installedWeight = mainWeight + stirrupWeight;
-
-                // AHSP penulangan: kebutuhan bahan baja = 1.02 kg per 1 kg
-                // baja terpasang; kawat bendrat = 0.028 kg per 1 kg baja terpasang untuk balok.
                 const procurementWeight = installedWeight * STANDARD_BASIS.rebarMaterialFactor;
                 const bindingWireKg = installedWeight * STANDARD_BASIS.bindingWireFactorPerKgInstalled;
-
-                const primaryMain = longitudinalBars[0] || { dia: spec.mainRebar.dia, count: spec.mainRebar.count, totalLength: 0 };
-                const primaryStirrup = stirrupBars[0] || { dia: spec.stirrupRebar.dia, count: 0, totalLength: 0 };
+                const primaryMain = longitudinalBars[0] || { dia: spec.mainRebar?.dia || 0, count: 0, totalLength: 0 };
+                const primaryStirrup = stirrupBars[0] || { dia: spec.stirrupRebar?.dia || 0, count: 0, totalLength: 0 };
 
                 return {
                     mainDia: primaryMain.dia,
@@ -559,26 +547,18 @@
         // 3. CONCRETE ENGINE
         const ConcreteEngine = {
             calculateMixComponents(concreteVolumeM3) {
-                // AHSP PUPR 2023 U.4.2.b.1.2:
-                // fc' 25 MPa, semi-mekanis = 383 kg semen, 764 kg pasir,
-                // 934 kg agregat kasar, 195 liter air per m3.
                 const cementKg = concreteVolumeM3 * 383;
                 const sandKg = concreteVolumeM3 * 764;
                 const gravelKg = concreteVolumeM3 * 934;
                 const waterLiters = concreteVolumeM3 * 195;
-                const cementBagsEquivalent = cementKg / 50;
-                const cementBags = Math.ceil(cementBagsEquivalent);
-                const sandM3 = sandKg / STANDARD_BASIS.sandBulkDensityKgM3;
-                const gravelM3 = gravelKg / STANDARD_BASIS.gravelBulkDensityKgM3;
-
                 return {
                     cementKg,
-                    cementBagsEquivalent,
-                    cementBags,
+                    cementBagsEquivalent: cementKg / 50,
+                    cementBags: Math.ceil(cementKg / 50),
                     sandKg,
-                    sandM3,
+                    sandM3: sandKg / STANDARD_BASIS.sandLooseDensityKgM3,
                     gravelKg,
-                    gravelM3,
+                    gravelM3: gravelKg / STANDARD_BASIS.gravelLooseDensityKgM3,
                     waterLiters,
                     ahspReference: STANDARD_BASIS.concrete
                 };
@@ -593,105 +573,116 @@
                 const rebarDetails = RebarEngine.calculateRebarDetails(typeKey, spanLength, quantity);
                 const mix = ConcreteEngine.calculateMixComponents(concreteVol);
 
-                // Harga database: semen per sak 50 kg; pasir & kerikil per m3;
-                // besi per kg; bendrat per kg; kayu bekisting per m3.
-                const costCement = mix.cementBagsEquivalent * prices.cement;
-                const costSand = mix.sandM3 * prices.sand;
-                const costGravel = mix.gravelM3 * prices.gravel;
+                // HSD database: semen Rp/sak 50 kg; pasir & kerikil Rp/m3; besi & bendrat Rp/kg.
+                const costCement = mix.cementBagsEquivalent * Number(prices.cement || 0);
+                const costSand = mix.sandM3 * Number(prices.sand || 0);
+                const costGravel = mix.gravelM3 * Number(prices.gravel || 0);
 
-                const costRebarMain = rebarDetails.longitudinalBars.reduce((sum, bar) => {
-                    return sum + (bar.weight * STANDARD_BASIS.rebarMaterialFactor * RebarEngine.getBarPricePerKg(bar.dia, prices));
-                }, 0);
+                const rebarPrice = (bar) => RebarEngine.getBarPricePerKg(bar.dia, prices);
+                const costRebarMain = rebarDetails.longitudinalBars.reduce((sum, bar) => sum + (bar.weight * STANDARD_BASIS.rebarMaterialFactor * rebarPrice(bar)), 0);
+                const costRebarStirrup = rebarDetails.stirrupBars.reduce((sum, bar) => sum + (bar.weight * STANDARD_BASIS.rebarMaterialFactor * rebarPrice(bar)), 0);
+                const costWire = rebarDetails.bindingWireKg * Number(prices.bindingWire || 0);
 
-                const costRebarStirrup = rebarDetails.stirrupBars.reduce((sum, bar) => {
-                    return sum + (bar.weight * STANDARD_BASIS.rebarMaterialFactor * RebarEngine.getBarPricePerKg(bar.dia, prices));
-                }, 0);
+                // Bekisting balok 3 kali pakai. Harga ancillary hanya dihitung bila tersedia
+                // di database pusat; jika belum tersedia, quantity tetap tampil dan cost = 0.
+                const fw = STANDARD_BASIS.formwork;
+                const formworkWoodM3 = formworkArea * fw.classIIBalokM3PerM2;
+                const costFormworkWood = formworkWoodM3 * Number(prices.formworkWood || 0);
+                const formworkNailsKg = formworkArea * fw.nailsKgPerM2;
+                const formworkOilL = formworkArea * fw.releaseOilLPerM2;
+                const formworkPlywoodSheet = formworkArea * fw.plywoodSheetPerM2;
+                const formworkDolkenBar = formworkArea * fw.dolkenBarPerM2;
+                const costFormworkNails = formworkNailsKg * Number(prices.formworkNails || 0);
+                const costFormworkOil = formworkOilL * Number(prices.formworkOil || 0);
+                const costFormworkPlywood = formworkPlywoodSheet * Number(prices.formworkPlywood || 0);
+                const costFormworkDolken = formworkDolkenBar * Number(prices.formworkDolken || 0);
+                const totalFormworkMaterialCost = costFormworkWood + costFormworkNails + costFormworkOil + costFormworkPlywood + costFormworkDolken;
 
-                const costWire = rebarDetails.bindingWireKg * prices.bindingWire;
+                const totalMaterialCost = costCement + costSand + costGravel + costRebarMain + costRebarStirrup + costWire + totalFormworkMaterialCost;
 
-                // AHSP bekisting balok: 0.040 m3 kayu per 1 m2 bekisting.
-                // Harga ancillary paku/minyak tidak tersedia di database ESTIMATOR,
-                // sehingga tidak dibuat harga fiktif; yang dihitung hanya komponen kayu.
-                const woodVolM3 = formworkArea * STANDARD_BASIS.formworkWoodFactorM3PerM2;
-                const costFormworkWood = woodVolM3 * prices.formworkWood;
-
-                const totalMaterialCost = costCement + costSand + costGravel + costRebarMain + costRebarStirrup + costWire + costFormworkWood;
-
-                // Beton: AHSP PUPR 2023 fc' 25 MPa.
+                // Beton U.4.2.b.1.2 sudah termasuk pembuatan s.d. pengecoran.
+                // Kepala tukang digabung ke kelompok tukang batu karena database hanya punya satu harga artisan.
                 const concreteWorkerOH = STANDARD_BASIS.concreteLabour.worker * concreteVol;
-                const concreteArtisanOH = STANDARD_BASIS.concreteLabour.artisan * concreteVol;
+                const concreteArtisanOH = (STANDARD_BASIS.concreteLabour.artisan + STANDARD_BASIS.concreteLabour.head) * concreteVol;
                 const concreteForemanOH = STANDARD_BASIS.concreteLabour.foreman * concreteVol;
-                // Pemadatan beton saat pengecoran, AHSP U.4.5.b (vibrator):
-                // 0.08 OH pekerja + 0.008 OH mandor per m3. Harga alat vibrator
-                // belum ditambahkan karena belum tersedia sebagai item database.
-                const compactionWorkerOH = STANDARD_BASIS.concreteCompactionLabour.worker * concreteVol;
-                const compactionForemanOH = STANDARD_BASIS.concreteCompactionLabour.foreman * concreteVol;
 
-                // Pembesian balok < Ø12 mm: AHSP U.4.6.a.3. Kepala tukang
-                // digabung ke field artisan karena database harga hanya menyediakan
-                // satu harga Tukang Batu/Besi.
-                const rebarWorkerOH = STANDARD_BASIS.rebarLabourPerKg.worker * rebarDetails.installedWeight;
-                const rebarArtisanOH = STANDARD_BASIS.rebarLabourPerKg.artisanAndHead * rebarDetails.installedWeight;
-                const rebarForemanOH = STANDARD_BASIS.rebarLabourPerKg.foreman * rebarDetails.installedWeight;
+                // Pemadatan vibrator adalah analisa terpisah U.4.5.b dan ditambahkan satu kali.
+                const compactionWorkerOH = STANDARD_BASIS.concreteCompaction.worker * concreteVol;
+                const compactionForemanOH = STANDARD_BASIS.concreteCompaction.foreman * concreteVol;
+                const equipmentMixerDays = STANDARD_BASIS.concreteEquipment.mixerDayPerM3 * concreteVol;
+                const costMixer = equipmentMixerDays * Number(prices.equipmentMixer || 0);
+                const equipmentVibratorDays = STANDARD_BASIS.concreteCompaction.vibratorDay * concreteVol;
+                const costVibrator = equipmentVibratorDays * Number(prices.equipmentVibrator || 0);
 
-                // Bekisting balok: AHSP 0.66/0.33/0.033/0.033 OH per m2.
-                // Harga tukang kayu/kepala tukang diproksikan ke harga artisan
-                // karena database ESTIMATOR belum memiliki field Tukang Kayu.
-                const formworkWorkerOH = STANDARD_BASIS.formworkLabour.worker * formworkArea;
-                const formworkArtisanOH = (STANDARD_BASIS.formworkLabour.carpenter + STANDARD_BASIS.formworkLabour.headCarpenter) * formworkArea;
-                const formworkForemanOH = STANDARD_BASIS.formworkLabour.foreman * formworkArea;
+                // Penulangan balok <12 mm: U.4.6.a.3.
+                // Jika kelak ada >=12 mm, gunakan koefisien U.4.6.a.4.
+                const allRebarBars = [...rebarDetails.longitudinalBars, ...rebarDetails.stirrupBars];
+                const rebarWorkerOH = allRebarBars.reduce((sum, bar) => {
+                    const c = bar.dia >= 12 ? STANDARD_BASIS.rebarManualLarge : STANDARD_BASIS.rebarManualSmall;
+                    return sum + bar.weight * c.worker;
+                }, 0);
+                const rebarArtisanOH = allRebarBars.reduce((sum, bar) => {
+                    const c = bar.dia >= 12 ? STANDARD_BASIS.rebarManualLarge : STANDARD_BASIS.rebarManualSmall;
+                    return sum + bar.weight * c.artisan;
+                }, 0);
+                const rebarHeadOH = allRebarBars.reduce((sum, bar) => {
+                    const c = bar.dia >= 12 ? STANDARD_BASIS.rebarManualLarge : STANDARD_BASIS.rebarManualSmall;
+                    return sum + bar.weight * c.head;
+                }, 0);
+                const rebarForemanOH = allRebarBars.reduce((sum, bar) => {
+                    const c = bar.dia >= 12 ? STANDARD_BASIS.rebarManualLarge : STANDARD_BASIS.rebarManualSmall;
+                    return sum + bar.weight * c.foreman;
+                }, 0);
+
+                // Bekisting balok 3 kali pakai: 0.66/0.33/0.033/0.011 OH per m2.
+                // Tukang kayu + kepala tukang diproksikan ke field artisan karena database belum punya harga tukang kayu.
+                const formworkWorkerOH = fw.worker * formworkArea;
+                const formworkArtisanOH = (fw.carpenter + fw.headCarpenter) * formworkArea;
+                const formworkForemanOH = fw.foreman * formworkArea;
 
                 const totalWorkerOH = concreteWorkerOH + compactionWorkerOH + rebarWorkerOH + formworkWorkerOH;
-                const totalArtisanOH = concreteArtisanOH + rebarArtisanOH + formworkArtisanOH;
+                const totalArtisanOH = concreteArtisanOH + rebarArtisanOH + rebarHeadOH + formworkArtisanOH;
                 const totalForemanOH = concreteForemanOH + compactionForemanOH + rebarForemanOH + formworkForemanOH;
 
-                const costWorker = totalWorkerOH * prices.labourWorker;
-                const costArtisan = totalArtisanOH * prices.labourArtisan;
-                const costForeman = totalForemanOH * prices.labourForeman;
-
+                const costWorker = totalWorkerOH * Number(prices.labourWorker || 0);
+                const costArtisan = totalArtisanOH * Number(prices.labourArtisan || 0);
+                const costForeman = totalForemanOH * Number(prices.labourForeman || 0);
                 const totalLabourCost = costWorker + costArtisan + costForeman;
-                const subtotalDirect = totalMaterialCost + totalLabourCost;
+                const totalEquipmentCost = costMixer + costVibrator;
+                const subtotalDirect = totalMaterialCost + totalLabourCost + totalEquipmentCost;
 
                 const overheadVal = subtotalDirect * (settings.overheadPct / 100);
                 const profitVal = subtotalDirect * (settings.profitPct / 100);
                 const subtotalBeforeTax = subtotalDirect + overheadVal + profitVal;
-
                 const pphVal = subtotalBeforeTax * (settings.pphPct / 100);
                 const ppnVal = subtotalBeforeTax * (settings.ppnPct / 100);
-
                 const grandTotal = subtotalBeforeTax + pphVal + ppnVal;
                 const costPerUnit = grandTotal / quantity;
                 const costPerMeter = grandTotal / (spanLength * quantity);
-
-                const estimatedDays = Math.ceil((totalWorkerOH + totalArtisanOH) / 5);
+                const estimatedDays = Math.max(1, Math.ceil((totalWorkerOH + totalArtisanOH) / 5));
 
                 return {
                     concreteVol,
                     formworkArea,
                     rebarDetails,
                     mix,
+                    formwork: { formworkWoodM3, formworkNailsKg, formworkOilL, formworkPlywoodSheet, formworkDolkenBar },
+                    equipment: { mixerDays: equipmentMixerDays, vibratorDays: equipmentVibratorDays },
                     labour: { totalWorkerOH, totalArtisanOH, totalForemanOH, costWorker, costArtisan, costForeman },
                     costs: {
-                        cement: costCement,
-                        sand: costSand,
-                        gravel: costGravel,
-                        rebarMain: costRebarMain,
-                        rebarStirrup: costRebarStirrup,
-                        wire: costWire,
+                        cement: costCement, sand: costSand, gravel: costGravel,
+                        rebarMain: costRebarMain, rebarStirrup: costRebarStirrup, wire: costWire,
                         formworkWood: costFormworkWood,
-                        totalMaterialCost,
-                        totalLabourCost,
-                        subtotalDirect,
-                        overheadVal,
-                        profitVal,
-                        subtotalBeforeTax,
-                        pphVal,
-                        ppnVal,
-                        grandTotal,
-                        costPerUnit,
-                        costPerMeter
+                        formworkNails: costFormworkNails, formworkOil: costFormworkOil,
+                        formworkPlywood: costFormworkPlywood, formworkDolken: costFormworkDolken,
+                        totalFormworkMaterialCost, totalMaterialCost,
+                        equipmentMixer: costMixer, equipmentVibrator: costVibrator, totalEquipmentCost,
+                        totalLabourCost, subtotalDirect,
+                        overheadVal, profitVal, subtotalBeforeTax, pphVal, ppnVal,
+                        grandTotal, costPerUnit, costPerMeter
                     },
-                    estimatedDays
+                    estimatedDays,
+                    standard: STANDARD_BASIS
                 };
             }
         };
@@ -755,10 +746,16 @@
                     ["Material", `Besi Tulangan Utama (${rab.rebarDetails.longitudinalLabel})`, (rab.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2), "Kg", rab.rebarDetails.mainWeight > 0 ? (rab.costs.rebarMain / (rab.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0, rab.costs.rebarMain],
                     ["Material", `Besi Sengkang / Tie (${rab.rebarDetails.stirrupLabel})`, (rab.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2), "Kg", rab.rebarDetails.stirrupWeight > 0 ? (rab.costs.rebarStirrup / (rab.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0, rab.costs.rebarStirrup],
                     ["Material", "Kawat Bendrat Tali Besi", rab.rebarDetails.bindingWireKg.toFixed(2), "Kg", prices.bindingWire, rab.costs.wire],
-                    ["Material", "Kayu Bekisting", (rab.formworkArea * STANDARD_BASIS.formworkWoodFactorM3PerM2).toFixed(3), "m³", prices.formworkWood, rab.costs.formworkWood],
+                    ["Material", "Kayu/Komponen Bekisting (balok kayu kelas II)", rab.formwork.formworkWoodM3.toFixed(3), "m³", prices.formworkWood || 0, rab.costs.formworkWood],
+                    ["Material", "Paku Bekisting", rab.formwork.formworkNailsKg.toFixed(2), "Kg", prices.formworkNails || 0, rab.costs.formworkNails],
+                    ["Material", "Minyak Bekisting", rab.formwork.formworkOilL.toFixed(2), "Liter", prices.formworkOil || 0, rab.costs.formworkOil],
+                    ["Material", "Plywood Bekisting", rab.formwork.formworkPlywoodSheet.toFixed(2), "Lbr", prices.formworkPlywood || 0, rab.costs.formworkPlywood],
+                    ["Material", "Dolken Bekisting", rab.formwork.formworkDolkenBar.toFixed(2), "Batang", prices.formworkDolken || 0, rab.costs.formworkDolken],
                     ["Upah", "Pekerja Lapangan", rab.labour.totalWorkerOH.toFixed(2), "OH", prices.labourWorker, rab.labour.costWorker],
                     ["Upah", "Tukang Batu/Besi", rab.labour.totalArtisanOH.toFixed(2), "OH", prices.labourArtisan, rab.labour.costArtisan],
                     ["Upah", "Mandor Lapangan", rab.labour.totalForemanOH.toFixed(2), "OH", prices.labourForeman, rab.labour.costForeman],
+                    ["Peralatan", "Concrete Mixer 0,35 m³", rab.equipment.mixerDays.toFixed(3), "Hari", prices.equipmentMixer || 0, rab.costs.equipmentMixer],
+                    ["Peralatan", "Concrete Vibrator", rab.equipment.vibratorDays.toFixed(3), "Hari", prices.equipmentVibrator || 0, rab.costs.equipmentVibrator],
                     [],
                     ["TOTAL DIRECT COST", "", "", "", "", rab.costs.subtotalDirect]
                 ];
@@ -1114,12 +1111,15 @@
                                     <tr><td className="border border-slate-300 p-1.5 text-center">4</td><td className="border border-slate-300 p-1.5">Besi Tulangan Utama ({currentRAB.rebarDetails.longitudinalLabel})</td><td className="border border-slate-300 p-1.5 text-right">{(currentRAB.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {currentRAB.rebarDetails.mainWeight > 0 ? (currentRAB.costs.rebarMain / (currentRAB.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.rebarMain.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">5</td><td className="border border-slate-300 p-1.5">Besi Sengkang / Tie ({currentRAB.rebarDetails.stirrupLabel})</td><td className="border border-slate-300 p-1.5 text-right">{(currentRAB.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {currentRAB.rebarDetails.stirrupWeight > 0 ? (currentRAB.costs.rebarStirrup / (currentRAB.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.rebarStirrup.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">6</td><td className="border border-slate-300 p-1.5">Kawat Bendrat Tali Besi</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.rebarDetails.bindingWireKg.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.bindingWire.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.wire.toLocaleString('id-ID')}</td></tr>
-                                    <tr><td className="border border-slate-300 p-1.5 text-center">7</td><td className="border border-slate-300 p-1.5">Kayu Bekisting & Cetakan</td><td className="border border-slate-300 p-1.5 text-right">{(currentRAB.formworkArea * STANDARD_BASIS.formworkWoodFactorM3PerM2).toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkWood.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkWood.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">7</td><td className="border border-slate-300 p-1.5">Kayu Bekisting & Cetakan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkWoodM3.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkWood.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkWood.toLocaleString('id-ID')}</td></tr>
                                     
                                     <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">B. TENAGA KERJA / UPAH AHSP</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Pekerja Lapangan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalWorkerOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourWorker.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costWorker.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Tukang Batu / Besi</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalArtisanOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourArtisan.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costArtisan.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Mandor Lapangan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalForemanOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourForeman.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costForeman.toLocaleString('id-ID')}</td></tr>
+                                    <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">C. PERALATAN AHSP</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Concrete Mixer 0,35 m³</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.mixerDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {(prices.equipmentMixer || 0).toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentMixer.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Concrete Vibrator</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.vibratorDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {(prices.equipmentVibrator || 0).toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentVibrator.toLocaleString('id-ID')}</td></tr>
                                 </tbody>
                             </table>
                             </div>
@@ -1146,7 +1146,11 @@
                                         ['Besi Beton Utama', currentRAB.costs.rebarMain],
                                         ['Besi Sengkang', currentRAB.costs.rebarStirrup],
                                         ['Kawat Bendrat', currentRAB.costs.wire],
-                                        ['Kayu Bekisting & Cetakan', currentRAB.costs.formworkWood],
+                                        ['Kayu/Komponen Bekisting', currentRAB.costs.formworkWood],
+                                        ['Paku Bekisting', currentRAB.costs.formworkNails],
+                                        ['Minyak Bekisting', currentRAB.costs.formworkOil],
+                                        ['Plywood Bekisting', currentRAB.costs.formworkPlywood],
+                                        ['Dolken Bekisting', currentRAB.costs.formworkDolken],
                                     ].map((row, idx) => (
                                         <tr key={`distmat-${idx}`}>
                                             <td className="border border-slate-300 p-1.5 text-center">{idx + 1}</td>
@@ -1185,9 +1189,22 @@
                                         <td className="border border-slate-300 p-1.5 text-right">{((currentRAB.costs.totalLabourCost / currentRAB.costs.subtotalDirect) * 100).toFixed(2)}%</td>
                                         <td className="border border-slate-300 p-1.5"></td>
                                     </tr>
+                                    <tr className="bg-slate-50/50 font-bold"><td colSpan="5" className="border border-slate-300 p-1.5 text-slate-700">C. PERALATAN AHSP</td></tr>
+                                    {[
+                                        ['Concrete Mixer 0,35 m³', currentRAB.costs.equipmentMixer],
+                                        ['Concrete Vibrator', currentRAB.costs.equipmentVibrator],
+                                    ].map((row, idx) => (
+                                        <tr key={`disteq-${idx}`}>
+                                            <td className="border border-slate-300 p-1.5 text-center">{idx + 1}</td>
+                                            <td className="border border-slate-300 p-1.5">{row[0]}</td>
+                                            <td className="border border-slate-300 p-1.5 text-right font-mono">Rp {row[1].toLocaleString('id-ID')}</td>
+                                            <td className="border border-slate-300 p-1.5 text-right">{((row[1] / currentRAB.costs.subtotalDirect) * 100).toFixed(2)}%</td>
+                                            <td className="border border-slate-300 p-1.5"><div className="w-full h-2 bg-slate-100 rounded overflow-hidden"><div className="h-full bg-amber-500" style={{ width: `${(row[1] / currentRAB.costs.subtotalDirect) * 100}%` }}></div></div></td>
+                                        </tr>
+                                    ))}
                                     <tr className="bg-slate-100 font-bold border-t-2 border-slate-400">
                                         <td className="border border-slate-300 p-1.5"></td>
-                                        <td className="border border-slate-300 p-1.5">TOTAL DIRECT COST (A + B)</td>
+                                        <td className="border border-slate-300 p-1.5">TOTAL DIRECT COST (A + B + C)</td>
                                         <td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}</td>
                                         <td className="border border-slate-300 p-1.5 text-right">100.00%</td>
                                         <td className="border border-slate-300 p-1.5"></td>
@@ -1355,6 +1372,8 @@
                 Cement: 'cement', Sand: 'sand', Gravel: 'gravel',
                 Rebar6: 'rebar6', Rebar8: 'rebar8', Rebar10: 'rebar10', Rebar12: 'rebar12',
                 BindingWire: 'bindingWire', FormworkWood: 'formworkWood',
+                FormworkNails: 'formworkNails', FormworkOil: 'formworkOil', FormworkPlywood: 'formworkPlywood', FormworkDolken: 'formworkDolken',
+                EquipmentMixer: 'equipmentMixer', EquipmentVibrator: 'equipmentVibrator', EquipmentBarCutter: 'equipmentBarCutter', EquipmentBarBender: 'equipmentBarBender',
                 LabourWorker: 'labourWorker', LabourArtisan: 'labourArtisan', LabourForeman: 'labourForeman'
             };
 
@@ -2612,6 +2631,12 @@
                                                 <p><b>Bekisting:</b> luas mengikuti geometri aktual penampang; kayu memakai koefisien 0,040 m³/m². Paku/minyak tidak dihitung karena belum tersedia sebagai item harga di database ESTIMATOR.</p>
                                                 <p className="pt-1 border-t border-brand-200 dark:border-brand-800"><b>Referensi:</b> Permen PUPR 8/2023 • SNI 2847:2019 • SNI 2052:2024 • Spesifikasi Umum Bina Marga 2025.</p>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {wizardStep === 3 && (
+                                        <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-800">
+                                            <b>Basis standard:</b> AHSP Permen PUPR No. 8/2023. Beton K-300 menggunakan U.4.2.b.1.2; pembesian menggunakan U.4.6.a.3 untuk diameter &lt; 12 mm dan U.4.6.a.4 untuk diameter ≥ 12 mm; harga besi dibaca <b>Rp/kg</b>. Bekisting menggunakan analisa balok 3 kali pakai. Quantity paku, minyak, plywood, dolken, mixer dan vibrator tetap dihitung, tetapi biayanya Rp0 jika HSD item belum tersedia di database ESTIMATOR.
                                         </div>
                                     )}
 
