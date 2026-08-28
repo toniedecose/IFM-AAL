@@ -168,6 +168,13 @@
             equipmentBarCutter: 250000, equipmentBarBender: 250000
         };
 
+        // Item ancillary bekisting yang memang dibutuhkan AHSP tetapi belum termasuk 18 item DB pusat.
+        // Harga ini adalah fallback standar HSD; bila nanti ditambahkan ke DB pusat, harga pusat tetap diprioritaskan.
+        const AUX_FORMWORK_PRICE_DEFAULTS = {
+            formworkPlywood: 185000, // Plywood 12 mm, Rp/lembar
+            formworkDolken: 35000    // Dolken 8-10 cm x 4 m, Rp/batang
+        };
+
         const PRICE_DB_KEYS = [
             'cement','sand','gravel','rebar6','rebar8','rebar10','rebar12',
             'bindingWire','formworkWood','formworkNails','formworkOil',
@@ -184,6 +191,8 @@
             equipmentBarCutter:'hari', equipmentBarBender:'hari'
         };
 
+        const AUX_PRICE_UNITS = { formworkPlywood: 'lembar', formworkDolken: 'batang' };
+
         const completePrices = (source = {}, fallback = COMPLETE_PRICE_DEFAULTS) => {
             const result = {};
             PRICE_DB_KEYS.forEach(key => {
@@ -195,6 +204,11 @@
             });
             return result;
         };
+
+        const completeAuxiliaryPrices = (source = {}) => ({
+            formworkPlywood: Number(source?.formworkPlywood) > 0 ? Number(source.formworkPlywood) : AUX_FORMWORK_PRICE_DEFAULTS.formworkPlywood,
+            formworkDolken: Number(source?.formworkDolken) > 0 ? Number(source.formworkDolken) : AUX_FORMWORK_PRICE_DEFAULTS.formworkDolken
+        });
 
         // --- PT / COMPANY DATABASE ---
         // Daftar fallback dari sheet PT yang terlihat pada database.
@@ -645,8 +659,8 @@
                 const formworkDolkenBar = formworkArea * fw.dolkenBarPerM2;
                 const costFormworkNails = formworkNailsKg * Number(prices.formworkNails || 0);
                 const costFormworkOil = formworkOilL * Number(prices.formworkOil || 0);
-                const costFormworkPlywood = formworkPlywoodSheet * Number(prices.formworkPlywood || 0);
-                const costFormworkDolken = formworkDolkenBar * Number(prices.formworkDolken || 0);
+                const costFormworkPlywood = formworkPlywoodSheet * Number(prices.formworkPlywood || AUX_FORMWORK_PRICE_DEFAULTS.formworkPlywood);
+                const costFormworkDolken = formworkDolkenBar * Number(prices.formworkDolken || AUX_FORMWORK_PRICE_DEFAULTS.formworkDolken);
                 const totalFormworkMaterialCost = costFormworkWood + costFormworkNails + costFormworkOil + costFormworkPlywood + costFormworkDolken;
 
                 const totalMaterialCost = costCement + costSand + costGravel + costRebarMain + costRebarStirrup + costWire + totalFormworkMaterialCost;
@@ -805,6 +819,8 @@
                     ["Material", `Besi Sengkang / Tie (${rab.rebarDetails.stirrupLabel})`, (rab.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2), "Kg", rab.rebarDetails.stirrupWeight > 0 ? (rab.costs.rebarStirrup / (rab.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0, rab.costs.rebarStirrup],
                     ["Material", "Kawat Bendrat Tali Besi", rab.rebarDetails.bindingWireKg.toFixed(2), "Kg", prices.bindingWire, rab.costs.wire],
                     ["Material", "Kayu/Komponen Bekisting (balok kayu kelas II)", rab.formwork.formworkWoodM3.toFixed(3), "m³", prices.formworkWood || 0, rab.costs.formworkWood],
+                    ["Material", "Plywood Bekisting 12 mm", rab.formwork.formworkPlywoodSheet.toFixed(3), "Lbr", prices.formworkPlywood || AUX_FORMWORK_PRICE_DEFAULTS.formworkPlywood, rab.costs.formworkPlywood],
+                    ["Material", "Dolken Kayu 8–10 cm x 4 m", rab.formwork.formworkDolkenBar.toFixed(3), "Btg", prices.formworkDolken || AUX_FORMWORK_PRICE_DEFAULTS.formworkDolken, rab.costs.formworkDolken],
                     ["Material", "Paku Bekisting", rab.formwork.formworkNailsKg.toFixed(2), "Kg", prices.formworkNails || 0, rab.costs.formworkNails],
                     ["Material", "Minyak Bekisting", rab.formwork.formworkOilL.toFixed(2), "Liter", prices.formworkOil || 0, rab.costs.formworkOil],
 
@@ -1170,7 +1186,11 @@
                                     <tr><td className="border border-slate-300 p-1.5 text-center">4</td><td className="border border-slate-300 p-1.5">Besi Tulangan Utama ({currentRAB.rebarDetails.longitudinalLabel})</td><td className="border border-slate-300 p-1.5 text-right">{(currentRAB.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {currentRAB.rebarDetails.mainWeight > 0 ? (currentRAB.costs.rebarMain / (currentRAB.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.rebarMain.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">5</td><td className="border border-slate-300 p-1.5">Besi Sengkang / Tie ({currentRAB.rebarDetails.stirrupLabel})</td><td className="border border-slate-300 p-1.5 text-right">{(currentRAB.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor).toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {currentRAB.rebarDetails.stirrupWeight > 0 ? (currentRAB.costs.rebarStirrup / (currentRAB.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor)).toFixed(0) : 0}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.rebarStirrup.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">6</td><td className="border border-slate-300 p-1.5">Kawat Bendrat Tali Besi</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.rebarDetails.bindingWireKg.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.bindingWire.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.wire.toLocaleString('id-ID')}</td></tr>
-                                    <tr><td className="border border-slate-300 p-1.5 text-center">7</td><td className="border border-slate-300 p-1.5">Kayu Bekisting & Cetakan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkWoodM3.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkWood.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkWood.toLocaleString('id-ID')}</td></tr>
+                                     <tr><td className="border border-slate-300 p-1.5 text-center">7</td><td className="border border-slate-300 p-1.5">Kayu Bekisting / Balok Kayu Kelas II</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkWoodM3.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">m³</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkWood.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkWood.toLocaleString('id-ID')}</td></tr>
+                                     <tr><td className="border border-slate-300 p-1.5 text-center">8</td><td className="border border-slate-300 p-1.5">Plywood Bekisting 12 mm</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkPlywoodSheet.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Lbr</td><td className="border border-slate-300 p-1.5 text-right">Rp {Number(prices.formworkPlywood || AUX_FORMWORK_PRICE_DEFAULTS.formworkPlywood).toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkPlywood.toLocaleString('id-ID')}</td></tr>
+                                     <tr><td className="border border-slate-300 p-1.5 text-center">9</td><td className="border border-slate-300 p-1.5">Dolken Kayu 8–10 cm x 4 m</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkDolkenBar.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Btg</td><td className="border border-slate-300 p-1.5 text-right">Rp {Number(prices.formworkDolken || AUX_FORMWORK_PRICE_DEFAULTS.formworkDolken).toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkDolken.toLocaleString('id-ID')}</td></tr>
+                                     <tr><td className="border border-slate-300 p-1.5 text-center">10</td><td className="border border-slate-300 p-1.5">Paku Bekisting</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkNailsKg.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Kg</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkNails.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkNails.toLocaleString('id-ID')}</td></tr>
+                                     <tr><td className="border border-slate-300 p-1.5 text-center">11</td><td className="border border-slate-300 p-1.5">Minyak Bekisting</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.formwork.formworkOilL.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">Liter</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.formworkOil.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.formworkOil.toLocaleString('id-ID')}</td></tr>
                                     
                                     <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">B. TENAGA KERJA / UPAH AHSP</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Pekerja Lapangan</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.labour.totalWorkerOH.toFixed(2)}</td><td className="border border-slate-300 p-1.5 text-center">OH</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.labourWorker.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.labour.costWorker.toLocaleString('id-ID')}</td></tr>
@@ -1179,8 +1199,8 @@
                                     <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">C. PERALATAN AHSP</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Concrete Mixer 0,35 m³</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.mixerDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentMixer.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentMixer.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Concrete Vibrator</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.vibratorDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentVibrator.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentVibrator.toLocaleString('id-ID')}</td></tr>
-                                    <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Bar Cutter (Ø≥12 mm)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.barCutterDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentBarCutter.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentBarCutter.toLocaleString('id-ID')}</td></tr>
-                                    <tr><td className="border border-slate-300 p-1.5 text-center">4</td><td className="border border-slate-300 p-1.5">Bar Bender (Ø≥12 mm)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.barBenderDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentBarBender.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentBarBender.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Bar Cutter (Ø≥12 mm)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.barCutterDays > 0 ? currentRAB.equipment.barCutterDays.toFixed(3) : 'N/A'}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentBarCutter.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentBarCutter.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">4</td><td className="border border-slate-300 p-1.5">Bar Bender (Ø≥12 mm)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.barBenderDays > 0 ? currentRAB.equipment.barBenderDays.toFixed(3) : 'N/A'}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentBarBender.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentBarBender.toLocaleString('id-ID')}</td></tr>
                                 </tbody>
                             </table>
                             </div>
@@ -1346,7 +1366,10 @@
 
             // Prices for active selected regency
             const [prices, setPrices] = React.useState(() => {
-                return completePrices(regionalDb["Sumatera"]["Riau"]["Rokan Hulu"], COMPLETE_PRICE_DEFAULTS);
+                return {
+                    ...completePrices(regionalDb["Sumatera"]["Riau"]["Rokan Hulu"], COMPLETE_PRICE_DEFAULTS),
+                    ...completeAuxiliaryPrices({})
+                };
             });
 
             const [rabSettings, setRabSettings] = React.useState({
@@ -1567,7 +1590,10 @@
 
                     const normalized = normalizeCentralPrices(data.prices);
                     const localFallback = getLocalPrices(targetProvince, targetRegency) || {};
-                    const merged = completePrices(normalized, { ...localFallback, ...COMPLETE_PRICE_DEFAULTS });
+                    const merged = {
+                        ...completePrices(normalized, { ...localFallback, ...COMPLETE_PRICE_DEFAULTS }),
+                        ...completeAuxiliaryPrices({ ...localFallback, ...normalized })
+                    };
 
                     // Harga ESTIMATOR pusat menjadi prioritas. Item yang tidak tersedia
                     // dilengkapi dari fallback agar 18 field selalu terisi.
@@ -1599,7 +1625,10 @@
                     // Ini penting agar misalnya Aceh Barat tidak memakai harga
                     // Rokan Hulu hanya karena request baru gagal.
                     const localFallback = getLocalPrices(targetProvince, targetRegency) || {};
-                    setPrices(completePrices(localFallback, COMPLETE_PRICE_DEFAULTS));
+                    setPrices({
+                        ...completePrices(localFallback, COMPLETE_PRICE_DEFAULTS),
+                        ...completeAuxiliaryPrices(localFallback)
+                    });
 
                     setCentralPriceSource(`ERROR HARGA • ${targetRegency}`);
                     return false;
@@ -1876,7 +1905,10 @@
                     const unitWeight12m = 0.006165 * Math.pow(d, 2) * 12;
                     if (legacyBarPrice > 0 && unitWeight12m > 0) normalized[`rebar${d}`] = legacyBarPrice / unitWeight12m;
                 });
-                return completePrices(normalized, COMPLETE_PRICE_DEFAULTS);
+                return {
+                    ...completePrices(normalized, COMPLETE_PRICE_DEFAULTS),
+                    ...completeAuxiliaryPrices(normalized)
+                };
             };
 
             // Update location from the CENTRAL ESTIMATOR database.
@@ -1943,7 +1975,7 @@
                             regency: project.regency,
                             item,
                             price: Number(prices[key]),
-                            unit: PRICE_DB_UNITS[key] || ''
+                            unit: PRICE_DB_UNITS[key] || AUX_PRICE_UNITS[key] || ''
                         });
 
                         if (!data || data.success !== true) {
@@ -2149,6 +2181,13 @@
                                 >
                                     <i data-lucide="calculator" className="w-4 h-4"></i>
                                     <span>Wizard Estimasi</span>
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('ahs')} 
+                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'ahs' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="list-checks" className="w-4 h-4"></i>
+                                    <span>Analisa Harga Satuan (AHS)</span>
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('specs')} 
@@ -2626,8 +2665,8 @@
                                                         <div key={key} className="flex justify-between items-center gap-3">
                                                             <span>{label} (per {unit})</span>
                                                             <input type="number" min="1"
-                                                                value={prices[key] || COMPLETE_PRICE_DEFAULTS[key]}
-                                                                onChange={e => setPrices({...prices, [key]: Math.max(1, Number(e.target.value) || COMPLETE_PRICE_DEFAULTS[key])})}
+                                                                value={prices[key] || AUX_FORMWORK_PRICE_DEFAULTS[key] || COMPLETE_PRICE_DEFAULTS[key] || 1}
+                                                                onChange={e => setPrices({...prices, [key]: Math.max(1, Number(e.target.value) || AUX_FORMWORK_PRICE_DEFAULTS[key] || COMPLETE_PRICE_DEFAULTS[key] || 1)})}
                                                                 className="w-32 p-1 text-right border rounded font-mono font-bold text-slate-800 dark:text-slate-100 dark:bg-slate-800" />
                                                         </div>
                                                     ))}
@@ -2655,7 +2694,7 @@
                                             </div>
 
                                             <div className="mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50/70 dark:bg-emerald-950/20 dark:border-emerald-800 text-[10px] text-slate-600 dark:text-slate-300">
-                                                <b>18 item database aktif:</b> harga dari ESTIMATOR pusat diprioritaskan. Jika ada item yang belum dikirim database pusat, sistem otomatis melengkapi dari fallback lokal/default sehingga tidak ada harga kosong atau Rp0.
+                                                <b>18 item database inti aktif + 2 ancillary bekisting AHSP:</b> harga dari ESTIMATOR pusat diprioritaskan. 18 item inti berasal dari ESTIMATOR pusat. Plywood dan dolken adalah komponen ancillary AHSP yang wajib dihitung; jika belum ada di DB pusat, sistem memakai HSD fallback standar, bukan Rp0.
                                             </div>
 
                                             <div className="p-3 rounded-lg border border-brand-200 bg-brand-50/60 dark:bg-brand-950/30 dark:border-brand-800 text-[10px] text-slate-600 dark:text-slate-300 space-y-1.5">
@@ -2663,7 +2702,7 @@
                                                 <p><b>Beton:</b> AHSP PUPR 2023 fc' 25 MPa: 383 kg semen, 764 kg pasir, 934 kg agregat kasar, 195 L air per m³; pemadatan menambah 0,08 OH pekerja + 0,008 OH mandor per m³. Mutu desain tetap <b>K-300 sesuai gambar AAL</b>.</p>
                                                 <p><b>Besi:</b> quantity take-off dibaca dari tabel volume Titi Panen pada workbook sumber. Harga database dibaca langsung sebagai <b>Rp/kg</b>. Untuk diameter ≥12 mm, cutter/bender mengikuti AHSP U.4.6.a.4.</p>
                                                 <p><b>AHSP pembesian balok:</b> 1,02 kg baja + 0,028 kg bendrat per 1 kg baja terpasang; upah 0,0016 OH pekerja + 0,0016 OH tukang besi + 0,00016 OH kepala tukang + 0,00016 OH mandor per kg. Kepala tukang digabung ke komponen artisan karena database belum menyediakan harga kepala tukang.</p>
-                                                <p><b>Bekisting:</b> luas mengikuti geometri aktual penampang; kayu memakai koefisien 0,040 m³/m². Paku dan minyak bekisting menggunakan HSD database masing-masing.</p>
+                                                <p><b>Bekisting:</b> luas mengikuti take-off gambar Titi Panen; analisa bekisting balok 3 kali pakai memakai pekerja 0,66 OH, tukang kayu 0,33 OH, kepala tukang 0,033 OH, mandor 0,011 OH, paku 0,40 kg, minyak 0,20 L, balok kayu 0,00558 m³, plywood 0,12705 lembar, dan dolken 0,65 batang per m².</p>
                                                 <p className="pt-1 border-t border-brand-200 dark:border-brand-800"><b>Referensi:</b> Permen PUPR 8/2023 • SNI 2847:2019 • SNI 2052:2024 • Spesifikasi Umum Bina Marga 2025.</p>
                                             </div>
                                         </div>
@@ -2794,6 +2833,110 @@
                                                 </button>
                                             </div>
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* AHS DETAIL TAB */}
+                            {activeTab === 'ahs' && (
+                                <div className="space-y-5 animate-fade-in">
+                                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                                        <div>
+                                            <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Analisa Harga Satuan (AHS)</h2>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Koefisien, satuan, kebutuhan aktual, harga satuan, dan nilai biaya untuk item yang sedang dihitung.</p>
+                                        </div>
+                                        <div className="text-right text-xs">
+                                            <div className="font-bold text-brand-600">{TITI_PANEN_TYPES[selectedType]?.code} • Bentang {selectedSpan} m • Qty {quantity}</div>
+                                            <div className="text-slate-500">Kabupaten: {project.regency}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
+                                            <div className="text-[10px] uppercase font-bold text-slate-500">Basis Standar</div>
+                                            <div className="text-xs font-bold mt-1">{STANDARD_BASIS.ahsp}</div>
+                                            <div className="text-[10px] text-slate-500 mt-1">{STANDARD_BASIS.concrete}</div>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
+                                            <div className="text-[10px] uppercase font-bold text-slate-500">Basis Quantity</div>
+                                            <div className="text-xs mt-1">Beton <b>{currentRAB.concreteVol.toFixed(3)} m³</b> • Bekisting <b>{currentRAB.formworkArea.toFixed(3)} m²</b></div>
+                                            <div className="text-[10px] text-slate-500 mt-1">Take-off mengikuti data drawing/Excel Titi Panen.</div>
+                                        </div>
+                                        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-sm">
+                                            <div className="text-[10px] uppercase font-bold text-slate-500">Kontrol Biaya</div>
+                                            <div className="text-xs mt-1">Material <b>{currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</b></div>
+                                            <div className="text-xs">Jasa <b>{currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</b></div>
+                                            <div className="text-xs">Peralatan <b>{currentRAB.costs.totalEquipmentCost.toLocaleString('id-ID')}</b></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                                            <h3 className="text-xs font-extrabold uppercase tracking-wide">A. Material & Bahan</h3>
+                                            <p className="text-[10px] text-slate-500 mt-1">Koefisien ditampilkan pada basis AHSP; kebutuhan adalah hasil koefisien × volume/quantity pekerjaan.</p>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-[11px]">
+                                                <thead className="bg-slate-50 dark:bg-slate-900/60"><tr><th className="p-2 text-left">Item</th><th className="p-2 text-right">Koefisien</th><th className="p-2 text-center">Basis</th><th className="p-2 text-right">Kebutuhan</th><th className="p-2 text-center">Satuan</th><th className="p-2 text-right">Harga Satuan</th><th className="p-2 text-right">Jumlah</th></tr></thead>
+                                                <tbody>
+                                                    {[
+                                                        ['Semen PCC', currentRAB.mix.cementKg / Math.max(currentRAB.concreteVol,1e-9), currentRAB.mix.cementBagsEquivalent, 'kg/m³','Sak', prices.cement, currentRAB.costs.cement],
+                                                        ['Pasir Beton', currentRAB.mix.sandKg / Math.max(currentRAB.concreteVol,1e-9), currentRAB.mix.sandM3, 'kg/m³','m³', prices.sand, currentRAB.costs.sand],
+                                                        ['Kerikil / Batu Pecah', currentRAB.mix.gravelKg / Math.max(currentRAB.concreteVol,1e-9), currentRAB.mix.gravelM3, 'kg/m³','m³', prices.gravel, currentRAB.costs.gravel],
+                                                        ['Besi Tulangan Utama', STANDARD_BASIS.rebarMaterialFactor, currentRAB.rebarDetails.mainWeight * STANDARD_BASIS.rebarMaterialFactor, 'kg/kg terpasang','kg', prices[`rebar${currentRAB.rebarDetails.longitudinalBars[0]?.dia || 10}`], currentRAB.costs.rebarMain],
+                                                        ['Besi Sengkang / Tie', STANDARD_BASIS.rebarMaterialFactor, currentRAB.rebarDetails.stirrupWeight * STANDARD_BASIS.rebarMaterialFactor, 'kg/kg terpasang','kg', prices[`rebar${currentRAB.rebarDetails.stirrupBars[0]?.dia || 6}`], currentRAB.costs.rebarStirrup],
+                                                        ['Kawat Bendrat', STANDARD_BASIS.bindingWireFactorPerKgInstalled, currentRAB.rebarDetails.bindingWireKg, 'kg/kg besi terpasang','kg', prices.bindingWire, currentRAB.costs.wire],
+                                                        ['Kayu Bekisting', STANDARD_BASIS.formwork.classIIBalokM3PerM2, currentRAB.formwork.formworkWoodM3, 'm³/m² bekisting','m³', prices.formworkWood, currentRAB.costs.formworkWood],
+                                                        ['Plywood 12 mm', STANDARD_BASIS.formwork.plywoodSheetPerM2, currentRAB.formwork.formworkPlywoodSheet, 'lbr/m² bekisting','Lbr', prices.formworkPlywood, currentRAB.costs.formworkPlywood],
+                                                        ['Dolken 8–10 cm x 4 m', STANDARD_BASIS.formwork.dolkenBarPerM2, currentRAB.formwork.formworkDolkenBar, 'btg/m² bekisting','Btg', prices.formworkDolken, currentRAB.costs.formworkDolken],
+                                                        ['Paku Bekisting', STANDARD_BASIS.formwork.nailsKgPerM2, currentRAB.formwork.formworkNailsKg, 'kg/m² bekisting','kg', prices.formworkNails, currentRAB.costs.formworkNails],
+                                                        ['Minyak Bekisting', STANDARD_BASIS.formwork.releaseOilLPerM2, currentRAB.formwork.formworkOilL, 'L/m² bekisting','Liter', prices.formworkOil, currentRAB.costs.formworkOil]
+                                                    ].map((r,i)=><tr key={i} className="border-t border-slate-100 dark:border-slate-700"><td className="p-2 font-semibold">{r[0]}</td><td className="p-2 text-right font-mono">{Number(r[1]).toFixed(5)}</td><td className="p-2 text-center text-slate-500">{r[3]}</td><td className="p-2 text-right font-mono">{Number(r[2]).toFixed(3)}</td><td className="p-2 text-center">{r[4]}</td><td className="p-2 text-right">Rp {Number(r[5]||0).toLocaleString('id-ID')}</td><td className="p-2 text-right font-bold">Rp {Number(r[6]||0).toLocaleString('id-ID')}</td></tr>)}
+                                                </tbody>
+                                                <tfoot className="bg-slate-50 dark:bg-slate-900/60"><tr><td colSpan="6" className="p-2 text-right font-extrabold">SUBTOTAL MATERIAL</td><td className="p-2 text-right font-extrabold">Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</td></tr></tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700"><h3 className="text-xs font-extrabold uppercase tracking-wide">B. Jasa / Tenaga Kerja</h3></div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-[11px]">
+                                                <thead className="bg-slate-50 dark:bg-slate-900/60"><tr><th className="p-2 text-left">Item</th><th className="p-2 text-right">Koefisien / OH</th><th className="p-2 text-right">Kebutuhan OH</th><th className="p-2 text-right">Harga/OH</th><th className="p-2 text-right">Jumlah</th></tr></thead>
+                                                <tbody>{[
+                                                    ['Pekerja Lapangan', currentRAB.labour.totalWorkerOH / Math.max(quantity,1), currentRAB.labour.totalWorkerOH, prices.labourWorker, currentRAB.labour.costWorker],
+                                                    ['Tukang Batu / Besi', currentRAB.labour.totalArtisanOH / Math.max(quantity,1), currentRAB.labour.totalArtisanOH, prices.labourArtisan, currentRAB.labour.costArtisan],
+                                                    ['Mandor Lapangan', currentRAB.labour.totalForemanOH / Math.max(quantity,1), currentRAB.labour.totalForemanOH, prices.labourForeman, currentRAB.labour.costForeman]
+                                                ].map((r,i)=><tr key={i} className="border-t border-slate-100 dark:border-slate-700"><td className="p-2 font-semibold">{r[0]}</td><td className="p-2 text-right font-mono">{Number(r[1]).toFixed(5)} OH/unit</td><td className="p-2 text-right font-mono">{Number(r[2]).toFixed(3)}</td><td className="p-2 text-right">Rp {Number(r[3]||0).toLocaleString('id-ID')}</td><td className="p-2 text-right font-bold">Rp {Number(r[4]||0).toLocaleString('id-ID')}</td></tr>)}</tbody>
+                                                <tfoot className="bg-slate-50 dark:bg-slate-900/60"><tr><td colSpan="4" className="p-2 text-right font-extrabold">SUBTOTAL JASA</td><td className="p-2 text-right font-extrabold">Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</td></tr></tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700"><h3 className="text-xs font-extrabold uppercase tracking-wide">C. Peralatan AHSP</h3></div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-[11px]">
+                                                <thead className="bg-slate-50 dark:bg-slate-900/60"><tr><th className="p-2 text-left">Item</th><th className="p-2 text-right">Koefisien</th><th className="p-2 text-right">Kebutuhan</th><th className="p-2 text-center">Satuan</th><th className="p-2 text-right">Harga Satuan</th><th className="p-2 text-right">Jumlah</th></tr></thead>
+                                                <tbody>{[
+                                                    ['Concrete Mixer 0,35 m³', STANDARD_BASIS.concreteEquipment.mixerDayPerM3, currentRAB.equipment.mixerDays, 'Hari', prices.equipmentMixer, currentRAB.costs.equipmentMixer],
+                                                    ['Concrete Vibrator', STANDARD_BASIS.concreteCompaction.vibratorDay, currentRAB.equipment.vibratorDays, 'Hari', prices.equipmentVibrator, currentRAB.costs.equipmentVibrator],
+                                                    ['Bar Cutter (Ø≥12 mm)', 0.040, currentRAB.equipment.barCutterDays, 'Hari', prices.equipmentBarCutter, currentRAB.costs.equipmentBarCutter],
+                                                    ['Bar Bender (Ø≥12 mm)', 0.040, currentRAB.equipment.barBenderDays, 'Hari', prices.equipmentBarBender, currentRAB.costs.equipmentBarBender]
+                                                ].map((r,i)=><tr key={i} className="border-t border-slate-100 dark:border-slate-700"><td className="p-2 font-semibold">{r[0]}</td><td className="p-2 text-right font-mono">{Number(r[1]).toFixed(5)}</td><td className="p-2 text-right font-mono">{Number(r[2]).toFixed(3)}</td><td className="p-2 text-center">{Number(r[2])>0 ? r[3] : 'N/A'}</td><td className="p-2 text-right">{Number(r[2])>0 ? 'Rp '+Number(r[4]||0).toLocaleString('id-ID') : 'N/A'}</td><td className="p-2 text-right font-bold">{Number(r[2])>0 ? 'Rp '+Number(r[5]||0).toLocaleString('id-ID') : 'N/A'}</td></tr>)}</tbody>
+                                                <tfoot className="bg-slate-50 dark:bg-slate-900/60"><tr><td colSpan="5" className="p-2 text-right font-extrabold">SUBTOTAL PERALATAN</td><td className="p-2 text-right font-extrabold">Rp {currentRAB.costs.totalEquipmentCost.toLocaleString('id-ID')}</td></tr></tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4"><div className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300">Material</div><div className="text-xl font-extrabold mt-1">{((currentRAB.costs.totalMaterialCost/Math.max(currentRAB.costs.subtotalDirect,1))*100).toFixed(2)}%</div><div className="text-xs mt-1">Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</div></div>
+                                        <div className="rounded-xl border border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800 p-4"><div className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300">Jasa</div><div className="text-xl font-extrabold mt-1">{((currentRAB.costs.totalLabourCost/Math.max(currentRAB.costs.subtotalDirect,1))*100).toFixed(2)}%</div><div className="text-xs mt-1">Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</div></div>
+                                        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4"><div className="text-[10px] uppercase font-bold text-amber-700 dark:text-amber-300">Peralatan</div><div className="text-xl font-extrabold mt-1">{((currentRAB.costs.totalEquipmentCost/Math.max(currentRAB.costs.subtotalDirect,1))*100).toFixed(2)}%</div><div className="text-xs mt-1">Rp {currentRAB.costs.totalEquipmentCost.toLocaleString('id-ID')}</div></div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-4 text-[11px] text-slate-600 dark:text-slate-300">
+                                        <b>Catatan kontrol:</b> halaman ini hanya menampilkan koefisien yang benar-benar dipakai oleh engine aktif. Quantity take-off berasal dari basis drawing Titi Panen; harga satuan berasal dari database harga aktif. Jika suatu harga belum tersedia, item harus ditandai dan tidak boleh diam-diam menjadi harga 0.
                                     </div>
                                 </div>
                             )}
