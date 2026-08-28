@@ -101,6 +101,45 @@
                 overflow: visible !important;
                 height: auto !important;
             }
+            /* Print-safe structural drawing: force a white technical background and
+               high-contrast linework so the inline SVG is not rendered as a black block. */
+            .structural-drawing-print-safe {
+                background: #fff !important;
+                color: #111827 !important;
+            }
+            .structural-drawing-print-safe svg {
+                background: #fff !important;
+            }
+            .structural-drawing-print-safe svg rect {
+                fill: #fff !important;
+                stroke: #111827 !important;
+            }
+            .structural-drawing-print-safe svg path {
+                stroke: #9ca3af !important;
+            }
+            .structural-drawing-print-safe svg circle {
+                fill: #111827 !important;
+                stroke: #111827 !important;
+            }
+            .structural-drawing-print-safe svg line {
+                stroke: #111827 !important;
+            }
+            .structural-drawing-print-safe svg text {
+                fill: #111827 !important;
+            }
+            .report-recap-section { page-break-before: always !important; break-before: page !important; padding-top: 10px !important; }
+            .signature-block p { margin: 0; }
+            .signature-block .signature-name {
+                display: inline-block;
+                padding-bottom: 5px;
+                border-bottom: 1px solid #111827;
+                text-decoration: none !important;
+                line-height: 1.2;
+            }
+            .signature-block .signature-role {
+                margin-top: 7px !important;
+                line-height: 1.25;
+            }
         }
         .print-only { display: none; }
     </style>
@@ -729,6 +768,20 @@
                 const pphVal = subtotalBeforeTax * (settings.pphPct / 100);
                 const ppnVal = subtotalBeforeTax * (settings.ppnPct / 100);
                 const grandTotal = subtotalBeforeTax + pphVal + ppnVal;
+
+                // Benchmark harga 1 m³ beton cor: hanya komponen beton + pengecoran/pemadatan,
+                // tidak termasuk tulangan dan bekisting. Air dianggap gratis sesuai kebijakan database.
+                const concreteMaterialUnitCost = (383 / 50) * Number(prices.cement || 0)
+                    + (764 / STANDARD_BASIS.sandLooseDensityKgM3) * Number(prices.sand || 0)
+                    + (934 / STANDARD_BASIS.gravelLooseDensityKgM3) * Number(prices.gravel || 0);
+                const concreteLabourUnitCost = (STANDARD_BASIS.concreteLabour.worker * Number(prices.labourWorker || 0))
+                    + ((STANDARD_BASIS.concreteLabour.artisan + STANDARD_BASIS.concreteLabour.head) * Number(prices.labourArtisan || 0))
+                    + (STANDARD_BASIS.concreteLabour.foreman * Number(prices.labourForeman || 0))
+                    + (STANDARD_BASIS.concreteCompaction.worker * Number(prices.labourWorker || 0))
+                    + (STANDARD_BASIS.concreteCompaction.foreman * Number(prices.labourForeman || 0));
+                const concreteEquipmentUnitCost = STANDARD_BASIS.concreteEquipment.mixerDayPerM3 * Number(prices.equipmentMixer || 0)
+                    + STANDARD_BASIS.concreteCompaction.vibratorDay * Number(prices.equipmentVibrator || 0);
+                const concreteUnitDirectCost = concreteMaterialUnitCost + concreteLabourUnitCost + concreteEquipmentUnitCost;
                 const costPerUnit = grandTotal / quantity;
                 const costPerMeter = grandTotal / (spanLength * quantity);
                 const estimatedDays = Math.max(1, Math.ceil((totalWorkerOH + totalArtisanOH) / 5));
@@ -751,7 +804,8 @@
                         equipmentMixer: costMixer, equipmentVibrator: costVibrator, equipmentBarCutter: costBarCutter, equipmentBarBender: costBarBender, totalEquipmentCost,
                         totalLabourCost, subtotalDirect,
                         overheadVal, profitVal, subtotalBeforeTax, pphVal, ppnVal,
-                        grandTotal, costPerUnit, costPerMeter
+                        grandTotal, costPerUnit, costPerMeter,
+                        concreteUnit: { material: concreteMaterialUnitCost, labour: concreteLabourUnitCost, equipment: concreteEquipmentUnitCost, directCost: concreteUnitDirectCost }
                     },
                     estimatedDays,
                     standard: STANDARD_BASIS
@@ -927,7 +981,7 @@
                         </span>
                     </div>
 
-                    <div className="w-full h-56 bg-slate-900 rounded-lg p-2 flex items-center justify-center relative overflow-hidden">
+                    <div className="w-full h-56 bg-slate-900 rounded-lg p-2 flex items-center justify-center relative overflow-hidden structural-drawing-print-safe">
                         <svg viewBox="0 0 400 240" className="w-full h-full">
                             <defs>
                                 <pattern id={`grid-${typeKey}`} width="20" height="20" patternUnits="userSpaceOnUse">
@@ -1294,8 +1348,8 @@
                             </table>
                             </div>
 
-                            {/* Recap Table + Approval Signatures kept together on one page */}
-                            <div style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                            {/* Recap starts on a fresh printed page so its heading is never clipped */}
+                            <div className="report-recap-section" style={{ pageBreakBefore: 'always', breakBefore: 'page', pageBreakInside: 'avoid', breakInside: 'avoid', paddingTop: '10px' }}>
                             <h3 className="font-bold text-xs uppercase text-slate-700 mb-2 border-b pb-1">IV. Rekapitulasi RAB & Markup Fiscal</h3>
                             <div className="bg-slate-50 border border-slate-300 p-4 rounded-lg mb-6 font-mono text-xs space-y-2">
                                 <div className="flex justify-between"><span>Subtotal Material (A)</span><span>Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</span></div>
@@ -1310,17 +1364,17 @@
                             </div>
 
                             {/* Approval Signatures */}
-                            <div className="grid grid-cols-2 gap-10 text-center text-xs font-semibold pt-4 border-t border-slate-300">
+                            <div className="grid grid-cols-2 gap-10 text-center text-xs font-semibold pt-4 border-t border-slate-300 signature-block">
                                 <div>
                                     <p className="text-slate-500 mb-12">Dibuat Oleh,</p>
-                                    <p className="font-bold underline text-slate-900">{getEstimatorByPT(project.company) || "IFM ANALYST"}</p>
-                                    <p className="text-[10px] text-slate-500">IFM ANALYST</p>
+                                    <p className="font-bold text-slate-900 signature-name">{getEstimatorByPT(project.company) || "IFM ANALYST"}</p>
+                                    <p className="text-[10px] text-slate-500 signature-role">IFM ANALYST</p>
                                 </div>
 
                                 <div>
                                     <p className="text-slate-500 mb-12">Disetujui Oleh,</p>
-                                    <p className="font-bold underline text-slate-900">MUHAMAD FATONI</p>
-                                    <p className="text-[10px] text-slate-500">MANAGER INFRASTRUKTUR SUPPORT</p>
+                                    <p className="font-bold text-slate-900 signature-name">MUHAMAD FATONI</p>
+                                    <p className="text-[10px] text-slate-500 signature-role">MANAGER INFRASTRUKTUR SUPPORT</p>
                                 </div>
                             </div>
                             </div>
@@ -2781,13 +2835,6 @@
                                                         <i data-lucide="file-spreadsheet" className="w-4 h-4"></i>
                                                         <span>Workbook Excel</span>
                                                     </button>
-                                                    <button 
-                                                        onClick={() => setIsReportOpen(true)}
-                                                        className="px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow transition"
-                                                    >
-                                                        <i data-lucide="printer" className="w-4 h-4"></i>
-                                                        <span>Laporan PDF</span>
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -2823,6 +2870,21 @@
                                             <div className="text-xs mt-1">Material <b>{currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</b></div>
                                             <div className="text-xs">Jasa <b>{currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</b></div>
                                             <div className="text-xs">Peralatan <b>{currentRAB.costs.totalEquipmentCost.toLocaleString('id-ID')}</b></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-2xl border border-cyan-200 bg-cyan-50 dark:bg-cyan-950/30 dark:border-cyan-800 p-4 shadow-sm">
+                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                            <div>
+                                                <div className="text-[10px] uppercase tracking-wider font-extrabold text-cyan-700 dark:text-cyan-300">Benchmark Harga Beton Cor 1 m³</div>
+                                                <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">Beton K-300 • Material + tenaga pengecoran/pemadatan + alat • Air gratis • tanpa tulangan & bekisting</div>
+                                            </div>
+                                            <div className="text-2xl font-black text-cyan-700 dark:text-cyan-300">Rp {currentRAB.costs.concreteUnit.directCost.toLocaleString('id-ID', { maximumFractionDigits: 0 })} / m³</div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-3 text-[10px]">
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Material Beton</div><b>Rp {currentRAB.costs.concreteUnit.material.toLocaleString('id-ID')}</b></div>
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Jasa Beton</div><b>Rp {currentRAB.costs.concreteUnit.labour.toLocaleString('id-ID')}</b></div>
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Peralatan Beton</div><b>Rp {currentRAB.costs.concreteUnit.equipment.toLocaleString('id-ID')}</b></div>
                                         </div>
                                     </div>
 
@@ -2891,7 +2953,16 @@
                                                 <div className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 dark:text-emerald-300">Grand Total Analisa / Unit</div>
                                                 <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">Direct Cost + Overhead + Keuntungan + PPh Final + PPN sesuai setting RAB</div>
                                             </div>
-                                            <div className="text-2xl md:text-3xl font-black text-emerald-700 dark:text-emerald-300">Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
+                                            <div className="text-right">
+                                                <div className="text-2xl md:text-3xl font-black text-emerald-700 dark:text-emerald-300">Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
+                                                <button
+                                                    onClick={() => setIsReportOpen(true)}
+                                                    className="mt-2 px-3.5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold inline-flex items-center space-x-1.5 shadow transition"
+                                                >
+                                                    <i data-lucide="printer" className="w-4 h-4"></i>
+                                                    <span>Cetak / Print Laporan</span>
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4 text-[10px]">
                                             <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Material</div><b>Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</b></div>
