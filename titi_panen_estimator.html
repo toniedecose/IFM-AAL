@@ -1199,10 +1199,10 @@
                 // the left side of the generated PDF.
                 const host = document.createElement('div');
                 host.id = 'pdf-export-host';
-                host.style.cssText = 'position:fixed;left:0;top:0;width:210mm;min-height:297mm;background:#fff;overflow:visible;z-index:2147483647;opacity:0.01;pointer-events:none;';
+                host.style.cssText = 'position:fixed;left:0;top:0;width:190mm;min-height:297mm;background:#fff;overflow:visible;z-index:2147483647;opacity:0.01;pointer-events:none;box-sizing:border-box;';
                 const clone = original.cloneNode(true);
                 clone.removeAttribute('id');
-                clone.style.cssText = 'display:block;width:190mm;max-width:190mm;box-sizing:border-box;height:auto;max-height:none;overflow:visible;padding:0;margin:0 auto;background:#fff;color:#111827;';
+                clone.style.cssText = 'display:block;width:190mm;max-width:190mm;min-width:190mm;box-sizing:border-box;height:auto;max-height:none;overflow:visible;padding:0;margin:0;background:#fff;color:#111827;position:relative;left:0;transform:none;';
                 clone.querySelectorAll('.no-print').forEach(el => el.remove());
                 host.appendChild(clone);
                 document.body.appendChild(host);
@@ -1232,7 +1232,9 @@
                         backgroundColor: '#ffffff',
                         logging: false,
                         width: Math.ceil(190/25.4*96),
-                        windowWidth: Math.ceil(210/25.4*96),
+                        windowWidth: Math.ceil(190/25.4*96),
+                        x: 0,
+                        y: 0,
                         scrollX: 0,
                         scrollY: 0
                     },
