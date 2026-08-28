@@ -424,10 +424,29 @@
             concreteCompaction: { worker: 0.080, foreman: 0.008, vibratorDay: 0.080 },
             rebarManualSmall: { worker: 0.00160, artisan: 0.00160, head: 0.00016, foreman: 0.00016 },
             rebarManualLarge: { worker: 0.00160, artisan: 0.00160, head: 0.00016, foreman: 0.00016 },
-            // Harga alat belum ada pada database ESTIMATOR. Quantity tetap dihitung,
-            // tetapi cost alat menjadi 0 sampai HSD alat tersedia di database.
+            // Peralatan mengikuti HSD database. Mixer/vibrator berasal dari AHSP beton;
+            // cutter/bender hanya aktif untuk tulangan >=12 mm sesuai U.4.6.a.4.
             equipmentPriceKeys: { mixer: 'equipmentMixer', vibrator: 'equipmentVibrator', cutter: 'equipmentBarCutter', bender: 'equipmentBarBender' }
         };
+
+        // --- DRAWING / EXCEL TAKE-OFF BASIS ---
+        // Source: RAB Titi Panen.xlsx, sheet "Titi Panen".
+        // These quantities are taken directly from the approved take-off table,
+        // not re-invented from generic geometry assumptions.
+        const DRAWING_TAKEOFF = {
+            3:  { concreteVol: 0.1215, formworkArea: 1.791, rebar: [{ role: 'main', dia: 10, weight: 7.398 }, { role: 'stirrup', dia: 6, weight: 1.06512 }] },
+            4:  { concreteVol: 0.1620, formworkArea: 2.361, rebar: [{ role: 'main', dia: 10, weight: 9.864 }, { role: 'stirrup', dia: 6, weight: 1.39797 }] },
+            5:  { concreteVol: 0.2025, formworkArea: 2.931, rebar: [{ role: 'main', dia: 10, weight: 12.33 }, { role: 'stirrup', dia: 6, weight: 1.73082 }] },
+            6:  { concreteVol: 0.3240, formworkArea: 4.908, rebar: [{ role: 'main', dia: 10, weight: 22.194 }, { role: 'stirrup', dia: 6, weight: 7.704368 }] },
+            7:  { concreteVol: 0.3780, formworkArea: 5.708, rebar: [{ role: 'main', dia: 10, weight: 25.893 }, { role: 'stirrup', dia: 6, weight: 8.947008 }] },
+            8:  { concreteVol: 0.4320, formworkArea: 6.508, rebar: [{ role: 'main', dia: 10, weight: 29.592 }, { role: 'stirrup', dia: 6, weight: 10.189648 }] },
+            9:  { concreteVol: 0.4860, formworkArea: 7.308, rebar: [{ role: 'main', dia: 10, weight: 33.291 }, { role: 'stirrup', dia: 6, weight: 11.432288 }] },
+            10: { concreteVol: 0.7200, formworkArea: 5.072, rebar: [{ role: 'main', dia: 12, weight: 71.024 }, { role: 'stirrup', dia: 8, weight: 35.245672 }] },
+            11: { concreteVol: 0.7920, formworkArea: 5.572, rebar: [{ role: 'main', dia: 12, weight: 70.9152 }, { role: 'stirrup', dia: 8, weight: 38.718152 }] },
+            12: { concreteVol: 0.8640, formworkArea: 6.072, rebar: [{ role: 'main', dia: 12, weight: 70.9152 }, { role: 'stirrup', dia: 8, weight: 42.190632 }] }
+        };
+
+        const getDrawingTakeoff = (spanLength) => DRAWING_TAKEOFF[Number(spanLength)] || null;
 
         // 1. GEOMETRY ENGINE
         const GeometryEngine = {
@@ -444,17 +463,17 @@
                 return 0;
             },
             calculateConcreteVolume(typeKey, spanLength, quantity = 1) {
-                return this.calculateArea(typeKey) * spanLength * quantity;
+                const takeoff = getDrawingTakeoff(spanLength);
+                return takeoff ? takeoff.concreteVol * quantity : this.calculateArea(typeKey) * spanLength * quantity;
             },
             calculateFormworkArea(typeKey, spanLength, quantity = 1) {
+                const takeoff = getDrawingTakeoff(spanLength);
+                if (takeoff) return takeoff.formworkArea * quantity;
                 const spec = TITI_PANEN_TYPES[typeKey];
                 let perimeter;
                 if (spec.sectionType === "RECTANGULAR") {
-                    // Dua sisi vertikal + sisi bawah; permukaan atas bukan bekisting.
                     perimeter = (spec.width / 1000) + (2 * spec.height / 1000);
                 } else {
-                    // Dua overhang flange + soffit flange di atas web + dua sisi web
-                    // + dua sisi tepi flange.
                     perimeter =
                         2 * (spec.flangeOverhang / 1000) +
                         (spec.webWidth / 1000) +
@@ -499,85 +518,77 @@
                 };
             },
             calculateRebarDetails(typeKey, spanLength, quantity = 1) {
-                const spec = TITI_PANEN_TYPES[typeKey];
-                let longitudinalBars = [];
-                let stirrupBars = [];
-                let totalStirrups = 0;
-
-                if (spec.longitudinalSchedule) {
-                    const a = Math.max(0, spanLength - 0.06);
-                    const b = a / 5;
-                    const c = (3 * a) / 5;
-                    const lengthMap = { a, b, c };
-                    longitudinalBars = spec.longitudinalSchedule.map(item => {
-                        const lengthPerBar = lengthMap[item.length];
-                        const totalLength = lengthPerBar * item.count * quantity;
-                        return { ...item, lengthPerBar, totalLength, weight: totalLength * this.getUnitWeight(item.dia) };
-                    });
-                    const detailed = this.calculateDetailedStirrups(spec, spanLength);
-                    stirrupBars = detailed.components.map(item => ({
-                        ...item,
-                        count: item.count * quantity,
-                        totalLength: item.totalLength * quantity,
-                        weight: item.weight * quantity
+                const takeoff = getDrawingTakeoff(spanLength);
+                if (takeoff) {
+                    const longitudinalBars = takeoff.rebar.filter(x => x.role === 'main').map(x => ({
+                        dia: x.dia,
+                        count: 0,
+                        lengthPerBar: 0,
+                        totalLength: x.weight / this.getUnitWeight(x.dia) * quantity,
+                        weight: x.weight * quantity,
+                        position: 'Utama',
+                        label: `Besi Panjang Ø${x.dia}mm`
                     }));
-                    totalStirrups = detailed.totalStations * quantity;
-                } else {
-                    const mainDia = spec.mainRebar.dia;
-                    const mainCount = spec.mainRebar.count;
-                    const hookLength = (2 * 15 * mainDia) / 1000;
-                    const mainLengthPerBar = spanLength + hookLength;
-                    const totalMainLength = mainLengthPerBar * mainCount * quantity;
-                    longitudinalBars = [{
-                        dia: mainDia, count: mainCount, lengthPerBar: mainLengthPerBar,
-                        totalLength: totalMainLength, weight: totalMainLength * this.getUnitWeight(mainDia), position: "Utama"
-                    }];
-
-                    const spacingM = spec.stirrupRebar.spacing / 1000;
-                    const stirrupCountPerUnit = this.countStations(spanLength, spacingM);
-                    totalStirrups = stirrupCountPerUnit * quantity;
-
-                    // Untuk TP-01/TP-02 tidak ada schedule detail sengkang di data gambar.
-                    // Gunakan geometri penampang + selimut 40 mm + kait 10d.
-                    const cover = 0.040;
-                    const b = spec.sectionType === "RECTANGULAR" ? spec.width / 1000 : spec.webWidth / 1000;
-                    const h = spec.totalHeight ? spec.totalHeight / 1000 : spec.height / 1000;
-                    const d = spec.stirrupRebar.dia / 1000;
-                    const stirrupCutLength = Math.max(0, (2 * Math.max(0, b - 2 * cover)) + (2 * Math.max(0, h - 2 * cover)) + (2 * 10 * d));
-                    const totalLength = stirrupCutLength * stirrupCountPerUnit * quantity;
-                    stirrupBars = [{
-                        dia: spec.stirrupRebar.dia,
-                        count: stirrupCountPerUnit * quantity,
-                        cutLength: stirrupCutLength,
-                        totalLength,
-                        weight: totalLength * this.getUnitWeight(spec.stirrupRebar.dia),
-                        label: spec.stirrupRebar.label
-                    }];
+                    const stirrupBars = takeoff.rebar.filter(x => x.role === 'stirrup').map(x => ({
+                        dia: x.dia,
+                        count: 0,
+                        cutLength: 0,
+                        totalLength: x.weight / this.getUnitWeight(x.dia) * quantity,
+                        weight: x.weight * quantity,
+                        label: `Besi Begel Ø${x.dia}mm`
+                    }));
+                    const mainWeight = longitudinalBars.reduce((sum, bar) => sum + bar.weight, 0);
+                    const stirrupWeight = stirrupBars.reduce((sum, bar) => sum + bar.weight, 0);
+                    const installedWeight = mainWeight + stirrupWeight;
+                    const procurementWeight = installedWeight * STANDARD_BASIS.rebarMaterialFactor;
+                    const bindingWireKg = installedWeight * STANDARD_BASIS.bindingWireFactorPerKgInstalled;
+                    return {
+                        mainDia: longitudinalBars[0]?.dia || 0,
+                        mainCount: 0,
+                        totalMainLength: longitudinalBars.reduce((sum, bar) => sum + bar.totalLength, 0),
+                        mainWeight,
+                        stirrupDia: stirrupBars[0]?.dia || 0,
+                        totalStirrups: 0,
+                        totalStirrupLength: stirrupBars.reduce((sum, bar) => sum + bar.totalLength, 0),
+                        stirrupWeight,
+                        subtotalWeight: installedWeight,
+                        installedWeight,
+                        procurementWeight,
+                        bindingWireKg,
+                        longitudinalBars,
+                        stirrupBars,
+                        longitudinalLabel: longitudinalBars.map(x => `Ø${x.dia}`).join(' + '),
+                        stirrupLabel: stirrupBars.map(x => `Ø${x.dia}`).join(' + ')
+                    };
                 }
 
+                // Fallback only for a span that is not present in the drawing take-off.
+                const spec = TITI_PANEN_TYPES[typeKey];
+                const mainDia = spec.mainRebar.dia;
+                const mainCount = spec.mainRebar.count;
+                const mainLengthPerBar = spanLength + ((2 * 15 * mainDia) / 1000);
+                const totalMainLength = mainLengthPerBar * mainCount * quantity;
+                const longitudinalBars = [{ dia: mainDia, count: mainCount, lengthPerBar: mainLengthPerBar, totalLength: totalMainLength, weight: totalMainLength * this.getUnitWeight(mainDia), position: 'Utama' }];
+                const spacingM = spec.stirrupRebar.spacing / 1000;
+                const stirrupCountPerUnit = this.countStations(spanLength, spacingM);
+                const cover = 0.040;
+                const b = spec.sectionType === 'RECTANGULAR' ? spec.width / 1000 : spec.webWidth / 1000;
+                const h = spec.totalHeight ? spec.totalHeight / 1000 : spec.height / 1000;
+                const d = spec.stirrupRebar.dia / 1000;
+                const stirrupCutLength = Math.max(0, (2 * Math.max(0, b - 2 * cover)) + (2 * Math.max(0, h - 2 * cover)) + (2 * 10 * d));
+                const totalLength = stirrupCutLength * stirrupCountPerUnit * quantity;
+                const stirrupBars = [{ dia: spec.stirrupRebar.dia, count: stirrupCountPerUnit * quantity, cutLength: stirrupCutLength, totalLength, weight: totalLength * this.getUnitWeight(spec.stirrupRebar.dia), label: spec.stirrupRebar.label }];
                 const mainWeight = longitudinalBars.reduce((sum, bar) => sum + bar.weight, 0);
                 const stirrupWeight = stirrupBars.reduce((sum, bar) => sum + bar.weight, 0);
                 const installedWeight = mainWeight + stirrupWeight;
-                const procurementWeight = installedWeight * STANDARD_BASIS.rebarMaterialFactor;
-                const bindingWireKg = installedWeight * STANDARD_BASIS.bindingWireFactorPerKgInstalled;
-                const primaryMain = longitudinalBars[0] || { dia: spec.mainRebar?.dia || 0, count: 0, totalLength: 0 };
-                const primaryStirrup = stirrupBars[0] || { dia: spec.stirrupRebar?.dia || 0, count: 0, totalLength: 0 };
-
                 return {
-                    mainDia: primaryMain.dia,
-                    mainCount: primaryMain.count,
-                    totalMainLength: longitudinalBars.reduce((sum, bar) => sum + bar.totalLength, 0),
-                    mainWeight,
-                    stirrupDia: primaryStirrup.dia,
-                    totalStirrups,
-                    totalStirrupLength: stirrupBars.reduce((sum, bar) => sum + bar.totalLength, 0),
-                    stirrupWeight,
-                    subtotalWeight: installedWeight,
-                    installedWeight,
-                    procurementWeight,
-                    bindingWireKg,
-                    longitudinalBars,
-                    stirrupBars,
+                    mainDia, mainCount, totalMainLength: totalMainLength, mainWeight,
+                    stirrupDia: spec.stirrupRebar.dia, totalStirrups: stirrupCountPerUnit * quantity,
+                    totalStirrupLength: totalLength, stirrupWeight,
+                    subtotalWeight: installedWeight, installedWeight,
+                    procurementWeight: installedWeight * STANDARD_BASIS.rebarMaterialFactor,
+                    bindingWireKg: installedWeight * STANDARD_BASIS.bindingWireFactorPerKgInstalled,
+                    longitudinalBars, stirrupBars,
                     longitudinalLabel: spec.mainRebar.label,
                     stirrupLabel: spec.stirrupRebar.label
                 };
@@ -673,6 +684,13 @@
                     const c = bar.dia >= 12 ? STANDARD_BASIS.rebarManualLarge : STANDARD_BASIS.rebarManualSmall;
                     return sum + bar.weight * c.foreman;
                 }, 0);
+                const rebarLargeWeight = allRebarBars.reduce((sum, bar) => sum + (bar.dia >= 12 ? bar.weight : 0), 0);
+                // AHSP U.4.6.a.4: diameter >= 12 mm uses semi-mechanical rebar work,
+                // including 0.04 day/kg bar cutter + 0.04 day/kg bar bender.
+                const equipmentBarCutterDays = rebarLargeWeight * 0.040;
+                const equipmentBarBenderDays = rebarLargeWeight * 0.040;
+                const costBarCutter = equipmentBarCutterDays * Number(prices.equipmentBarCutter || 0);
+                const costBarBender = equipmentBarBenderDays * Number(prices.equipmentBarBender || 0);
 
                 // Bekisting balok 3 kali pakai: 0.66/0.33/0.033/0.011 OH per m2.
                 // Tukang kayu + kepala tukang diproksikan ke field artisan karena database belum punya harga tukang kayu.
@@ -688,7 +706,7 @@
                 const costArtisan = totalArtisanOH * Number(prices.labourArtisan || 0);
                 const costForeman = totalForemanOH * Number(prices.labourForeman || 0);
                 const totalLabourCost = costWorker + costArtisan + costForeman;
-                const totalEquipmentCost = costMixer + costVibrator;
+                const totalEquipmentCost = costMixer + costVibrator + costBarCutter + costBarBender;
                 const subtotalDirect = totalMaterialCost + totalLabourCost + totalEquipmentCost;
 
                 const overheadVal = subtotalDirect * (settings.overheadPct / 100);
@@ -707,7 +725,7 @@
                     rebarDetails,
                     mix,
                     formwork: { formworkWoodM3, formworkNailsKg, formworkOilL, formworkPlywoodSheet, formworkDolkenBar },
-                    equipment: { mixerDays: equipmentMixerDays, vibratorDays: equipmentVibratorDays },
+                    equipment: { mixerDays: equipmentMixerDays, vibratorDays: equipmentVibratorDays, barCutterDays: equipmentBarCutterDays, barBenderDays: equipmentBarBenderDays },
                     labour: { totalWorkerOH, totalArtisanOH, totalForemanOH, costWorker, costArtisan, costForeman },
                     costs: {
                         cement: costCement, sand: costSand, gravel: costGravel,
@@ -716,7 +734,7 @@
                         formworkNails: costFormworkNails, formworkOil: costFormworkOil,
                         formworkPlywood: costFormworkPlywood, formworkDolken: costFormworkDolken,
                         totalFormworkMaterialCost, totalMaterialCost,
-                        equipmentMixer: costMixer, equipmentVibrator: costVibrator, totalEquipmentCost,
+                        equipmentMixer: costMixer, equipmentVibrator: costVibrator, equipmentBarCutter: costBarCutter, equipmentBarBender: costBarBender, totalEquipmentCost,
                         totalLabourCost, subtotalDirect,
                         overheadVal, profitVal, subtotalBeforeTax, pphVal, ppnVal,
                         grandTotal, costPerUnit, costPerMeter
@@ -761,7 +779,7 @@
                     [3, `Overhead (${rabSettings.overheadPct}%)`, rab.costs.overheadVal, ""],
                     [4, `Keuntungan Kontraktor (${rabSettings.profitPct}%)`, rab.costs.profitVal, ""],
                     ["", "SUBTOTAL SEBELUM PAJAK", rab.costs.subtotalBeforeTax, ""],
-                    [5, `PPh 21 (${rabSettings.pphPct}%)`, rab.costs.pphVal, ""],
+                    [5, `PPh Final Jasa Konstruksi (${rabSettings.pphPct}%)`, rab.costs.pphVal, ""],
                     [6, `PPN (${rabSettings.ppnPct}%)`, rab.costs.ppnVal, ""],
                     ["", "GRAND TOTAL RAB ESTIMASI", rab.costs.grandTotal, ""],
                     [],
@@ -795,8 +813,8 @@
                     ["Upah", "Mandor Lapangan", rab.labour.totalForemanOH.toFixed(2), "OH", prices.labourForeman, rab.labour.costForeman],
                     ["Peralatan", "Concrete Mixer 0,35 m³", rab.equipment.mixerDays.toFixed(3), "Hari", prices.equipmentMixer, rab.costs.equipmentMixer],
                     ["Peralatan", "Concrete Vibrator", rab.equipment.vibratorDays.toFixed(3), "Hari", prices.equipmentVibrator, rab.costs.equipmentVibrator],
-                    ["Peralatan", "Bar Cutter (HSD Database)", "—", "Hari", prices.equipmentBarCutter, 0],
-                    ["Peralatan", "Bar Bender (HSD Database)", "—", "Hari", prices.equipmentBarBender, 0],
+                    ["Peralatan", "Bar Cutter (Ø≥12 mm)", rab.equipment.barCutterDays.toFixed(3), "Hari", prices.equipmentBarCutter, rab.costs.equipmentBarCutter],
+                    ["Peralatan", "Bar Bender (Ø≥12 mm)", rab.equipment.barBenderDays.toFixed(3), "Hari", prices.equipmentBarBender, rab.costs.equipmentBarBender],
                     [],
                     ["TOTAL DIRECT COST", "", "", "", "", rab.costs.subtotalDirect]
                 ];
@@ -1161,6 +1179,8 @@
                                     <tr className="bg-slate-50/50 font-bold"><td colSpan="6" className="border border-slate-300 p-1.5 text-slate-700">C. PERALATAN AHSP</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">1</td><td className="border border-slate-300 p-1.5">Concrete Mixer 0,35 m³</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.mixerDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentMixer.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentMixer.toLocaleString('id-ID')}</td></tr>
                                     <tr><td className="border border-slate-300 p-1.5 text-center">2</td><td className="border border-slate-300 p-1.5">Concrete Vibrator</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.vibratorDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentVibrator.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentVibrator.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">3</td><td className="border border-slate-300 p-1.5">Bar Cutter (Ø≥12 mm)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.barCutterDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentBarCutter.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentBarCutter.toLocaleString('id-ID')}</td></tr>
+                                    <tr><td className="border border-slate-300 p-1.5 text-center">4</td><td className="border border-slate-300 p-1.5">Bar Bender (Ø≥12 mm)</td><td className="border border-slate-300 p-1.5 text-right">{currentRAB.equipment.barBenderDays.toFixed(3)}</td><td className="border border-slate-300 p-1.5 text-center">Hari</td><td className="border border-slate-300 p-1.5 text-right">Rp {prices.equipmentBarBender.toLocaleString('id-ID')}</td><td className="border border-slate-300 p-1.5 text-right font-mono">Rp {currentRAB.costs.equipmentBarBender.toLocaleString('id-ID')}</td></tr>
                                 </tbody>
                             </table>
                             </div>
@@ -1232,6 +1252,8 @@
                                     {[
                                         ['Concrete Mixer 0,35 m³', currentRAB.costs.equipmentMixer],
                                         ['Concrete Vibrator', currentRAB.costs.equipmentVibrator],
+                                        ['Bar Cutter (Ø≥12 mm)', currentRAB.costs.equipmentBarCutter],
+                                        ['Bar Bender (Ø≥12 mm)', currentRAB.costs.equipmentBarBender],
                                     ].map((row, idx) => (
                                         <tr key={`disteq-${idx}`}>
                                             <td className="border border-slate-300 p-1.5 text-center">{idx + 1}</td>
@@ -1262,7 +1284,7 @@
                                 <div className="flex justify-between text-slate-600"><span>Overhead ({rabSettings.overheadPct}%)</span><span>Rp {currentRAB.costs.overheadVal.toLocaleString('id-ID')}</span></div>
                                 <div className="flex justify-between text-slate-600"><span>Keuntungan Kontraktor ({rabSettings.profitPct}%)</span><span>Rp {currentRAB.costs.profitVal.toLocaleString('id-ID')}</span></div>
                                 <div className="flex justify-between font-bold border-t border-slate-300 pt-1"><span>Subtotal Sebelum Pajak</span><span>Rp {currentRAB.costs.subtotalBeforeTax.toLocaleString('id-ID')}</span></div>
-                                <div className="flex justify-between text-slate-600"><span>PPh 21 ({rabSettings.pphPct}%)</span><span>Rp {currentRAB.costs.pphVal.toLocaleString('id-ID')}</span></div>
+                                <div className="flex justify-between text-slate-600"><span>PPh Final Jasa Konstruksi ({rabSettings.pphPct}%)</span><span>Rp {currentRAB.costs.pphVal.toLocaleString('id-ID')}</span></div>
                                 <div className="flex justify-between text-slate-600"><span>PPN ({rabSettings.ppnPct}%)</span><span>Rp {currentRAB.costs.ppnVal.toLocaleString('id-ID')}</span></div>
                                 <div className="flex justify-between font-black text-sm text-emerald-800 border-t-2 border-slate-900 pt-2"><span>GRAND TOTAL ESTIMASI RAB</span><span>Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span></div>
                             </div>
@@ -2211,9 +2233,9 @@
                                         <div 
                                             onClick={() => triggerExplain(
                                                 "Grand Total RAB Titi Panen",
-                                                "Grand Total = Subtotal Sebelum Pajak + PPh 21 + PPN",
-                                                { DirectCost: currentRAB.costs.subtotalDirect, Overhead: `${rabSettings.overheadPct}%`, ProfitKontraktor: `${rabSettings.profitPct}%`, PPh21: `${rabSettings.pphPct}%` },
-                                                `Subtotal Direct Cost: Rp ${currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}\nOverhead (${rabSettings.overheadPct}%): Rp ${currentRAB.costs.overheadVal.toLocaleString('id-ID')}\nKeuntungan Kontraktor (${rabSettings.profitPct}%): Rp ${currentRAB.costs.profitVal.toLocaleString('id-ID')}\nPPh 21 (${rabSettings.pphPct}%): Rp ${currentRAB.costs.pphVal.toLocaleString('id-ID')}\nPPN (${rabSettings.ppnPct}%): Rp ${currentRAB.costs.ppnVal.toLocaleString('id-ID')}`,
+                                                "Grand Total = Subtotal Sebelum Pajak + PPh Final Jasa Konstruksi + PPN",
+                                                { DirectCost: currentRAB.costs.subtotalDirect, Overhead: `${rabSettings.overheadPct}%`, ProfitKontraktor: `${rabSettings.profitPct}%`, PPhFinalJasaKonstruksi: `${rabSettings.pphPct}%` },
+                                                `Subtotal Direct Cost: Rp ${currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}\nOverhead (${rabSettings.overheadPct}%): Rp ${currentRAB.costs.overheadVal.toLocaleString('id-ID')}\nKeuntungan Kontraktor (${rabSettings.profitPct}%): Rp ${currentRAB.costs.profitVal.toLocaleString('id-ID')}\nPPh Final Jasa Konstruksi (${rabSettings.pphPct}%): Rp ${currentRAB.costs.pphVal.toLocaleString('id-ID')}\nPPN (${rabSettings.ppnPct}%): Rp ${currentRAB.costs.ppnVal.toLocaleString('id-ID')}`,
                                                 `Rp ${currentRAB.costs.grandTotal.toLocaleString('id-ID')}`
                                             )}
                                             className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer hover:border-brand-500 transition group"
@@ -2403,7 +2425,7 @@
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label className="block text-slate-500 font-semibold mb-1">PPh 21 (%)</label>
+                                                            <label className="block text-slate-500 font-semibold mb-1">PPh Final Jasa Konstruksi (%)</label>
                                                             <input 
                                                                 type="number" 
                                                                 step="0.5"
@@ -2639,7 +2661,7 @@
                                             <div className="p-3 rounded-lg border border-brand-200 bg-brand-50/60 dark:bg-brand-950/30 dark:border-brand-800 text-[10px] text-slate-600 dark:text-slate-300 space-y-1.5">
                                                 <p className="font-extrabold text-brand-700 dark:text-brand-300">Basis Perhitungan Standard</p>
                                                 <p><b>Beton:</b> AHSP PUPR 2023 fc' 25 MPa: 383 kg semen, 764 kg pasir, 934 kg agregat kasar, 195 L air per m³; pemadatan menambah 0,08 OH pekerja + 0,008 OH mandor per m³. Mutu desain tetap <b>K-300 sesuai gambar AAL</b>.</p>
-                                                <p><b>Besi:</b> quantity take-off dari panjang tulangan pada gambar dan berat nominal kg/m. Harga database dibaca langsung sebagai <b>Rp/kg</b>; tidak ada lagi konversi harga batang 12 m.</p>
+                                                <p><b>Besi:</b> quantity take-off dibaca dari tabel volume Titi Panen pada workbook sumber. Harga database dibaca langsung sebagai <b>Rp/kg</b>. Untuk diameter ≥12 mm, cutter/bender mengikuti AHSP U.4.6.a.4.</p>
                                                 <p><b>AHSP pembesian balok:</b> 1,02 kg baja + 0,028 kg bendrat per 1 kg baja terpasang; upah 0,0016 OH pekerja + 0,0016 OH tukang besi + 0,00016 OH kepala tukang + 0,00016 OH mandor per kg. Kepala tukang digabung ke komponen artisan karena database belum menyediakan harga kepala tukang.</p>
                                                 <p><b>Bekisting:</b> luas mengikuti geometri aktual penampang; kayu memakai koefisien 0,040 m³/m². Paku dan minyak bekisting menggunakan HSD database masing-masing.</p>
                                                 <p className="pt-1 border-t border-brand-200 dark:border-brand-800"><b>Referensi:</b> Permen PUPR 8/2023 • SNI 2847:2019 • SNI 2052:2024 • Spesifikasi Umum Bina Marga 2025.</p>
@@ -2691,7 +2713,7 @@
                                                     </div>
                                                 </div>
                                                 <div className="flex justify-between items-center text-slate-500">
-                                                    <span>PPh 21 (%)</span>
+                                                    <span>PPh Final Jasa Konstruksi (%)</span>
                                                     <div className="flex items-center space-x-2">
                                                         <input 
                                                             type="number" 
@@ -3216,7 +3238,7 @@
                                             <input type="number" step="0.5" value={rabSettings.profitPct} onChange={e => setRabSettings({...rabSettings, profitPct: Number(e.target.value)})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold" />
                                         </div>
                                         <div>
-                                            <label className="block text-slate-500 mb-1 font-semibold">PPh 21 (%)</label>
+                                            <label className="block text-slate-500 mb-1 font-semibold">PPh Final Jasa Konstruksi (%)</label>
                                             <input type="number" step="0.1" value={rabSettings.pphPct} onChange={e => setRabSettings({...rabSettings, pphPct: Number(e.target.value)})} className="w-full p-2.5 rounded-lg border bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 font-bold" />
                                         </div>
                                         <div>
