@@ -416,19 +416,19 @@
             gravelLooseDensityKgM3: 1260,
             rebarMaterialFactor: 1.02,
             bindingWireFactorPerKgInstalled: 0.028,
-            // Bekisting balok 3 kali pakai: koefisien material standar yang umum
-            // dipakai pada AHSP PUPR (harga item ancillary mengikuti database jika tersedia).
+            // Bekisting balok: kebijakan estimator maksimal 2 kali pakai untuk menjaga umur material dan
+            // menghindari pembongkaran terlalu dini di lapangan. Koefisien material reusable dibatasi maksimal 2 kali pakai; koefisien tenaga kerja tetap per m².
             formwork: {
-                reuse: 3,
+                reuse: 2,
                 worker: 0.660,
                 carpenter: 0.330,
                 headCarpenter: 0.033,
                 foreman: 0.011,
                 nailsKgPerM2: 0.400,
                 releaseOilLPerM2: 0.200,
-                classIIBalokM3PerM2: 0.00558,
-                plywoodSheetPerM2: 0.12705,
-                dolkenBarPerM2: 0.650
+                classIIBalokM3PerM2: 0.00837,
+                plywoodSheetPerM2: 0.190575,
+                dolkenBarPerM2: 0.975
             },
             // AHSP U.4.2.b.1.2 sudah mencakup pembuatan s.d. pengecoran.
             // Jangan menambahkan tenaga pengecoran kedua kali.
@@ -648,8 +648,8 @@
                 const costRebarStirrup = rebarDetails.stirrupBars.reduce((sum, bar) => sum + (bar.weight * STANDARD_BASIS.rebarMaterialFactor * rebarPrice(bar)), 0);
                 const costWire = rebarDetails.bindingWireKg * Number(prices.bindingWire || 0);
 
-                // Bekisting balok 3 kali pakai. Harga ancillary hanya dihitung bila tersedia
-                // di database pusat; jika belum tersedia, quantity tetap tampil dan cost = 0.
+                // Bekisting balok maksimal 2 kali pakai sesuai kebijakan estimator. Material reusable
+                // dinormalisasi dari basis 3x menjadi 2x; consumable tetap mengikuti koefisien per m².
                 const fw = STANDARD_BASIS.formwork;
                 const formworkWoodM3 = formworkArea * fw.classIIBalokM3PerM2;
                 const costFormworkWood = formworkWoodM3 * Number(prices.formworkWood || 0);
@@ -706,7 +706,7 @@
                 const costBarCutter = equipmentBarCutterDays * Number(prices.equipmentBarCutter || 0);
                 const costBarBender = equipmentBarBenderDays * Number(prices.equipmentBarBender || 0);
 
-                // Bekisting balok 3 kali pakai: 0.66/0.33/0.033/0.011 OH per m2.
+                // Bekisting balok maksimal 2 kali pakai; koefisien tenaga kerja tetap 0.66/0.33/0.033/0.011 OH per m².
                 // Tukang kayu + kepala tukang diproksikan ke field artisan karena database belum punya harga tukang kayu.
                 const formworkWorkerOH = fw.worker * formworkArea;
                 const formworkArtisanOH = (fw.carpenter + fw.headCarpenter) * formworkArea;
@@ -2183,13 +2183,6 @@
                                     <span>Wizard Estimasi</span>
                                 </button>
                                 <button 
-                                    onClick={() => setActiveTab('ahs')} 
-                                    className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'ahs' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
-                                >
-                                    <i data-lucide="list-checks" className="w-4 h-4"></i>
-                                    <span>Analisa Harga Satuan (AHS)</span>
-                                </button>
-                                <button 
                                     onClick={() => setActiveTab('specs')} 
                                     className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition ${activeTab === 'specs' ? 'bg-brand-600 text-white shadow' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                                 >
@@ -2495,10 +2488,10 @@
                                     <div className="flex justify-between items-center border-b pb-4 border-slate-200 dark:border-slate-700">
                                         <div>
                                             <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Wizard Estimasi Titi Panen</h2>
-                                            <p className="text-xs text-slate-500">Langkah {wizardStep} dari 4: Konfigurasi Terstruktur & Harga Regional</p>
+                                            <p className="text-xs text-slate-500">Langkah {wizardStep} dari 5: Konfigurasi, AHS & Harga Regional</p>
                                         </div>
                                         <div className="flex space-x-1">
-                                            {[1, 2, 3, 4].map(step => (
+                                            {[1, 2, 3, 4, 5].map(step => (
                                                 <div 
                                                     key={step} 
                                                     className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${wizardStep === step ? 'bg-brand-600 text-white' : wizardStep > step ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}
@@ -2702,7 +2695,7 @@
                                                 <p><b>Beton:</b> AHSP PUPR 2023 fc' 25 MPa: 383 kg semen, 764 kg pasir, 934 kg agregat kasar, 195 L air per m³; pemadatan menambah 0,08 OH pekerja + 0,008 OH mandor per m³. Mutu desain tetap <b>K-300 sesuai gambar AAL</b>.</p>
                                                 <p><b>Besi:</b> quantity take-off dibaca dari tabel volume Titi Panen pada workbook sumber. Harga database dibaca langsung sebagai <b>Rp/kg</b>. Untuk diameter ≥12 mm, cutter/bender mengikuti AHSP U.4.6.a.4.</p>
                                                 <p><b>AHSP pembesian balok:</b> 1,02 kg baja + 0,028 kg bendrat per 1 kg baja terpasang; upah 0,0016 OH pekerja + 0,0016 OH tukang besi + 0,00016 OH kepala tukang + 0,00016 OH mandor per kg. Kepala tukang digabung ke komponen artisan karena database belum menyediakan harga kepala tukang.</p>
-                                                <p><b>Bekisting:</b> luas mengikuti take-off gambar Titi Panen; analisa bekisting balok 3 kali pakai memakai pekerja 0,66 OH, tukang kayu 0,33 OH, kepala tukang 0,033 OH, mandor 0,011 OH, paku 0,40 kg, minyak 0,20 L, balok kayu 0,00558 m³, plywood 0,12705 lembar, dan dolken 0,65 batang per m².</p>
+                                                <p><b>Bekisting:</b> luas mengikuti take-off gambar Titi Panen; analisa bekisting balok maksimal 2 kali pakai; koefisien reusable material dinormalisasi dari basis 3x menjadi 2x. Tenaga kerja tetap 0,66 OH pekerja, 0,33 OH tukang kayu, 0,033 OH kepala tukang, 0,011 OH mandor per m². Material reusable untuk maksimal 2 kali pakai: kayu 0,00837 m³, plywood 0,190575 lembar, dolken 0,975 batang per m²; paku 0,40 kg dan minyak 0,20 L per m².</p>
                                                 <p className="pt-1 border-t border-brand-200 dark:border-brand-800"><b>Referensi:</b> Permen PUPR 8/2023 • SNI 2847:2019 • SNI 2052:2024 • Spesifikasi Umum Bina Marga 2025.</p>
                                             </div>
                                         </div>
@@ -2710,7 +2703,7 @@
 
                                     {wizardStep === 3 && (
                                         <div className="mt-3 p-3 rounded-lg border border-amber-200 bg-amber-50 text-[11px] text-amber-800">
-                                            <b>Basis standard:</b> AHSP Permen PUPR No. 8/2023. Beton K-300 menggunakan U.4.2.b.1.2; pembesian menggunakan U.4.6.a.3 untuk diameter &lt; 12 mm dan U.4.6.a.4 untuk diameter ≥ 12 mm; harga besi dibaca <b>Rp/kg</b>. Bekisting menggunakan analisa balok 3 kali pakai. HSD paku, minyak, mixer, vibrator, bar cutter dan bar bender mengikuti database 18-item; fallback digunakan hanya bila item belum tersedia dari database pusat.
+                                            <b>Basis standard:</b> AHSP Permen PUPR No. 8/2023. Beton K-300 menggunakan U.4.2.b.1.2; pembesian menggunakan U.4.6.a.3 untuk diameter &lt; 12 mm dan U.4.6.a.4 untuk diameter ≥ 12 mm; harga besi dibaca <b>Rp/kg</b>. Bekisting menggunakan analisa balok maksimal 2 kali pakai sesuai kebijakan estimator. HSD paku, minyak, mixer, vibrator, bar cutter dan bar bender mengikuti database 18-item; fallback digunakan hanya bila item belum tersedia dari database pusat.
                                         </div>
                                     )}
 
@@ -2800,50 +2793,13 @@
                                         </div>
                                     )}
 
-                                    <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
-                                        <button 
-                                            disabled={wizardStep === 1}
-                                            onClick={() => setWizardStep(wizardStep - 1)}
-                                            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold disabled:opacity-50"
-                                        >
-                                            Kembali
-                                        </button>
-                                        {wizardStep < 4 ? (
-                                            <button 
-                                                onClick={() => setWizardStep(wizardStep + 1)}
-                                                className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold shadow"
-                                            >
-                                                Lanjut Langkah {wizardStep + 1}
-                                            </button>
-                                        ) : (
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={startNewAnalysis}
-                                                    className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center space-x-1.5"
-                                                >
-                                                    <i data-lucide="rotate-ccw" className="w-4 h-4"></i>
-                                                    <span>Analisa Baru</span>
-                                                </button>
-                                                <button 
-                                                onClick={() => { handleSaveEstimation(); setActiveTab('dashboard'); }}
-                                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow flex items-center space-x-1.5"
-                                            >
-                                                <i data-lucide="check" className="w-4 h-4"></i>
-                                                <span>Selesaikan & Simpan Estimasi</span>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* AHS DETAIL TAB */}
-                            {activeTab === 'ahs' && (
+                            {/* STEP 5 - ANALISA HARGA SATUAN (AHS) */}
+                            {activeTab === 'wizard' && wizardStep === 5 && (
                                 <div className="space-y-5 animate-fade-in">
                                     <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
                                         <div>
-                                            <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Analisa Harga Satuan (AHS)</h2>
-                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Koefisien, satuan, kebutuhan aktual, harga satuan, dan nilai biaya untuk item yang sedang dihitung.</p>
+                                            <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">5. Analisa Harga Satuan (AHS)</h2>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Koefisien, satuan, kebutuhan aktual, harga satuan, dan nilai biaya untuk item yang sedang dihitung. Bekisting maksimal 2 kali pakai sesuai kebijakan estimator.</p>
                                         </div>
                                         <div className="text-right text-xs">
                                             <div className="font-bold text-brand-600">{TITI_PANEN_TYPES[selectedType]?.code} • Bentang {selectedSpan} m • Qty {quantity}</div>
@@ -2929,6 +2885,23 @@
                                         </div>
                                     </div>
 
+                                    <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700 p-5 shadow-sm">
+                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                                            <div>
+                                                <div className="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 dark:text-emerald-300">Grand Total Analisa / Unit</div>
+                                                <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1">Direct Cost + Overhead + Keuntungan + PPh Final + PPN sesuai setting RAB</div>
+                                            </div>
+                                            <div className="text-2xl md:text-3xl font-black text-emerald-700 dark:text-emerald-300">Rp {currentRAB.costs.grandTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</div>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4 text-[10px]">
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Material</div><b>Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</b></div>
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Jasa</div><b>Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</b></div>
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Peralatan</div><b>Rp {currentRAB.costs.totalEquipmentCost.toLocaleString('id-ID')}</b></div>
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Direct Cost</div><b>Rp {currentRAB.costs.subtotalDirect.toLocaleString('id-ID')}</b></div>
+                                            <div className="bg-white/70 dark:bg-slate-900/50 rounded-lg p-2"><div className="text-slate-500">Sebelum Pajak</div><b>Rp {currentRAB.costs.subtotalBeforeTax.toLocaleString('id-ID')}</b></div>
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 p-4"><div className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300">Material</div><div className="text-xl font-extrabold mt-1">{((currentRAB.costs.totalMaterialCost/Math.max(currentRAB.costs.subtotalDirect,1))*100).toFixed(2)}%</div><div className="text-xs mt-1">Rp {currentRAB.costs.totalMaterialCost.toLocaleString('id-ID')}</div></div>
                                         <div className="rounded-xl border border-purple-200 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-800 p-4"><div className="text-[10px] uppercase font-bold text-purple-700 dark:text-purple-300">Jasa</div><div className="text-xl font-extrabold mt-1">{((currentRAB.costs.totalLabourCost/Math.max(currentRAB.costs.subtotalDirect,1))*100).toFixed(2)}%</div><div className="text-xs mt-1">Rp {currentRAB.costs.totalLabourCost.toLocaleString('id-ID')}</div></div>
@@ -2942,6 +2915,44 @@
                             )}
 
                             {/* STRUCTURE SPECS TAB */}
+
+                                    <div className="flex justify-between pt-4 border-t border-slate-100 dark:border-slate-700">
+                                        <button 
+                                            disabled={wizardStep === 1}
+                                            onClick={() => setWizardStep(wizardStep - 1)}
+                                            className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold disabled:opacity-50"
+                                        >
+                                            Kembali
+                                        </button>
+                                        {wizardStep < 5 ? (
+                                            <button 
+                                                onClick={() => setWizardStep(wizardStep + 1)}
+                                                className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold shadow"
+                                            >
+                                                Lanjut Langkah {wizardStep + 1}
+                                            </button>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={startNewAnalysis}
+                                                    className="px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center space-x-1.5"
+                                                >
+                                                    <i data-lucide="rotate-ccw" className="w-4 h-4"></i>
+                                                    <span>Analisa Baru</span>
+                                                </button>
+                                                <button 
+                                                onClick={() => { handleSaveEstimation(); setActiveTab('dashboard'); }}
+                                                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow flex items-center space-x-1.5"
+                                            >
+                                                <i data-lucide="check" className="w-4 h-4"></i>
+                                                <span>Selesaikan & Simpan Estimasi</span>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {activeTab === 'specs' && (
                                 <div className="space-y-6 animate-fade-in">
                                     <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">
