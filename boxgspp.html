@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Progress Report — Box Culvert 3×4×5×5 m | PT GSPP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.min.js"></script>
+<style>
+:root{
+  --navy:#0B1F33; --steel:#12395C; --steel2:#1B4965;
+  --concrete:#EDEAE2; --paper:#FBFAF7; --ink:#14213D;
+  --orange:#E8590C; --orange-d:#C44D0B;
+  --green:#2F9E44; --amber:#F08C00; --red:#E03131;
+  --line:#DAD5C8; --muted:#6B7280;
+  --radius:4px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--concrete);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:15px;line-height:1.5;}
+h1,h2,h3,.brand,.kpi-val{font-family:'Space Grotesk',sans-serif;}
+.mono{font-family:'IBM Plex Mono',monospace;}
+a{color:inherit;}
+
+/* ==== HEADER ==== */
+header{background:var(--navy);color:#fff;position:relative;overflow:hidden;}
+header::before{content:"";position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+  background-size:32px 32px; pointer-events:none;}
+.header-inner{position:relative;max-width:1240px;margin:0 auto;padding:28px 24px 24px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;}
+.brand{font-size:13px;letter-spacing:.08em;color:var(--orange);font-weight:600;}
+h1{font-size:26px;font-weight:700;margin:6px 0 4px;max-width:640px;}
+.subtitle{color:#B9C4D0;font-size:13.5px;}
+.header-meta{display:flex;gap:22px;flex-wrap:wrap;}
+.header-meta div{text-align:right;}
+.header-meta .lbl{font-size:11px;color:#8CA0B3;text-transform:uppercase;letter-spacing:.05em;}
+.header-meta .val{font-size:16px;font-weight:600;font-family:'IBM Plex Mono',monospace;}
+.status-bar{background:var(--steel);border-top:1px solid rgba(255,255,255,.08);}
+.status-inner{max-width:1240px;margin:0 auto;padding:9px 24px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#CBD8E3;gap:12px;flex-wrap:wrap;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;}
+.dot.live{background:#51CF66;box-shadow:0 0 0 3px rgba(81,207,102,.25);}
+.dot.demo{background:var(--amber);}
+.btn{border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;padding:6px 12px;border-radius:var(--radius);font-size:12.5px;cursor:pointer;font-family:inherit;}
+.btn:hover{background:rgba(255,255,255,.1);}
+
+/* ==== LAYOUT ==== */
+main{max-width:1240px;margin:0 auto;padding:24px;}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.toolbar h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;color:var(--steel2);margin:0;}
+.actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-solid{background:var(--navy);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
+.btn-solid:hover{background:var(--steel);}
+.btn-outline{background:#fff;color:var(--navy);border:1px solid var(--line);padding:9px 16px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:inherit;font-weight:500;}
+.btn-outline:hover{border-color:var(--steel2);}
+.btn-orange{background:var(--orange);color:#fff;border:none;padding:9px 16px;border-radius:var(--radius);font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;}
+.btn-orange:hover{background:var(--orange-d);}
+
+/* ==== KPI ==== */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.kpi{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--steel2);border-radius:var(--radius);padding:16px 18px;}
+.kpi.warn{border-left-color:var(--amber);}
+.kpi.bad{border-left-color:var(--red);}
+.kpi.good{border-left-color:var(--green);}
+.kpi-lbl{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;}
+.kpi-val{font-size:26px;font-weight:700;color:var(--navy);}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+/* ==== PANEL ==== */
+.grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;align-items:start;}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:18px;}
+.panel-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+.panel-h h3{margin:0;font-size:15px;font-weight:600;}
+.panel-h .tag{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.panel-b{padding:18px;}
+
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:8px 10px;border-bottom:2px solid var(--line);}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle;}
+tr.parent td{font-weight:600;background:#F4F1E9;}
+.progress-track{background:#E4E0D3;border-radius:8px;height:7px;width:100%;overflow:hidden;}
+.progress-fill{background:var(--steel2);height:100%;border-radius:8px;}
+.progress-fill.zero{background:var(--line);}
+.pill{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap;}
+.pill.belum{background:#F1F0EC;color:var(--muted);}
+.pill.progress{background:#E7F0FA;color:var(--steel2);}
+.pill.selesai{background:#EAF7EC;color:var(--green);}
+.pill.telat{background:#FDEDED;color:var(--red);}
+
+.safety-item{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;}
+.safety-item:last-child{border-bottom:none;}
+.safety-item b{display:block;font-size:13px;margin-bottom:2px;}
+.safety-item span{color:var(--muted);font-size:12.5px;}
+
+/* AI panel */
+.ai-panel .panel-h{background:var(--navy);color:#fff;border-radius:4px 4px 0 0;}
+.ai-panel .panel-h .tag{color:#9FB2C3;}
+.ai-body{padding:18px;font-size:13.5px;}
+.ai-empty{color:var(--muted);text-align:center;padding:20px 10px;}
+.ai-empty p{margin:6px 0 14px;}
+.ai-out h4{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--orange-d);margin:14px 0 6px;}
+.ai-out h4:first-child{margin-top:0;}
+.ai-out p{margin:0 0 8px;}
+.ai-out ul{margin:0 0 8px;padding-left:18px;}
+.ai-meta{font-size:11px;color:var(--muted);margin-top:14px;border-top:1px dashed var(--line);padding-top:10px;}
+
+.chart-wrap{position:relative;height:280px;}
+
+/* ==== VISUAL ANALYTICS (donuts) ==== */
+.viz-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
+.viz-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:16px 16px 12px;display:flex;flex-direction:column;}
+.viz-card h4{margin:0 0 2px;font-size:12.5px;font-weight:600;color:var(--navy);}
+.viz-card .viz-sub{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.viz-donut-wrap{position:relative;height:150px;margin:2px 0 4px;}
+.viz-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;}
+.viz-center .big{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:var(--navy);line-height:1;}
+.viz-center .small{font-size:10px;color:var(--muted);margin-top:2px;text-align:center;}
+.viz-legend{display:flex;flex-wrap:wrap;gap:6px 10px;justify-content:center;margin-top:auto;}
+.viz-legend span{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:4px;}
+.viz-legend i{width:8px;height:8px;border-radius:2px;display:inline-block;}
+@media(max-width:1050px){.viz-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:520px){.viz-grid{grid-template-columns:1fr;}}
+
+/* settings modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(11,31,51,.55);z-index:50;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:6px;max-width:460px;width:100%;padding:22px;}
+.modal h3{margin:0 0 4px;font-size:17px;}
+.modal p.hint{color:var(--muted);font-size:12.5px;margin:0 0 16px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;}
+.field input,.field select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:4px;font-family:inherit;font-size:13.5px;}
+.field small{color:var(--muted);font-size:11.5px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+
+footer{max-width:1240px;margin:0 auto;padding:20px 24px 40px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+@media(max-width:900px){.grid2{grid-template-columns:1fr;}.kpi-grid{grid-template-columns:repeat(2,1fr);}.header-meta{width:100%;justify-content:space-between;}}
+@media print{
+  header::before,.toolbar .actions,.status-bar .btn,.modal-bg{display:none!important;}
+  body{background:#fff;}
+  .panel{break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div>
+      <div class="brand">PT GSPP · PROJECT CONTROL</div>
+      <h1>Progress Report — Pembangunan Box Culvert Type 3 (4×5 m)</h1>
+      <div class="subtitle">Laporan progres kerja harian &middot; sinkron otomatis dari Google Sheets</div>
+    </div>
+    <div class="header-meta">
+      <div><div class="lbl">Nilai Kontrak (RAB)</div><div class="val" id="m-rab">Rp 1.171.745.000</div></div>
+      <div><div class="lbl">Progres Aktual</div><div class="val" id="m-progress">0.0%</div></div>
+      <div><div class="lbl">Update Terakhir</div><div class="val" id="m-updated" style="font-size:13px">—</div></div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-inner">
+      <span id="conn-status"><span class="dot demo"></span>Mode demo — data contoh. Hubungkan Google Sheet di Pengaturan.</span>
+      <button class="btn" onclick="openSettings()">⚙ Pengaturan &amp; Koneksi</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <h2>Ringkasan Proyek</h2>
+    <div class="actions">
+      <button class="btn-outline" onclick="manualRefresh()">↻ Refresh Data</button>
+      <button class="btn-outline" onclick="exportPDF()">⬇ Download PDF</button>
+      <button class="btn-outline" onclick="exportPPT()">⬇ Download PPT</button>
+      <button class="btn-orange" onclick="runAIAnalysis()">✦ Jalankan Analisis AI</button>
+    </div>
+  </div>
+
+  <div id="capture-area">
+
+  <div class="kpi-grid">
+    <div class="kpi" id="kpi-progress">
+      <div class="kpi-lbl">Progres Fisik Aktual</div>
+      <div class="kpi-val" id="k-progress">0.0%</div>
+      <div class="kpi-sub" id="k-progress-sub">dari target 100%</div>
+    </div>
+    <div class="kpi" id="kpi-plan">
+      <div class="kpi-lbl">Rencana (Plan) Hari Ini</div>
+      <div class="kpi-val" id="k-plan">0.0%</div>
+      <div class="kpi-sub" id="k-plan-sub">kurva rencana 60 hari</div>
+    </div>
+    <div class="kpi warn" id="kpi-deviasi">
+      <div class="kpi-lbl">Deviasi Progres</div>
+      <div class="kpi-val" id="k-deviasi">0.0%</div>
+      <div class="kpi-sub" id="k-deviasi-sub">Actual − Plan</div>
+    </div>
+    <div class="kpi" id="kpi-hari">
+      <div class="kpi-lbl">Hari Berjalan</div>
+      <div class="kpi-val" id="k-hari">0 / 60</div>
+      <div class="kpi-sub" id="k-hari-sub">sejak PO terbit</div>
+    </div>
+  </div>
+
+  <div class="toolbar" style="margin-bottom:10px;"><h2>Visual Analytics</h2></div>
+  <div class="viz-grid">
+    <div class="viz-card">
+      <h4>Progres Keseluruhan</h4>
+      <div class="viz-sub">Aktual vs sisa pekerjaan</div>
+      <div class="viz-donut-wrap"><canvas id="donutProgress"></canvas>
+        <div class="viz-center"><div class="big" id="donutProgressBig">0%</div><div class="small">selesai</div></div>
+      </div>
+      <div class="viz-legend" id="legendProgress"></div>
+    </div>
+    <div class="viz-card">
+      <h4>Distribusi Bobot RAB</h4>
+      <div class="viz-sub">Per kelompok pekerjaan</div>
+      <div class="viz-donut-wrap"><canvas id="donutBobot"></canvas>
+        <div class="viz-center"><div class="big" id="donutBobotBig">9</div><div class="small">kelompok</div></div>
+      </div>
+      <div class="viz-legend" id="legendBobot"></div>
+    </div>
+    <div class="viz-card">
+      <h4>Status Pekerjaan</h4>
+      <div class="viz-sub">Jumlah item WBS per status</div>
+      <div class="viz-donut-wrap"><canvas id="donutStatus"></canvas>
+        <div class="viz-center"><div class="big" id="donutStatusBig">0</div><div class="small">item</div></div>
+      </div>
+      <div class="viz-legend" id="legendStatus"></div>
+    </div>
+    <div class="viz-card">
+      <h4>Kepatuhan Safety</h4>
+      <div class="viz-sub">Status item Safety Matrix</div>
+      <div class="viz-donut-wrap"><canvas id="donutSafety"></canvas>
+        <div class="viz-center"><div class="big" id="donutSafetyBig">0%</div><div class="small">closed</div></div>
+      </div>
+      <div class="viz-legend" id="legendSafety"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="panel">
+        <div class="panel-h"><h3>Kurva S — Plan vs Actual</h3><span class="tag">Daily Progress</span></div>
+        <div class="panel-b"><div class="chart-wrap"><canvas id="scurve"></canvas></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h3>Work Breakdown Structure (WBS) &amp; Bobot Pekerjaan</h3><span class="tag" id="wbs-count">— item</span></div>
+        <div class="panel-b" style="padding:0 18px 12px;overflow-x:auto;">
+          <table>
+            <thead><tr><th>WBS</th><th>Uraian Pekerjaan</th><th>Volume</th><th style="text-align:right">Bobot</th><th>Progres</th><th>Status</th></tr></thead>
+            <tbody id="wbs-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel ai-panel">
+        <div class="panel-h"><h3>✦ Analisis &amp; Rekomendasi AI</h3><span class="tag" id="ai-tag">Gemini</span></div>
+        <div class="ai-body" id="ai-body">
+          <div class="ai-empty">
+            <p>Belum ada analisis AI. Hubungkan Gemini API key di Pengaturan, lalu klik "Jalankan Analisis AI" untuk mendapatkan ringkasan kondisi proyek, risiko, dan rekomendasi tindak lanjut.</p>
+            <button class="btn-orange" onclick="runAIAnalysis()">✦ Jalankan Analisis AI</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h3>Safety Watch</h3><span class="tag" id="safety-tag">— item terbuka</span></div>
+        <div class="panel-b" id="safety-body"></div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /capture-area -->
+
+  <div class="panel" style="margin-top:4px;">
+    <div class="panel-h"><h3>Ringkasan Bobot per Kelompok Pekerjaan</h3><span class="tag">RAB Rp 1.171.745.000</span></div>
+    <div class="panel-b" style="overflow-x:auto;">
+      <div class="chart-wrap" style="height:220px;margin-bottom:16px;"><canvas id="barBobot"></canvas></div>
+      <table><thead><tr><th>Kelompok</th><th style="text-align:right">Nilai RAB (Rp)</th><th style="text-align:right">Bobot (%)</th></tr></thead><tbody id="group-body"></tbody></table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span>PT GSPP — Box Culvert 3×4×5×5 m · Progress Control System</span>
+  <span id="foot-note">Sumber data: Google Sheets (WBS_Box_Culvert_SPP_BOX_CULVERT_PROJECT_2026)</span>
+</footer>
+
+<!-- Settings Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Pengaturan &amp; Koneksi</h3>
+    <p class="hint">Konfigurasi disimpan hanya di browser ini (localStorage), tidak dikirim ke server manapun.</p>
+    <div class="field">
+      <label>Google Sheet ID</label>
+      <input id="cfgSheetId" placeholder="cth: 1AbCDefGhIJkLmnoPQRstuVWxyz...">
+      <small>Ambil dari URL sheet: docs.google.com/spreadsheets/d/<b>SHEET_ID</b>/edit. Set akses sharing ke "Anyone with the link – Viewer".</small>
+    </div>
+    <div class="field">
+      <label>Gemini API Key</label>
+      <input id="cfgGeminiKey" type="password" placeholder="AIza...">
+      <small>Dapatkan gratis di <span class="mono">aistudio.google.com/apikey</span>. Dipakai langsung dari browser ke Gemini API.</small>
+    </div>
+    <div class="field">
+      <label>Interval Auto-Refresh</label>
+      <select id="cfgInterval">
+        <option value="60000">1 menit</option>
+        <option value="300000" selected>5 menit</option>
+        <option value="600000">10 menit</option>
+        <option value="1800000">30 menit</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-outline" onclick="closeSettings()">Batal</button>
+      <button class="btn-solid" onclick="saveSettings()">Simpan &amp; Muat Data</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   DATA CONTOH (fallback) — dari WBS_Box_Culvert_SPP...xlsx
+   Diganti otomatis oleh data live begitu Google Sheet terhubung.
+========================================================= */
+const DEMO_WBS = [{"wbs": "0", "level": 1, "parent": "-", "uraian": "PEMBUATAN BOX CULVERT 3 x 4 x 5 x 5 m", "volume": null, "satuan": "", "nilai": 1171745000, "bobot": 100, "status": "Belum Mulai"}, {"wbs": "1", "level": 1, "parent": "-", "uraian": "PEKERJAAN PERSIAPAN", "volume": null, "satuan": "", "nilai": 11701934, "bobot": 0.9987, "status": "Belum Mulai"}, {"wbs": "1.1", "level": 2, "parent": "1", "uraian": "Membersihkan Lapangan dan Perataan", "volume": 161.92, "satuan": "m2", "nilai": 6072000, "bobot": 0.5182, "status": "Belum Mulai"}, {"wbs": "1.2", "level": 2, "parent": "1", "uraian": "Pengukuran dan Pasangan Bouwplank", "volume": 45.6, "satuan": "m1", "nilai": 5629934, "bobot": 0.4805, "status": "Belum Mulai"}, {"wbs": "2", "level": 1, "parent": "-", "uraian": "PEKERJAAN TANAH", "volume": null, "satuan": "", "nilai": 5345230, "bobot": 0.4562, "status": "Belum Mulai"}, {"wbs": "2.1", "level": 2, "parent": "2", "uraian": "Galian Tanah Biasa Kedalaman Max 1 m", "volume": 50.78, "satuan": "m3", "nilai": 4773320, "bobot": 0.4074, "status": "Belum Mulai"}, {"wbs": "2.2", "level": 2, "parent": "2", "uraian": "Urugan Tanah Kembali", "volume": 12.7, "satuan": "m3", "nilai": 571910, "bobot": 0.0488, "status": "Belum Mulai"}, {"wbs": "3", "level": 1, "parent": "-", "uraian": "PEKERJAAN PONDASI", "volume": null, "satuan": "", "nilai": 7893886, "bobot": 0.6737, "status": "Belum Mulai"}, {"wbs": "3.1", "level": 2, "parent": "3", "uraian": "Lantai Kerja 1PC : 3 PS : 5 KRL", "volume": 5.08, "satuan": "m3", "nilai": 5565146, "bobot": 0.4749, "status": "Belum Mulai"}, {"wbs": "3.2", "level": 2, "parent": "3", "uraian": "Pemasangan Cerucuk Kayu", "volume": 131, "satuan": "m1", "nilai": 2328740, "bobot": 0.1987, "status": "Belum Mulai"}, {"wbs": "4", "level": 1, "parent": "-", "uraian": "PEKERJAAN BETON", "volume": null, "satuan": "", "nilai": 525644588, "bobot": 44.86, "status": "Belum Mulai"}, {"wbs": "4.1", "level": 2, "parent": "4", "uraian": "Cor Beton Ready Mix K-300", "volume": 166.98, "satuan": "m3", "nilai": 525644588, "bobot": 44.86, "status": "Belum Mulai"}, {"wbs": "5", "level": 1, "parent": "-", "uraian": "PEKERJAAN PEMBESIAN", "volume": null, "satuan": "", "nilai": 244331532, "bobot": 20.8519, "status": "Belum Mulai"}, {"wbs": "5.1", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 10 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.2", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 12 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.3", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 13 mm", "volume": 7862.28, "satuan": "Kg", "nilai": 109538206, "bobot": 9.3483, "status": "Belum Mulai"}, {"wbs": "5.4", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 14 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.5", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 16 mm", "volume": 9906.73, "satuan": "Kg", "nilai": 134793326, "bobot": 11.5036, "status": "Belum Mulai"}, {"wbs": "6", "level": 1, "parent": "-", "uraian": "PEKERJAAN BEKISTING", "volume": null, "satuan": "", "nilai": 222320142, "bobot": 18.9734, "status": "Belum Mulai"}, {"wbs": "6.1", "level": 2, "parent": "6", "uraian": "Pekerjaan Bekisting Dinding", "volume": 526.88, "satuan": "m2", "nilai": 187223947, "bobot": 15.9782, "status": "Belum Mulai"}, {"wbs": "6.2", "level": 2, "parent": "6", "uraian": "Pasang Bekisting untuk Lantai", "volume": 138.45, "satuan": "m2", "nilai": 35096195, "bobot": 2.9952, "status": "Belum Mulai"}, {"wbs": "7", "level": 1, "parent": "-", "uraian": "PEKERJAAN PEMASANGAN SAFETY SIGN", "volume": null, "satuan": "", "nilai": 182340, "bobot": 0.0156, "status": "Belum Mulai"}, {"wbs": "7.1", "level": 2, "parent": "7", "uraian": "Memasang Pipa PVC Tipe AW Diameter 2\"", "volume": 3.2, "satuan": "m'", "nilai": 182340, "bobot": 0.0156, "status": "Belum Mulai"}, {"wbs": "8", "level": 1, "parent": "-", "uraian": "PEKERJAAN PENGECATAN", "volume": null, "satuan": "", "nilai": 1489136, "bobot": 0.1271, "status": "Belum Mulai"}, {"wbs": "8.1", "level": 2, "parent": "8", "uraian": "Pengecatan Dinding (3x)", "volume": 30.2, "satuan": "m2", "nilai": 1264656, "bobot": 0.1079, "status": "Belum Mulai"}, {"wbs": "8.2", "level": 2, "parent": "8", "uraian": "Pengecatan Safety Sign (3x)", "volume": 3.14, "satuan": "m2", "nilai": 224480, "bobot": 0.0192, "status": "Belum Mulai"}, {"wbs": "L", "level": 1, "parent": "-", "uraian": "UPAH (15%)", "volume": null, "satuan": "", "nilai": 152836318, "bobot": 13.0435, "status": "Belum Mulai"}];
+const DEMO_SAFETY = [{"no": 1, "tahapan": "Persiapan & mobilisasi", "bahaya": "Kendaraan/alat bergerak; area tidak tertata", "dampak": "Tertabrak/terpeleset", "pengendalian": "Barikade, jalur kendaraan jelas, housekeeping", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 2, "tahapan": "Pengukuran & bouwplank", "bahaya": "Tersandung; aktivitas dekat lalu lintas", "dampak": "Cedera/tertumbuk", "pengendalian": "Atur area, rambu, komunikasi", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor", "status": "Open"}, {"no": 3, "tahapan": "Galian tanah", "bahaya": "Longsor/terperosok; alat berat", "dampak": "Cedera serius", "pengendalian": "Periksa kondisi galian, akses aman, larang berdiri di bibir galian, kontrol alat", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 4, "tahapan": "Urugan kembali", "bahaya": "Alat bergerak; debu", "dampak": "Tertabrak/cedera", "pengendalian": "Pisahkan pekerja-alat, spotter bila perlu, kontrol debu", "ppe": "Helm; sepatu; rompi", "pic": "Mandor", "status": "Open"}, {"no": 5, "tahapan": "Pemasangan cerucuk kayu", "bahaya": "Material jatuh/terpukul", "dampak": "Cedera tangan/kaki", "pengendalian": "Zona kerja dan aba-aba, larang masuk radius kerja", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor/Safety", "status": "Open"}, {"no": 6, "tahapan": "Lantai kerja & beton", "bahaya": "Licin; kontak semen/beton", "dampak": "Iritasi/terpeleset", "pengendalian": "Housekeeping, akses aman, APD", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor", "status": "Open"}, {"no": 7, "tahapan": "Pembesian", "bahaya": "Ujung besi tajam; material jatuh", "dampak": "Luka/tusukan/terjepit", "pengendalian": "Proteksi ujung besi, tumpukan stabil, manual handling aman", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor/Safety", "status": "Open"}, {"no": 8, "tahapan": "Bekisting", "bahaya": "Robo(h)/terjepit; support tidak stabil", "dampak": "Cedera serius", "pengendalian": "Inspeksi support/bracing sebelum digunakan/dibongkar", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor", "status": "Open"}, {"no": 9, "tahapan": "Cor beton ready mix", "bahaya": "Truck/pompa/selang bergerak; cipratan", "dampak": "Tertabrak/terjepit/iritasi", "pengendalian": "Traffic control, komunikasi operator, exclusion zone", "ppe": "Helm; sarung tangan; sepatu; eye protection sesuai kondisi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 10, "tahapan": "Pengecatan & safety sign", "bahaya": "Paparan bahan cat; percikan; lantai basah", "dampak": "Iritasi/terpeleset", "pengendalian": "Ventilasi sesuai kondisi, APD, housekeeping, rambu", "ppe": "Sarung tangan; masker/eye protection sesuai SDS", "pic": "Mandor/Safety", "status": "Open"}, {"no": 11, "tahapan": "Pekerjaan umum", "bahaya": "Housekeeping buruk", "dampak": "Tersandung/terjatuh", "pengendalian": "Housekeeping akhir shift; jalur bebas hambatan", "ppe": "Sepatu safety", "pic": "Semua PIC", "status": "Open"}];
+const GROUPS = [
+ ["1","PEKERJAAN PERSIAPAN",11701934,0.9987],
+ ["2","PEKERJAAN TANAH",5345230,0.4562],
+ ["3","PEKERJAAN PONDASI",7893886,0.6737],
+ ["4","PEKERJAAN BETON",525644588,44.8600],
+ ["5","PEKERJAAN PEMBESIAN",244331532,20.8519],
+ ["6","PEKERJAAN BEKISTING",222320142,18.9734],
+ ["7","PEKERJAAN PEMASANGAN SAFETY SIGN",182340,0.0156],
+ ["8","PEKERJAAN PENGECATAN",1489136,0.1271],
+ ["L","UPAH (15%)",152836318,13.0435],
+];
+const PROJECT_START = "2026-09-19";
+const TOTAL_DAYS = 60;
+const RAB_TOTAL = 1171745000;
+
+let state = { wbs: DEMO_WBS, safety: DEMO_SAFETY, live: false, chart: null, lastAI: null, donuts: {} };
+const PALETTE = ['#1B4965','#E8590C','#2F9E44','#F08C00','#5C7A99','#A63A0F','#8CA0B3','#C9A33E','#7B4B94','#3A5A78'];
+let cfg = JSON.parse(localStorage.getItem('boxculvert_cfg') || '{}');
+let refreshTimer = null;
+
+function fmtRp(n){ return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function fmtPct(n){ return (Math.round(n*10)/10).toFixed(1) + '%'; }
+
+function dayIndex(){
+  const start = new Date(PROJECT_START);
+  const now = new Date();
+  const d = Math.floor((now - start) / 86400000) + 1;
+  return Math.max(1, Math.min(TOTAL_DAYS, d));
+}
+function planCumulative(day){ return Math.min(100, (day / TOTAL_DAYS) * 100); }
+
+function actualCumulative(){
+  // dari bobot x progress WBS level-2 (anak), status jadi angka lewat mapping demo
+  const statusPct = {"Belum Mulai":0,"Sedang Berjalan":50,"Selesai":100};
+  let acc = 0;
+  state.wbs.filter(w=>w.level===2).forEach(w=>{
+    const p = (typeof w.progress === 'number') ? w.progress : (statusPct[w.status] ?? 0);
+    acc += (p/100) * w.bobot;
+  });
+  return acc;
+}
+
+function renderKPI(){
+  const day = dayIndex();
+  const plan = planCumulative(day);
+  const actual = actualCumulative();
+  const dev = actual - plan;
+  document.getElementById('m-progress').textContent = fmtPct(actual);
+  document.getElementById('k-progress').textContent = fmtPct(actual);
+  document.getElementById('k-plan').textContent = fmtPct(plan);
+  document.getElementById('k-hari').textContent = day + ' / ' + TOTAL_DAYS;
+  const devEl = document.getElementById('k-deviasi');
+  devEl.textContent = (dev>=0?'+':'') + fmtPct(dev);
+  const kpiDev = document.getElementById('kpi-deviasi');
+  kpiDev.className = 'kpi ' + (dev < -5 ? 'bad' : dev < 0 ? 'warn' : 'good');
+  document.getElementById('k-deviasi-sub').textContent = dev < -5 ? 'Terlambat — perlu tindakan' : dev < 0 ? 'Sedikit di belakang jadwal' : 'Sesuai / lebih cepat dari jadwal';
+  document.getElementById('m-updated').textContent = new Date().toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'});
+}
+
+function statusPill(status){
+  const map = {"Belum Mulai":"belum","Sedang Berjalan":"progress","Selesai":"selesai","Terlambat":"telat"};
+  const cls = map[status] || 'belum';
+  return `<span class="pill ${cls}">${status}</span>`;
+}
+
+function renderWBS(){
+  const tbody = document.getElementById('wbs-body');
+  tbody.innerHTML = '';
+  const statusPct = {"Belum Mulai":0,"Sedang Berjalan":50,"Selesai":100};
+  let childCount = 0;
+  state.wbs.forEach(w=>{
+    const isParent = w.level === 1;
+    if(!isParent) childCount++;
+    const p = (typeof w.progress === 'number') ? w.progress : (statusPct[w.status] ?? 0);
+    const tr = document.createElement('tr');
+    if(isParent) tr.className='parent';
+    tr.innerHTML = `
+      <td class="mono">${w.wbs}</td>
+      <td>${w.uraian}</td>
+      <td class="mono">${w.volume ? w.volume+' '+w.satuan : '—'}</td>
+      <td style="text-align:right" class="mono">${fmtPct(w.bobot)}</td>
+      <td style="min-width:120px">
+        <div class="progress-track"><div class="progress-fill ${p===0?'zero':''}" style="width:${p}%"></div></div>
+      </td>
+      <td>${statusPill(w.status)}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('wbs-count').textContent = childCount + ' item pekerjaan';
+}
+
+function renderGroups(){
+  const tbody = document.getElementById('group-body');
+  tbody.innerHTML = GROUPS.map(g => `<tr><td>${g[1]}</td><td style="text-align:right" class="mono">${fmtRp(g[2])}</td><td style="text-align:right" class="mono">${fmtPct(g[3])}</td></tr>`).join('');
+}
+
+function renderSafety(){
+  const open = state.safety.filter(s => (s.status||'Open').toLowerCase()==='open');
+  document.getElementById('safety-tag').textContent = open.length + ' item terbuka';
+  const body = document.getElementById('safety-body');
+  body.innerHTML = state.safety.slice(0,6).map(s => `
+    <div class="safety-item">
+      <b>${s.tahapan}</b>
+      <span>${s.bahaya} → ${s.dampak}. Kontrol: ${s.pengendalian}. PIC: ${s.pic||'-'}</span>
+    </div>`).join('') + (state.safety.length>6 ? `<div class="safety-item"><span>+ ${state.safety.length-6} item lainnya pada Safety Matrix.</span></div>` : '');
+}
+
+function renderChart(){
+  const ctx = document.getElementById('scurve');
+  const labels = [], plan = [], actual = [];
+  const day = dayIndex();
+  const actualNow = actualCumulative();
+  for(let d=1; d<=TOTAL_DAYS; d++){
+    labels.push('H'+d);
+    plan.push(+planCumulative(d).toFixed(2));
+    actual.push(d <= day ? +((actualNow * d/day) || 0).toFixed(2) : null);
+  }
+  if(state.chart) state.chart.destroy();
+  state.chart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      {label:'Plan Kumulatif (%)', data:plan, borderColor:'#1B4965', backgroundColor:'transparent', borderWidth:2, pointRadius:0, borderDash:[5,3]},
+      {label:'Actual Kumulatif (%)', data:actual, borderColor:'#E8590C', backgroundColor:'rgba(232,89,12,.08)', borderWidth:2.5, pointRadius:0, fill:true, spanGaps:false},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:10,font:{size:11}}} },
+      scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%'}}, x:{ ticks:{maxTicksLimit:12} } }
+    }
+  });
+}
+
+function renderAll(){
+  renderKPI(); renderWBS(); renderGroups(); renderSafety(); renderChart();
+  renderDonuts(); renderBarBobot();
+}
+
+/* ============ DONUT CHARTS ============ */
+function makeDonut(canvasId, labels, data, colors, cutout){
+  if(state.donuts[canvasId]) state.donuts[canvasId].destroy();
+  const ctx = document.getElementById(canvasId);
+  state.donuts[canvasId] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderColor:'#FBFAF7', borderWidth:2, hoverOffset:4 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout: cutout || '72%',
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c => c.label+': '+c.formattedValue } } },
+      animation:{ duration:600 }
+    }
+  });
+}
+function renderLegend(elId, labels, colors, suffix){
+  document.getElementById(elId).innerHTML = labels.map((l,i) =>
+    `<span><i style="background:${colors[i]}"></i>${l}${suffix ? ' '+suffix[i] : ''}</span>`).join('');
+}
+
+function renderDonuts(){
+  const statusPct = { 'Belum Mulai': 0, 'Sedang Berjalan': 50, 'Selesai': 100 };
+
+  // 1) Progres keseluruhan: actual vs sisa
+  const actual = actualCumulative();
+  const sisa = Math.max(0, 100 - actual);
+  makeDonut('donutProgress', ['Selesai','Sisa'], [+actual.toFixed(1), +sisa.toFixed(1)], ['#E8590C', '#E4E0D3']);
+  document.getElementById('donutProgressBig').textContent = fmtPct(actual);
+  renderLegend('legendProgress', ['Selesai','Sisa'], ['#E8590C','#E4E0D3']);
+
+  // 2) Distribusi bobot per kelompok
+  const gLabels = GROUPS.map(g=>g[1].replace('PEKERJAAN ','').replace('UPAH (15%)','UPAH'));
+  const gData = GROUPS.map(g=>+g[3].toFixed(2));
+  const gColors = GROUPS.map((_,i)=>PALETTE[i % PALETTE.length]);
+  makeDonut('donutBobot', gLabels, gData, gColors, '55%');
+  document.getElementById('donutBobotBig').textContent = GROUPS.length;
+  renderLegend('legendBobot', gLabels.slice(0,5).map(l=>l.length>14?l.slice(0,13)+'…':l), gColors.slice(0,5));
+
+  // 3) Status pekerjaan (jumlah item level 2)
+  const items = state.wbs.filter(w=>w.level===2);
+  const counts = { 'Belum Mulai':0, 'Sedang Berjalan':0, 'Selesai':0 };
+  items.forEach(w=>{ counts[w.status] = (counts[w.status]||0) + 1; });
+  const sLabels = Object.keys(counts);
+  const sData = Object.values(counts);
+  const sColors = ['#DAD5C8','#1B4965','#2F9E44'];
+  makeDonut('donutStatus', sLabels, sData, sColors, '68%');
+  document.getElementById('donutStatusBig').textContent = items.length;
+  renderLegend('legendStatus', sLabels, sColors, sData.map(n=>'('+n+')'));
+
+  // 4) Safety compliance
+  const openCount = state.safety.filter(s=>(s.status||'Open').toLowerCase()==='open').length;
+  const closedCount = state.safety.length - openCount;
+  const closedPct = state.safety.length ? (closedCount/state.safety.length*100) : 0;
+  makeDonut('donutSafety', ['Open','Closed'], [openCount, closedCount], ['#E03131','#2F9E44'], '68%');
+  document.getElementById('donutSafetyBig').textContent = fmtPct(closedPct);
+  renderLegend('legendSafety', ['Open ('+openCount+')','Closed ('+closedCount+')'], ['#E03131','#2F9E44']);
+}
+
+function renderBarBobot(){
+  if(state.donuts['barBobot']) state.donuts['barBobot'].destroy();
+  const ctx = document.getElementById('barBobot');
+  const labels = GROUPS.map(g=>g[1].replace('PEKERJAAN ',''));
+  const data = GROUPS.map(g=>+g[3].toFixed(2));
+  state.donuts['barBobot'] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'Bobot (%)', data, backgroundColor:'#1B4965', borderRadius:3, maxBarThickness:34 }] },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.formattedValue+'%' } } },
+      scales:{ x:{ ticks:{ callback:v=>v+'%' } }, y:{ ticks:{ font:{size:11} } } }
+    }
+  });
+}
+
+/* ============ GOOGLE SHEETS LIVE SYNC (gviz JSON) ============ */
+function gvizUrl(sheetName, sheetId){
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+}
+function parseGviz(text){
+  const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
+  const cols = json.table.cols.map(c=>c.label || c.id);
+  const rows = json.table.rows.map(r => r.c.map(c => c ? (c.v ?? '') : ''));
+  return {cols, rows};
+}
+async function fetchSheetTable(sheetName, sheetId){
+  const res = await fetch(gvizUrl(sheetName, sheetId));
+  if(!res.ok) throw new Error('Gagal mengambil sheet: '+sheetName);
+  return parseGviz(await res.text());
+}
+async function loadLiveData(){
+  if(!cfg.sheetId){ setConn(false, 'Mode demo — data contoh. Hubungkan Google Sheet di Pengaturan.'); return; }
+  try{
+    const wbsT = await fetchSheetTable('WBS & Bobot', cfg.sheetId);
+    const safetyT = await fetchSheetTable('Safety Matrix', cfg.sheetId);
+    const newWbs = wbsT.rows.filter(r=>r[0]!=='').map(r=>({
+      wbs:String(r[0]), level:Number(r[1]), parent:String(r[2]),
+      uraian:r[3], volume:r[4]||null, satuan:r[5]||'', nilai:Number(r[6])||0,
+      bobot:Number(r[7])||0, status:r[8]||'Belum Mulai'
+    }));
+    const newSafety = safetyT.rows.filter(r=>r[0]!=='').slice(2).map(r=>({
+      no:r[0], tahapan:r[1], bahaya:r[2], dampak:r[3], pengendalian:r[4], ppe:r[5], pic:r[7], status:r[8]
+    }));
+    if(newWbs.length){ state.wbs = newWbs; }
+    if(newSafety.length){ state.safety = newSafety; }
+    setConn(true, 'Terhubung ke Google Sheet — data live.');
+    renderAll();
+    maybeNotifyChange();
+  }catch(err){
+    console.error(err);
+    setConn(false, 'Gagal terhubung ke Google Sheet (cek Sheet ID / akses sharing). Menampilkan data terakhir.');
+  }
+}
+function setConn(live, msg){
+  state.live = live;
+  document.getElementById('conn-status').innerHTML = `<span class="dot ${live?'live':'demo'}"></span>${msg}`;
+}
+function manualRefresh(){ loadLiveData(); }
+
+let lastSnapshot = null;
+function maybeNotifyChange(){
+  const snap = JSON.stringify(state.wbs.map(w=>w.status+w.wbs));
+  if(lastSnapshot && lastSnapshot !== snap){
+    // Data berubah sejak refresh terakhir di sesi ini — jalankan analisis AI otomatis jika key tersedia
+    if(cfg.geminiKey) runAIAnalysis();
+  }
+  lastSnapshot = snap;
+}
+
+/* ============ SETTINGS MODAL ============ */
+function openSettings(){
+  document.getElementById('cfgSheetId').value = cfg.sheetId || '';
+  document.getElementById('cfgGeminiKey').value = cfg.geminiKey || '';
+  document.getElementById('cfgInterval').value = cfg.interval || 300000;
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeSettings(){ document.getElementById('modalBg').classList.remove('open'); }
+function saveSettings(){
+  cfg.sheetId = document.getElementById('cfgSheetId').value.trim();
+  cfg.geminiKey = document.getElementById('cfgGeminiKey').value.trim();
+  cfg.interval = +document.getElementById('cfgInterval').value;
+  localStorage.setItem('boxculvert_cfg', JSON.stringify(cfg));
+  document.getElementById('ai-tag').textContent = cfg.geminiKey ? 'Gemini · terhubung' : 'Gemini';
+  closeSettings();
+  loadLiveData();
+  setupAutoRefresh();
+}
+function setupAutoRefresh(){
+  if(refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadLiveData, cfg.interval || 300000);
+}
+
+/* ============ AI ANALYSIS (Gemini) ============ */
+async function runAIAnalysis(){
+  const body = document.getElementById('ai-body');
+  if(!cfg.geminiKey){
+    body.innerHTML = `<div class="ai-empty"><p>Gemini API key belum diatur. Buka <b>Pengaturan</b> untuk menambahkan API key gratis dari Google AI Studio.</p><button class="btn-orange" onclick="openSettings()">⚙ Buka Pengaturan</button></div>`;
+    return;
+  }
+  body.innerHTML = `<div class="ai-empty"><p>Menganalisis progres proyek…</p></div>`;
+  const day = dayIndex(), plan = planCumulative(day), actual = actualCumulative(), dev = actual - plan;
+  const behind = state.wbs.filter(w=>w.level===2 && (w.status==='Belum Mulai'));
+  const dataSummary = `
+Proyek: Box Culvert 3x4x5x5 m, PT GSPP. Nilai RAB Rp${RAB_TOTAL.toLocaleString('id-ID')}.
+Hari berjalan: ${day} dari ${TOTAL_DAYS} hari.
+Progres rencana (plan) kumulatif: ${plan.toFixed(1)}%.
+Progres aktual kumulatif: ${actual.toFixed(1)}%.
+Deviasi: ${dev.toFixed(1)}%.
+Daftar pekerjaan (WBS, uraian, bobot%, status): ${state.wbs.filter(w=>w.level===2).map(w=>`${w.wbs} ${w.uraian} (${w.bobot.toFixed(2)}%, ${w.status})`).join('; ')}.
+Item safety open: ${state.safety.filter(s=>(s.status||'').toLowerCase()==='open').length} dari ${state.safety.length}.
+`.trim();
+
+  const prompt = `Kamu adalah project control engineer proyek konstruksi. Berdasarkan data progres berikut, buatkan analisis singkat dan padat dalam Bahasa Indonesia dengan format persis:
+### Ringkasan Kondisi
+(2-3 kalimat kondisi proyek saat ini)
+### Risiko Utama
+(bullet list max 4 poin, risiko konkret berdasarkan data)
+### Rekomendasi Tindak Lanjut
+(bullet list max 4 poin, rekomendasi actionable untuk tim lapangan/PM)
+
+Data proyek:
+${dataSummary}`;
+
+  try{
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${cfg.geminiKey}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{parts:[{text:prompt}]}] })
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error?.message || 'Gemini API error');
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Tidak ada respons.';
+    state.lastAI = text;
+    renderAIResult(text);
+  }catch(err){
+    body.innerHTML = `<div class="ai-empty"><p style="color:var(--red)">Gagal memanggil Gemini API: ${err.message}</p><button class="btn-orange" onclick="runAIAnalysis()">Coba Lagi</button></div>`;
+  }
+}
+function renderAIResult(text){
+  const body = document.getElementById('ai-body');
+  let html = text
+    .replace(/### (.*)/g, '<h4>$1</h4>')
+    .split('\n').map(line=>{
+      line = line.trim();
+      if(!line) return '';
+      if(line.startsWith('<h4>')) return line;
+      if(line.startsWith('- ') || line.startsWith('* ')) return '<li>'+line.slice(2)+'</li>';
+      return '<p>'+line+'</p>';
+    }).join('\n')
+    .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m => '<ul>'+m+'</ul>');
+  body.innerHTML = `<div class="ai-out">${html}<div class="ai-meta">Dibuat oleh Gemini AI &middot; ${new Date().toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div>`;
+}
+
+/* ============ EXPORT PDF & PPT ============ */
+async function exportPDF(){
+  const area = document.getElementById('capture-area');
+  const canvas = await html2canvas(area, {scale:2, backgroundColor:'#EDEAE2'});
+  const img = canvas.toDataURL('image/jpeg', 0.92);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','pt','a4');
+  const pageW = pdf.internal.pageSize.getWidth();
+  const imgH = canvas.height * pageW / canvas.width;
+  let heightLeft = imgH, position = 0;
+  pdf.addImage(img,'JPEG',0,position,pageW,imgH);
+  heightLeft -= pdf.internal.pageSize.getHeight();
+  while(heightLeft > 0){
+    position = heightLeft - imgH;
+    pdf.addPage();
+    pdf.addImage(img,'JPEG',0,position,pageW,imgH);
+    heightLeft -= pdf.internal.pageSize.getHeight();
+  }
+  pdf.save('Progress-Report-Box-Culvert-'+new Date().toISOString().slice(0,10)+'.pdf');
+}
+
+async function exportPPT(){
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({name:'LAY', width:10, height:5.63});
+  pptx.layout = 'LAY';
+  const navy='0B1F33', orange='E8590C', steel='1B4965', ink='14213D';
+
+  // Slide 1 - Title
+  let s = pptx.addSlide();
+  s.background = { color: navy };
+  s.addText('PROGRESS REPORT', {x:0.5,y:1.7,w:9,h:0.5,fontSize:14,color:orange,bold:true,fontFace:'Arial',charSpacing:2});
+  s.addText('Pembangunan Box Culvert Type 3 (4×5 m)\nPT GSPP', {x:0.5,y:2.1,w:9,h:1.2,fontSize:28,color:'FFFFFF',bold:true,fontFace:'Arial'});
+  s.addText('Dicetak: '+new Date().toLocaleDateString('id-ID',{dateStyle:'long'}), {x:0.5,y:4.9,w:9,h:0.4,fontSize:11,color:'8CA0B3'});
+
+  // Slide 2 - KPI
+  const day = dayIndex(), plan = planCumulative(day), actual = actualCumulative(), dev = actual-plan;
+  s = pptx.addSlide();
+  s.addText('Ringkasan Progres', {x:0.4,y:0.3,w:9,h:0.5,fontSize:20,bold:true,color:ink});
+  const kpis = [['Progres Aktual', actual.toFixed(1)+'%'],['Plan Hari Ini', plan.toFixed(1)+'%'],['Deviasi', (dev>=0?'+':'')+dev.toFixed(1)+'%'],['Hari Berjalan', day+' / '+TOTAL_DAYS]];
+  kpis.forEach((k,i)=>{
+    const x = 0.4 + i*2.3;
+    s.addShape('roundRect', {x, y:1.1, w:2.1, h:1.3, fill:{color:'F4F1E9'}, line:{color:'DAD5C8'}, rectRadius:0.05});
+    s.addText(k[0], {x, y:1.2, w:2.1, h:0.4, fontSize:10, color:'6B7280'});
+    s.addText(k[1], {x, y:1.55, w:2.1, h:0.6, fontSize:22, bold:true, color:steel});
+  });
+  const rows = [['WBS','Uraian','Bobot %','Status']];
+  state.wbs.filter(w=>w.level===2).forEach(w=> rows.push([w.wbs, w.uraian, w.bobot.toFixed(2)+'%', w.status]));
+  s.addTable(rows, {x:0.4,y:2.7,w:9.2,h:2.6,fontSize:8,border:{type:'solid',color:'DAD5C8',pt:0.5},autoPage:false,
+    colW:[0.6,5.4,1.4,1.8], fill:{color:'FBFAF7'}, color:ink});
+
+  // Slide 3 - AI Analysis
+  s = pptx.addSlide();
+  s.addText('Analisis & Rekomendasi AI', {x:0.4,y:0.3,w:9,h:0.5,fontSize:20,bold:true,color:ink});
+  const aiText = state.lastAI ? state.lastAI.replace(/### /g,'').replace(/\*\*/g,'') : 'Belum ada analisis AI — jalankan "Analisis AI" di dashboard sebelum export untuk menyertakan ringkasan dan rekomendasi.';
+  s.addText(aiText, {x:0.4,y:1.0,w:9.2,h:4.3,fontSize:12,color:ink,valign:'top',fill:{color:'F4F1E9'},margin:12});
+
+  pptx.writeFile({fileName:'Progress-Report-Box-Culvert-'+new Date().toISOString().slice(0,10)+'.pptx'});
+}
+
+/* ============ INIT ============ */
+document.getElementById('cfgInterval');
+if(cfg.geminiKey) document.getElementById('ai-tag').textContent = 'Gemini · terhubung';
+renderAll();
+loadLiveData();
+setupAutoRefresh();
+</script>
+</body>
+</html>
