@@ -162,8 +162,8 @@ footer{max-width:1240px;margin:0 auto;padding:20px 24px 40px;color:var(--muted);
   </div>
   <div class="status-bar">
     <div class="status-inner">
-      <span id="conn-status"><span class="dot demo"></span>Mode demo — data contoh. Hubungkan Google Sheet di Pengaturan.</span>
-      <button class="btn" onclick="openSettings()">⚙ Pengaturan &amp; Koneksi</button>
+      <span id="conn-status"><span class="dot demo"></span>Mode demo — data contoh. Hubungkan Google Sheet melalui kode index.html.</span>
+      <span class="btn" style="cursor:default;opacity:.85;" title="Konfigurasi Sheet ID & API key hanya bisa diubah langsung di file index.html oleh admin, tidak dari halaman ini.">🔒 Koneksi dikunci admin</span>
     </div>
   </div>
 </header>
@@ -263,7 +263,7 @@ footer{max-width:1240px;margin:0 auto;padding:20px 24px 40px;color:var(--muted);
         <div class="panel-h"><h3>✦ Analisis &amp; Rekomendasi AI</h3><span class="tag" id="ai-tag">Gemini</span></div>
         <div class="ai-body" id="ai-body">
           <div class="ai-empty">
-            <p>Belum ada analisis AI. Hubungkan Gemini API key di Pengaturan, lalu klik "Jalankan Analisis AI" untuk mendapatkan ringkasan kondisi proyek, risiko, dan rekomendasi tindak lanjut.</p>
+            <p>Belum ada analisis AI. Klik "Jalankan Analisis AI" untuk mendapatkan ringkasan kondisi proyek, risiko, dan rekomendasi tindak lanjut dari Gemini.</p>
             <button class="btn-orange" onclick="runAIAnalysis()">✦ Jalankan Analisis AI</button>
           </div>
         </div>
@@ -292,42 +292,22 @@ footer{max-width:1240px;margin:0 auto;padding:20px 24px 40px;color:var(--muted);
   <span id="foot-note">Sumber data: Google Sheets (WBS_Box_Culvert_SPP_BOX_CULVERT_PROJECT_2026)</span>
 </footer>
 
-<!-- Settings Modal -->
-<div class="modal-bg" id="modalBg">
-  <div class="modal">
-    <h3>Pengaturan &amp; Koneksi</h3>
-    <p class="hint">Konfigurasi disimpan hanya di browser ini (localStorage), tidak dikirim ke server manapun.</p>
-    <div class="field">
-      <label>Google Sheet ID</label>
-      <input id="cfgSheetId" placeholder="cth: 1AbCDefGhIJkLmnoPQRstuVWxyz...">
-      <small>Ambil dari URL sheet: docs.google.com/spreadsheets/d/<b>SHEET_ID</b>/edit. Set akses sharing ke "Anyone with the link – Viewer".</small>
-    </div>
-    <div class="field">
-      <label>Gemini API Key</label>
-      <input id="cfgGeminiKey" type="password" placeholder="AIza...">
-      <small>Dapatkan gratis di <span class="mono">aistudio.google.com/apikey</span>. Dipakai langsung dari browser ke Gemini API.</small>
-    </div>
-    <div class="field">
-      <label>Interval Auto-Refresh</label>
-      <select id="cfgInterval">
-        <option value="60000">1 menit</option>
-        <option value="300000" selected>5 menit</option>
-        <option value="600000">10 menit</option>
-        <option value="1800000">30 menit</option>
-      </select>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-outline" onclick="closeSettings()">Batal</button>
-      <button class="btn-solid" onclick="saveSettings()">Simpan &amp; Muat Data</button>
-    </div>
-  </div>
-</div>
-
 <script>
 /* =========================================================
    DATA CONTOH (fallback) — dari WBS_Box_Culvert_SPP...xlsx
    Diganti otomatis oleh data live begitu Google Sheet terhubung.
 ========================================================= */
+/* =========================================================
+   KONFIGURASI ADMIN — hanya bisa diubah di sini (source code),
+   TIDAK muncul/bisa diubah dari tampilan web oleh pengguna lain.
+   Lihat SETUP_GUIDE.md langkah 4 untuk cara mengisi nilai ini.
+========================================================= */
+const CONFIG = {
+  SHEET_ID: '',                 // isi Google Sheet ID di sini, cth: '1AbCDefGhIJkLmnoPQRstuVWxyz...'
+  APPS_SCRIPT_URL: '',          // isi URL Web App Apps Script di sini (lihat SETUP_GUIDE.md Langkah 6)
+  REFRESH_MS: 300000            // interval auto-refresh (ms) — 300000 = 5 menit
+};
+
 const DEMO_WBS = [{"wbs": "0", "level": 1, "parent": "-", "uraian": "PEMBUATAN BOX CULVERT 3 x 4 x 5 x 5 m", "volume": null, "satuan": "", "nilai": 1171745000, "bobot": 100, "status": "Belum Mulai"}, {"wbs": "1", "level": 1, "parent": "-", "uraian": "PEKERJAAN PERSIAPAN", "volume": null, "satuan": "", "nilai": 11701934, "bobot": 0.9987, "status": "Belum Mulai"}, {"wbs": "1.1", "level": 2, "parent": "1", "uraian": "Membersihkan Lapangan dan Perataan", "volume": 161.92, "satuan": "m2", "nilai": 6072000, "bobot": 0.5182, "status": "Belum Mulai"}, {"wbs": "1.2", "level": 2, "parent": "1", "uraian": "Pengukuran dan Pasangan Bouwplank", "volume": 45.6, "satuan": "m1", "nilai": 5629934, "bobot": 0.4805, "status": "Belum Mulai"}, {"wbs": "2", "level": 1, "parent": "-", "uraian": "PEKERJAAN TANAH", "volume": null, "satuan": "", "nilai": 5345230, "bobot": 0.4562, "status": "Belum Mulai"}, {"wbs": "2.1", "level": 2, "parent": "2", "uraian": "Galian Tanah Biasa Kedalaman Max 1 m", "volume": 50.78, "satuan": "m3", "nilai": 4773320, "bobot": 0.4074, "status": "Belum Mulai"}, {"wbs": "2.2", "level": 2, "parent": "2", "uraian": "Urugan Tanah Kembali", "volume": 12.7, "satuan": "m3", "nilai": 571910, "bobot": 0.0488, "status": "Belum Mulai"}, {"wbs": "3", "level": 1, "parent": "-", "uraian": "PEKERJAAN PONDASI", "volume": null, "satuan": "", "nilai": 7893886, "bobot": 0.6737, "status": "Belum Mulai"}, {"wbs": "3.1", "level": 2, "parent": "3", "uraian": "Lantai Kerja 1PC : 3 PS : 5 KRL", "volume": 5.08, "satuan": "m3", "nilai": 5565146, "bobot": 0.4749, "status": "Belum Mulai"}, {"wbs": "3.2", "level": 2, "parent": "3", "uraian": "Pemasangan Cerucuk Kayu", "volume": 131, "satuan": "m1", "nilai": 2328740, "bobot": 0.1987, "status": "Belum Mulai"}, {"wbs": "4", "level": 1, "parent": "-", "uraian": "PEKERJAAN BETON", "volume": null, "satuan": "", "nilai": 525644588, "bobot": 44.86, "status": "Belum Mulai"}, {"wbs": "4.1", "level": 2, "parent": "4", "uraian": "Cor Beton Ready Mix K-300", "volume": 166.98, "satuan": "m3", "nilai": 525644588, "bobot": 44.86, "status": "Belum Mulai"}, {"wbs": "5", "level": 1, "parent": "-", "uraian": "PEKERJAAN PEMBESIAN", "volume": null, "satuan": "", "nilai": 244331532, "bobot": 20.8519, "status": "Belum Mulai"}, {"wbs": "5.1", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 10 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.2", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 12 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.3", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 13 mm", "volume": 7862.28, "satuan": "Kg", "nilai": 109538206, "bobot": 9.3483, "status": "Belum Mulai"}, {"wbs": "5.4", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 14 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.5", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 16 mm", "volume": 9906.73, "satuan": "Kg", "nilai": 134793326, "bobot": 11.5036, "status": "Belum Mulai"}, {"wbs": "6", "level": 1, "parent": "-", "uraian": "PEKERJAAN BEKISTING", "volume": null, "satuan": "", "nilai": 222320142, "bobot": 18.9734, "status": "Belum Mulai"}, {"wbs": "6.1", "level": 2, "parent": "6", "uraian": "Pekerjaan Bekisting Dinding", "volume": 526.88, "satuan": "m2", "nilai": 187223947, "bobot": 15.9782, "status": "Belum Mulai"}, {"wbs": "6.2", "level": 2, "parent": "6", "uraian": "Pasang Bekisting untuk Lantai", "volume": 138.45, "satuan": "m2", "nilai": 35096195, "bobot": 2.9952, "status": "Belum Mulai"}, {"wbs": "7", "level": 1, "parent": "-", "uraian": "PEKERJAAN PEMASANGAN SAFETY SIGN", "volume": null, "satuan": "", "nilai": 182340, "bobot": 0.0156, "status": "Belum Mulai"}, {"wbs": "7.1", "level": 2, "parent": "7", "uraian": "Memasang Pipa PVC Tipe AW Diameter 2\"", "volume": 3.2, "satuan": "m'", "nilai": 182340, "bobot": 0.0156, "status": "Belum Mulai"}, {"wbs": "8", "level": 1, "parent": "-", "uraian": "PEKERJAAN PENGECATAN", "volume": null, "satuan": "", "nilai": 1489136, "bobot": 0.1271, "status": "Belum Mulai"}, {"wbs": "8.1", "level": 2, "parent": "8", "uraian": "Pengecatan Dinding (3x)", "volume": 30.2, "satuan": "m2", "nilai": 1264656, "bobot": 0.1079, "status": "Belum Mulai"}, {"wbs": "8.2", "level": 2, "parent": "8", "uraian": "Pengecatan Safety Sign (3x)", "volume": 3.14, "satuan": "m2", "nilai": 224480, "bobot": 0.0192, "status": "Belum Mulai"}, {"wbs": "L", "level": 1, "parent": "-", "uraian": "UPAH (15%)", "volume": null, "satuan": "", "nilai": 152836318, "bobot": 13.0435, "status": "Belum Mulai"}];
 const DEMO_SAFETY = [{"no": 1, "tahapan": "Persiapan & mobilisasi", "bahaya": "Kendaraan/alat bergerak; area tidak tertata", "dampak": "Tertabrak/terpeleset", "pengendalian": "Barikade, jalur kendaraan jelas, housekeeping", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 2, "tahapan": "Pengukuran & bouwplank", "bahaya": "Tersandung; aktivitas dekat lalu lintas", "dampak": "Cedera/tertumbuk", "pengendalian": "Atur area, rambu, komunikasi", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor", "status": "Open"}, {"no": 3, "tahapan": "Galian tanah", "bahaya": "Longsor/terperosok; alat berat", "dampak": "Cedera serius", "pengendalian": "Periksa kondisi galian, akses aman, larang berdiri di bibir galian, kontrol alat", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 4, "tahapan": "Urugan kembali", "bahaya": "Alat bergerak; debu", "dampak": "Tertabrak/cedera", "pengendalian": "Pisahkan pekerja-alat, spotter bila perlu, kontrol debu", "ppe": "Helm; sepatu; rompi", "pic": "Mandor", "status": "Open"}, {"no": 5, "tahapan": "Pemasangan cerucuk kayu", "bahaya": "Material jatuh/terpukul", "dampak": "Cedera tangan/kaki", "pengendalian": "Zona kerja dan aba-aba, larang masuk radius kerja", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor/Safety", "status": "Open"}, {"no": 6, "tahapan": "Lantai kerja & beton", "bahaya": "Licin; kontak semen/beton", "dampak": "Iritasi/terpeleset", "pengendalian": "Housekeeping, akses aman, APD", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor", "status": "Open"}, {"no": 7, "tahapan": "Pembesian", "bahaya": "Ujung besi tajam; material jatuh", "dampak": "Luka/tusukan/terjepit", "pengendalian": "Proteksi ujung besi, tumpukan stabil, manual handling aman", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor/Safety", "status": "Open"}, {"no": 8, "tahapan": "Bekisting", "bahaya": "Robo(h)/terjepit; support tidak stabil", "dampak": "Cedera serius", "pengendalian": "Inspeksi support/bracing sebelum digunakan/dibongkar", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor", "status": "Open"}, {"no": 9, "tahapan": "Cor beton ready mix", "bahaya": "Truck/pompa/selang bergerak; cipratan", "dampak": "Tertabrak/terjepit/iritasi", "pengendalian": "Traffic control, komunikasi operator, exclusion zone", "ppe": "Helm; sarung tangan; sepatu; eye protection sesuai kondisi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 10, "tahapan": "Pengecatan & safety sign", "bahaya": "Paparan bahan cat; percikan; lantai basah", "dampak": "Iritasi/terpeleset", "pengendalian": "Ventilasi sesuai kondisi, APD, housekeeping, rambu", "ppe": "Sarung tangan; masker/eye protection sesuai SDS", "pic": "Mandor/Safety", "status": "Open"}, {"no": 11, "tahapan": "Pekerjaan umum", "bahaya": "Housekeeping buruk", "dampak": "Tersandung/terjatuh", "pengendalian": "Housekeeping akhir shift; jalur bebas hambatan", "ppe": "Sepatu safety", "pic": "Semua PIC", "status": "Open"}];
 const GROUPS = [
@@ -347,7 +327,6 @@ const RAB_TOTAL = 1171745000;
 
 let state = { wbs: DEMO_WBS, safety: DEMO_SAFETY, live: false, chart: null, lastAI: null, donuts: {} };
 const PALETTE = ['#1B4965','#E8590C','#2F9E44','#F08C00','#5C7A99','#A63A0F','#8CA0B3','#C9A33E','#7B4B94','#3A5A78'];
-let cfg = JSON.parse(localStorage.getItem('boxculvert_cfg') || '{}');
 let refreshTimer = null;
 
 function fmtRp(n){ return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
@@ -552,10 +531,10 @@ async function fetchSheetTable(sheetName, sheetId){
   return parseGviz(await res.text());
 }
 async function loadLiveData(){
-  if(!cfg.sheetId){ setConn(false, 'Mode demo — data contoh. Hubungkan Google Sheet di Pengaturan.'); return; }
+  if(!CONFIG.SHEET_ID){ setConn(false, 'Mode demo — data contoh. Admin belum mengisi Sheet ID di kode index.html.'); return; }
   try{
-    const wbsT = await fetchSheetTable('WBS & Bobot', cfg.sheetId);
-    const safetyT = await fetchSheetTable('Safety Matrix', cfg.sheetId);
+    const wbsT = await fetchSheetTable('WBS & Bobot', CONFIG.SHEET_ID);
+    const safetyT = await fetchSheetTable('Safety Matrix', CONFIG.SHEET_ID);
     const newWbs = wbsT.rows.filter(r=>r[0]!=='').map(r=>({
       wbs:String(r[0]), level:Number(r[1]), parent:String(r[2]),
       uraian:r[3], volume:r[4]||null, satuan:r[5]||'', nilai:Number(r[6])||0,
@@ -584,81 +563,41 @@ let lastSnapshot = null;
 function maybeNotifyChange(){
   const snap = JSON.stringify(state.wbs.map(w=>w.status+w.wbs));
   if(lastSnapshot && lastSnapshot !== snap){
-    // Data berubah sejak refresh terakhir di sesi ini — jalankan analisis AI otomatis jika key tersedia
-    if(cfg.geminiKey) runAIAnalysis();
+    // Data berubah sejak refresh terakhir di sesi ini — jalankan analisis AI otomatis
+    if(CONFIG.APPS_SCRIPT_URL) runAIAnalysis();
   }
   lastSnapshot = snap;
 }
 
-/* ============ SETTINGS MODAL ============ */
-function openSettings(){
-  document.getElementById('cfgSheetId').value = cfg.sheetId || '';
-  document.getElementById('cfgGeminiKey').value = cfg.geminiKey || '';
-  document.getElementById('cfgInterval').value = cfg.interval || 300000;
-  document.getElementById('modalBg').classList.add('open');
-}
-function closeSettings(){ document.getElementById('modalBg').classList.remove('open'); }
-function saveSettings(){
-  cfg.sheetId = document.getElementById('cfgSheetId').value.trim();
-  cfg.geminiKey = document.getElementById('cfgGeminiKey').value.trim();
-  cfg.interval = +document.getElementById('cfgInterval').value;
-  localStorage.setItem('boxculvert_cfg', JSON.stringify(cfg));
-  document.getElementById('ai-tag').textContent = cfg.geminiKey ? 'Gemini · terhubung' : 'Gemini';
-  closeSettings();
-  loadLiveData();
-  setupAutoRefresh();
-}
+/* ============ AUTO REFRESH (interval diatur di CONFIG) ============ */
 function setupAutoRefresh(){
   if(refreshTimer) clearInterval(refreshTimer);
-  refreshTimer = setInterval(loadLiveData, cfg.interval || 300000);
+  refreshTimer = setInterval(loadLiveData, CONFIG.REFRESH_MS || 300000);
 }
 
-/* ============ AI ANALYSIS (Gemini) ============ */
+/* ============ AI ANALYSIS ============
+   Dipanggil lewat Apps Script Web App (bukan langsung ke Gemini dari browser),
+   supaya GEMINI_API_KEY tidak pernah terlihat/tersimpan di sisi klien. Web App
+   membaca data sheet terkini sendiri lalu memanggil Gemini di server. */
 async function runAIAnalysis(){
   const body = document.getElementById('ai-body');
-  if(!cfg.geminiKey){
-    body.innerHTML = `<div class="ai-empty"><p>Gemini API key belum diatur. Buka <b>Pengaturan</b> untuk menambahkan API key gratis dari Google AI Studio.</p><button class="btn-orange" onclick="openSettings()">⚙ Buka Pengaturan</button></div>`;
+  if(!CONFIG.APPS_SCRIPT_URL){
+    body.innerHTML = `<div class="ai-empty"><p>Endpoint AI belum diatur oleh admin. Isi <b>CONFIG.APPS_SCRIPT_URL</b> di file index.html dengan URL Web App Apps Script (lihat SETUP_GUIDE.md Langkah 6).</p></div>`;
     return;
   }
   body.innerHTML = `<div class="ai-empty"><p>Menganalisis progres proyek…</p></div>`;
-  const day = dayIndex(), plan = planCumulative(day), actual = actualCumulative(), dev = actual - plan;
-  const behind = state.wbs.filter(w=>w.level===2 && (w.status==='Belum Mulai'));
-  const dataSummary = `
-Proyek: Box Culvert 3x4x5x5 m, PT GSPP. Nilai RAB Rp${RAB_TOTAL.toLocaleString('id-ID')}.
-Hari berjalan: ${day} dari ${TOTAL_DAYS} hari.
-Progres rencana (plan) kumulatif: ${plan.toFixed(1)}%.
-Progres aktual kumulatif: ${actual.toFixed(1)}%.
-Deviasi: ${dev.toFixed(1)}%.
-Daftar pekerjaan (WBS, uraian, bobot%, status): ${state.wbs.filter(w=>w.level===2).map(w=>`${w.wbs} ${w.uraian} (${w.bobot.toFixed(2)}%, ${w.status})`).join('; ')}.
-Item safety open: ${state.safety.filter(s=>(s.status||'').toLowerCase()==='open').length} dari ${state.safety.length}.
-`.trim();
-
-  const prompt = `Kamu adalah project control engineer proyek konstruksi. Berdasarkan data progres berikut, buatkan analisis singkat dan padat dalam Bahasa Indonesia dengan format persis:
-### Ringkasan Kondisi
-(2-3 kalimat kondisi proyek saat ini)
-### Risiko Utama
-(bullet list max 4 poin, risiko konkret berdasarkan data)
-### Rekomendasi Tindak Lanjut
-(bullet list max 4 poin, rekomendasi actionable untuk tim lapangan/PM)
-
-Data proyek:
-${dataSummary}`;
-
   try{
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${cfg.geminiKey}`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ contents:[{parts:[{text:prompt}]}] })
-    });
+    const url = CONFIG.APPS_SCRIPT_URL + (CONFIG.APPS_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=analyze';
+    const res = await fetch(url);
     const data = await res.json();
-    if(!res.ok) throw new Error(data.error?.message || 'Gemini API error');
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Tidak ada respons.';
-    state.lastAI = text;
-    renderAIResult(text);
+    if(!data.ok) throw new Error(data.error || 'Gagal mengambil analisis');
+    state.lastAI = data.analysis;
+    renderAIResult(data.analysis, data.usedGemini);
   }catch(err){
-    body.innerHTML = `<div class="ai-empty"><p style="color:var(--red)">Gagal memanggil Gemini API: ${err.message}</p><button class="btn-orange" onclick="runAIAnalysis()">Coba Lagi</button></div>`;
+    body.innerHTML = `<div class="ai-empty"><p style="color:var(--red)">Gagal memanggil endpoint AI: ${err.message}</p><button class="btn-orange" onclick="runAIAnalysis()">Coba Lagi</button></div>`;
   }
 }
-function renderAIResult(text){
+function renderAIResult(text, usedGemini){
   const body = document.getElementById('ai-body');
   let html = text
     .replace(/### (.*)/g, '<h4>$1</h4>')
@@ -670,7 +609,8 @@ function renderAIResult(text){
       return '<p>'+line+'</p>';
     }).join('\n')
     .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, m => '<ul>'+m+'</ul>');
-  body.innerHTML = `<div class="ai-out">${html}<div class="ai-meta">Dibuat oleh Gemini AI &middot; ${new Date().toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div>`;
+  const src = usedGemini ? 'Gemini AI' : 'Analisis rule-based (Gemini API key belum diatur di server)';
+  body.innerHTML = `<div class="ai-out">${html}<div class="ai-meta">Dibuat oleh ${src} &middot; ${new Date().toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'})}</div></div>`;
 }
 
 /* ============ EXPORT PDF & PPT ============ */
@@ -733,8 +673,7 @@ async function exportPPT(){
 }
 
 /* ============ INIT ============ */
-document.getElementById('cfgInterval');
-if(cfg.geminiKey) document.getElementById('ai-tag').textContent = 'Gemini · terhubung';
+if(CONFIG.APPS_SCRIPT_URL) document.getElementById('ai-tag').textContent = 'Gemini · terhubung';
 renderAll();
 loadLiveData();
 setupAutoRefresh();
