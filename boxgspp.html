@@ -162,7 +162,7 @@ footer{max-width:1240px;margin:0 auto;padding:20px 24px 40px;color:var(--muted);
   </div>
   <div class="status-bar">
     <div class="status-inner">
-      <span id="conn-status"><span class="dot demo"></span>Mode demo — data contoh. Hubungkan Google Sheet melalui kode index.html.</span>
+      <span id="conn-status"><span class="dot demo"></span>Mode demo — data contoh. Menunggu koneksi Apps Script...</span>
       <span class="btn" style="cursor:default;opacity:.85;" title="Konfigurasi Sheet ID & API key hanya bisa diubah langsung di file index.html oleh admin, tidak dari halaman ini.">🔒 Koneksi dikunci admin</span>
     </div>
   </div>
@@ -300,34 +300,33 @@ footer{max-width:1240px;margin:0 auto;padding:20px 24px 40px;color:var(--muted);
 /* =========================================================
    KONFIGURASI ADMIN — hanya bisa diubah di sini (source code),
    TIDAK muncul/bisa diubah dari tampilan web oleh pengguna lain.
-   Lihat SETUP_GUIDE.md langkah 4 untuk cara mengisi nilai ini.
+   Lihat SETUP_GUIDE.md langkah 4-6 untuk cara mengisi nilai ini.
+
+   PENTING: Google Sheet ID TIDAK ada di sini. index.html hanya
+   kenal APPS_SCRIPT_URL — Sheet ID, isi sheet, dan Gemini API key
+   sepenuhnya berada di sisi server (Code.gs / Apps Script), tidak
+   pernah dikirim atau terlihat di browser/kode halaman ini.
 ========================================================= */
 const CONFIG = {
-  SHEET_ID: '',                 // isi Google Sheet ID di sini, cth: '1AbCDefGhIJkLmnoPQRstuVWxyz...'
   APPS_SCRIPT_URL: '',          // isi URL Web App Apps Script di sini (lihat SETUP_GUIDE.md Langkah 6)
   REFRESH_MS: 300000            // interval auto-refresh (ms) — 300000 = 5 menit
 };
 
 const DEMO_WBS = [{"wbs": "0", "level": 1, "parent": "-", "uraian": "PEMBUATAN BOX CULVERT 3 x 4 x 5 x 5 m", "volume": null, "satuan": "", "nilai": 1171745000, "bobot": 100, "status": "Belum Mulai"}, {"wbs": "1", "level": 1, "parent": "-", "uraian": "PEKERJAAN PERSIAPAN", "volume": null, "satuan": "", "nilai": 11701934, "bobot": 0.9987, "status": "Belum Mulai"}, {"wbs": "1.1", "level": 2, "parent": "1", "uraian": "Membersihkan Lapangan dan Perataan", "volume": 161.92, "satuan": "m2", "nilai": 6072000, "bobot": 0.5182, "status": "Belum Mulai"}, {"wbs": "1.2", "level": 2, "parent": "1", "uraian": "Pengukuran dan Pasangan Bouwplank", "volume": 45.6, "satuan": "m1", "nilai": 5629934, "bobot": 0.4805, "status": "Belum Mulai"}, {"wbs": "2", "level": 1, "parent": "-", "uraian": "PEKERJAAN TANAH", "volume": null, "satuan": "", "nilai": 5345230, "bobot": 0.4562, "status": "Belum Mulai"}, {"wbs": "2.1", "level": 2, "parent": "2", "uraian": "Galian Tanah Biasa Kedalaman Max 1 m", "volume": 50.78, "satuan": "m3", "nilai": 4773320, "bobot": 0.4074, "status": "Belum Mulai"}, {"wbs": "2.2", "level": 2, "parent": "2", "uraian": "Urugan Tanah Kembali", "volume": 12.7, "satuan": "m3", "nilai": 571910, "bobot": 0.0488, "status": "Belum Mulai"}, {"wbs": "3", "level": 1, "parent": "-", "uraian": "PEKERJAAN PONDASI", "volume": null, "satuan": "", "nilai": 7893886, "bobot": 0.6737, "status": "Belum Mulai"}, {"wbs": "3.1", "level": 2, "parent": "3", "uraian": "Lantai Kerja 1PC : 3 PS : 5 KRL", "volume": 5.08, "satuan": "m3", "nilai": 5565146, "bobot": 0.4749, "status": "Belum Mulai"}, {"wbs": "3.2", "level": 2, "parent": "3", "uraian": "Pemasangan Cerucuk Kayu", "volume": 131, "satuan": "m1", "nilai": 2328740, "bobot": 0.1987, "status": "Belum Mulai"}, {"wbs": "4", "level": 1, "parent": "-", "uraian": "PEKERJAAN BETON", "volume": null, "satuan": "", "nilai": 525644588, "bobot": 44.86, "status": "Belum Mulai"}, {"wbs": "4.1", "level": 2, "parent": "4", "uraian": "Cor Beton Ready Mix K-300", "volume": 166.98, "satuan": "m3", "nilai": 525644588, "bobot": 44.86, "status": "Belum Mulai"}, {"wbs": "5", "level": 1, "parent": "-", "uraian": "PEKERJAAN PEMBESIAN", "volume": null, "satuan": "", "nilai": 244331532, "bobot": 20.8519, "status": "Belum Mulai"}, {"wbs": "5.1", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 10 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.2", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 12 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.3", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 13 mm", "volume": 7862.28, "satuan": "Kg", "nilai": 109538206, "bobot": 9.3483, "status": "Belum Mulai"}, {"wbs": "5.4", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 14 mm", "volume": null, "satuan": "Kg", "nilai": 0, "bobot": 0, "status": "Belum Mulai"}, {"wbs": "5.5", "level": 2, "parent": "5", "uraian": "Pembesian Besi Polos/Ulir Ø 16 mm", "volume": 9906.73, "satuan": "Kg", "nilai": 134793326, "bobot": 11.5036, "status": "Belum Mulai"}, {"wbs": "6", "level": 1, "parent": "-", "uraian": "PEKERJAAN BEKISTING", "volume": null, "satuan": "", "nilai": 222320142, "bobot": 18.9734, "status": "Belum Mulai"}, {"wbs": "6.1", "level": 2, "parent": "6", "uraian": "Pekerjaan Bekisting Dinding", "volume": 526.88, "satuan": "m2", "nilai": 187223947, "bobot": 15.9782, "status": "Belum Mulai"}, {"wbs": "6.2", "level": 2, "parent": "6", "uraian": "Pasang Bekisting untuk Lantai", "volume": 138.45, "satuan": "m2", "nilai": 35096195, "bobot": 2.9952, "status": "Belum Mulai"}, {"wbs": "7", "level": 1, "parent": "-", "uraian": "PEKERJAAN PEMASANGAN SAFETY SIGN", "volume": null, "satuan": "", "nilai": 182340, "bobot": 0.0156, "status": "Belum Mulai"}, {"wbs": "7.1", "level": 2, "parent": "7", "uraian": "Memasang Pipa PVC Tipe AW Diameter 2\"", "volume": 3.2, "satuan": "m'", "nilai": 182340, "bobot": 0.0156, "status": "Belum Mulai"}, {"wbs": "8", "level": 1, "parent": "-", "uraian": "PEKERJAAN PENGECATAN", "volume": null, "satuan": "", "nilai": 1489136, "bobot": 0.1271, "status": "Belum Mulai"}, {"wbs": "8.1", "level": 2, "parent": "8", "uraian": "Pengecatan Dinding (3x)", "volume": 30.2, "satuan": "m2", "nilai": 1264656, "bobot": 0.1079, "status": "Belum Mulai"}, {"wbs": "8.2", "level": 2, "parent": "8", "uraian": "Pengecatan Safety Sign (3x)", "volume": 3.14, "satuan": "m2", "nilai": 224480, "bobot": 0.0192, "status": "Belum Mulai"}, {"wbs": "L", "level": 1, "parent": "-", "uraian": "UPAH (15%)", "volume": null, "satuan": "", "nilai": 152836318, "bobot": 13.0435, "status": "Belum Mulai"}];
 const DEMO_SAFETY = [{"no": 1, "tahapan": "Persiapan & mobilisasi", "bahaya": "Kendaraan/alat bergerak; area tidak tertata", "dampak": "Tertabrak/terpeleset", "pengendalian": "Barikade, jalur kendaraan jelas, housekeeping", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 2, "tahapan": "Pengukuran & bouwplank", "bahaya": "Tersandung; aktivitas dekat lalu lintas", "dampak": "Cedera/tertumbuk", "pengendalian": "Atur area, rambu, komunikasi", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor", "status": "Open"}, {"no": 3, "tahapan": "Galian tanah", "bahaya": "Longsor/terperosok; alat berat", "dampak": "Cedera serius", "pengendalian": "Periksa kondisi galian, akses aman, larang berdiri di bibir galian, kontrol alat", "ppe": "Helm; sepatu safety; rompi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 4, "tahapan": "Urugan kembali", "bahaya": "Alat bergerak; debu", "dampak": "Tertabrak/cedera", "pengendalian": "Pisahkan pekerja-alat, spotter bila perlu, kontrol debu", "ppe": "Helm; sepatu; rompi", "pic": "Mandor", "status": "Open"}, {"no": 5, "tahapan": "Pemasangan cerucuk kayu", "bahaya": "Material jatuh/terpukul", "dampak": "Cedera tangan/kaki", "pengendalian": "Zona kerja dan aba-aba, larang masuk radius kerja", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor/Safety", "status": "Open"}, {"no": 6, "tahapan": "Lantai kerja & beton", "bahaya": "Licin; kontak semen/beton", "dampak": "Iritasi/terpeleset", "pengendalian": "Housekeeping, akses aman, APD", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor", "status": "Open"}, {"no": 7, "tahapan": "Pembesian", "bahaya": "Ujung besi tajam; material jatuh", "dampak": "Luka/tusukan/terjepit", "pengendalian": "Proteksi ujung besi, tumpukan stabil, manual handling aman", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor/Safety", "status": "Open"}, {"no": 8, "tahapan": "Bekisting", "bahaya": "Robo(h)/terjepit; support tidak stabil", "dampak": "Cedera serius", "pengendalian": "Inspeksi support/bracing sebelum digunakan/dibongkar", "ppe": "Helm; sarung tangan; sepatu", "pic": "Mandor", "status": "Open"}, {"no": 9, "tahapan": "Cor beton ready mix", "bahaya": "Truck/pompa/selang bergerak; cipratan", "dampak": "Tertabrak/terjepit/iritasi", "pengendalian": "Traffic control, komunikasi operator, exclusion zone", "ppe": "Helm; sarung tangan; sepatu; eye protection sesuai kondisi", "pic": "Mandor/Safety", "status": "Open"}, {"no": 10, "tahapan": "Pengecatan & safety sign", "bahaya": "Paparan bahan cat; percikan; lantai basah", "dampak": "Iritasi/terpeleset", "pengendalian": "Ventilasi sesuai kondisi, APD, housekeeping, rambu", "ppe": "Sarung tangan; masker/eye protection sesuai SDS", "pic": "Mandor/Safety", "status": "Open"}, {"no": 11, "tahapan": "Pekerjaan umum", "bahaya": "Housekeeping buruk", "dampak": "Tersandung/terjatuh", "pengendalian": "Housekeeping akhir shift; jalur bebas hambatan", "ppe": "Sepatu safety", "pic": "Semua PIC", "status": "Open"}];
-const GROUPS = [
- ["1","PEKERJAAN PERSIAPAN",11701934,0.9987],
- ["2","PEKERJAAN TANAH",5345230,0.4562],
- ["3","PEKERJAAN PONDASI",7893886,0.6737],
- ["4","PEKERJAAN BETON",525644588,44.8600],
- ["5","PEKERJAAN PEMBESIAN",244331532,20.8519],
- ["6","PEKERJAAN BEKISTING",222320142,18.9734],
- ["7","PEKERJAAN PEMASANGAN SAFETY SIGN",182340,0.0156],
- ["8","PEKERJAAN PENGECATAN",1489136,0.1271],
- ["L","UPAH (15%)",152836318,13.0435],
-];
-const PROJECT_START = "2026-09-19";
-const TOTAL_DAYS = 60;
-const RAB_TOTAL = 1171745000;
+let PROJECT_START = new Date("2026-09-19");
+let TOTAL_DAYS = 60;
+let RAB_TOTAL = 1171745000;
 
 let state = { wbs: DEMO_WBS, safety: DEMO_SAFETY, live: false, chart: null, lastAI: null, donuts: {} };
 const PALETTE = ['#1B4965','#E8590C','#2F9E44','#F08C00','#5C7A99','#A63A0F','#8CA0B3','#C9A33E','#7B4B94','#3A5A78'];
 let refreshTimer = null;
+/* Kelompok pekerjaan (untuk donut & bar bobot) diturunkan langsung dari data
+   WBS level 1 (bukan hardcode) supaya selalu sinkron dengan Google Sheet. */
+function getGroups(){
+  return state.wbs.filter(w => w.level === 1 && w.wbs !== '0')
+    .map(w => [w.wbs, w.uraian, w.nilai, w.bobot]);
+}
 
 function fmtRp(n){ return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
 function fmtPct(n){ return (Math.round(n*10)/10).toFixed(1) + '%'; }
@@ -401,7 +400,8 @@ function renderWBS(){
 
 function renderGroups(){
   const tbody = document.getElementById('group-body');
-  tbody.innerHTML = GROUPS.map(g => `<tr><td>${g[1]}</td><td style="text-align:right" class="mono">${fmtRp(g[2])}</td><td style="text-align:right" class="mono">${fmtPct(g[3])}</td></tr>`).join('');
+  const groups = getGroups();
+  tbody.innerHTML = groups.map(g => `<tr><td>${g[1]}</td><td style="text-align:right" class="mono">${fmtRp(g[2])}</td><td style="text-align:right" class="mono">${fmtPct(g[3])}</td></tr>`).join('');
 }
 
 function renderSafety(){
@@ -473,11 +473,12 @@ function renderDonuts(){
   renderLegend('legendProgress', ['Selesai','Sisa'], ['#E8590C','#E4E0D3']);
 
   // 2) Distribusi bobot per kelompok
-  const gLabels = GROUPS.map(g=>g[1].replace('PEKERJAAN ','').replace('UPAH (15%)','UPAH'));
-  const gData = GROUPS.map(g=>+g[3].toFixed(2));
-  const gColors = GROUPS.map((_,i)=>PALETTE[i % PALETTE.length]);
+  const groups = getGroups();
+  const gLabels = groups.map(g=>g[1].replace('PEKERJAAN ','').replace('UPAH (15%)','UPAH'));
+  const gData = groups.map(g=>+g[3].toFixed(2));
+  const gColors = groups.map((_,i)=>PALETTE[i % PALETTE.length]);
   makeDonut('donutBobot', gLabels, gData, gColors, '55%');
-  document.getElementById('donutBobotBig').textContent = GROUPS.length;
+  document.getElementById('donutBobotBig').textContent = groups.length;
   renderLegend('legendBobot', gLabels.slice(0,5).map(l=>l.length>14?l.slice(0,13)+'…':l), gColors.slice(0,5));
 
   // 3) Status pekerjaan (jumlah item level 2)
@@ -503,8 +504,9 @@ function renderDonuts(){
 function renderBarBobot(){
   if(state.donuts['barBobot']) state.donuts['barBobot'].destroy();
   const ctx = document.getElementById('barBobot');
-  const labels = GROUPS.map(g=>g[1].replace('PEKERJAAN ',''));
-  const data = GROUPS.map(g=>+g[3].toFixed(2));
+  const groups = getGroups();
+  const labels = groups.map(g=>g[1].replace('PEKERJAAN ',''));
+  const data = groups.map(g=>+g[3].toFixed(2));
   state.donuts['barBobot'] = new Chart(ctx, {
     type:'bar',
     data:{ labels, datasets:[{ label:'Bobot (%)', data, backgroundColor:'#1B4965', borderRadius:3, maxBarThickness:34 }] },
@@ -515,42 +517,32 @@ function renderBarBobot(){
   });
 }
 
-/* ============ GOOGLE SHEETS LIVE SYNC (gviz JSON) ============ */
-function gvizUrl(sheetName, sheetId){
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-}
-function parseGviz(text){
-  const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
-  const cols = json.table.cols.map(c=>c.label || c.id);
-  const rows = json.table.rows.map(r => r.c.map(c => c ? (c.v ?? '') : ''));
-  return {cols, rows};
-}
-async function fetchSheetTable(sheetName, sheetId){
-  const res = await fetch(gvizUrl(sheetName, sheetId));
-  if(!res.ok) throw new Error('Gagal mengambil sheet: '+sheetName);
-  return parseGviz(await res.text());
-}
+/* ============ LIVE SYNC — via Apps Script Web App saja ============
+   index.html TIDAK PERNAH mengakses Google Sheets langsung. Semua data
+   (WBS, Safety, meta proyek) diambil dari endpoint Apps Script kamu
+   sendiri, yang membaca sheet-nya secara langsung di sisi server. */
 async function loadLiveData(){
-  if(!CONFIG.SHEET_ID){ setConn(false, 'Mode demo — data contoh. Admin belum mengisi Sheet ID di kode index.html.'); return; }
+  if(!CONFIG.APPS_SCRIPT_URL){ setConn(false, 'Mode demo — data contoh. Admin belum mengisi APPS_SCRIPT_URL di kode index.html.'); return; }
   try{
-    const wbsT = await fetchSheetTable('WBS & Bobot', CONFIG.SHEET_ID);
-    const safetyT = await fetchSheetTable('Safety Matrix', CONFIG.SHEET_ID);
-    const newWbs = wbsT.rows.filter(r=>r[0]!=='').map(r=>({
-      wbs:String(r[0]), level:Number(r[1]), parent:String(r[2]),
-      uraian:r[3], volume:r[4]||null, satuan:r[5]||'', nilai:Number(r[6])||0,
-      bobot:Number(r[7])||0, status:r[8]||'Belum Mulai'
-    }));
-    const newSafety = safetyT.rows.filter(r=>r[0]!=='').slice(2).map(r=>({
-      no:r[0], tahapan:r[1], bahaya:r[2], dampak:r[3], pengendalian:r[4], ppe:r[5], pic:r[7], status:r[8]
-    }));
-    if(newWbs.length){ state.wbs = newWbs; }
-    if(newSafety.length){ state.safety = newSafety; }
-    setConn(true, 'Terhubung ke Google Sheet — data live.');
+    const url = CONFIG.APPS_SCRIPT_URL + (CONFIG.APPS_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=data';
+    const res = await fetch(url);
+    const payload = await res.json();
+    if(!payload.ok) throw new Error(payload.error || 'Respons endpoint tidak valid');
+
+    if(Array.isArray(payload.wbs) && payload.wbs.length) state.wbs = payload.wbs;
+    if(Array.isArray(payload.safety) && payload.safety.length) state.safety = payload.safety;
+    if(payload.meta){
+      if(payload.meta.projectStart) PROJECT_START = new Date(payload.meta.projectStart);
+      if(payload.meta.totalDays) TOTAL_DAYS = payload.meta.totalDays;
+      if(payload.meta.rabTotal) RAB_TOTAL = payload.meta.rabTotal;
+      document.getElementById('m-rab').textContent = fmtRp(RAB_TOTAL);
+    }
+    setConn(true, 'Terhubung ke Apps Script — data live dari Google Sheet.');
     renderAll();
     maybeNotifyChange();
   }catch(err){
     console.error(err);
-    setConn(false, 'Gagal terhubung ke Google Sheet (cek Sheet ID / akses sharing). Menampilkan data terakhir.');
+    setConn(false, 'Gagal menghubungi Apps Script (cek APPS_SCRIPT_URL / deployment). Menampilkan data terakhir.');
   }
 }
 function setConn(live, msg){
